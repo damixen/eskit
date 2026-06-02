@@ -37,7 +37,7 @@ class ESKitError(Exception):
         super().__init__(msg)
 
 class ElasticsearchError(ESKitError):
-     def __init__(self, status, response):
+    def __init__(self, status, response):
 
         self.status = status
         self.response = response
@@ -71,6 +71,9 @@ class HostError(ESKitError):
 ##
 def print_host(host):
     print(f"\n=== ESKit HOST: {host} ===\n")
+
+def print_dry_run():
+    print(f"\n*Dry Run*\n")
 
 def load_config(path):
     with open(path, "r", encoding="utf-8") as f:
@@ -110,12 +113,12 @@ def confirm_delete(kind, name):
     return x == name
 
 def get_current_host():
-    with open(CACHE_ROOT / f".current_host", "r", encoding="utf-8") as f:
+    with open(CACHE_ROOT / ".current_host", "r", encoding="utf-8") as f:
         for line in f:
-           return line
+            return line
 
 def set_current_host(host):
-    with open(CACHE_ROOT / f".current_host", "w", encoding="utf-8") as f:
+    with open(CACHE_ROOT / ".current_host", "w", encoding="utf-8") as f:
         f.write(host)
 
 def cache_dir(host):
@@ -307,7 +310,7 @@ class ESClient:
 
         safe_cmd = cmd
         if password:
-             safe_cmd = safe_cmd.replace(
+            safe_cmd = safe_cmd.replace(
                 password,
                 "******"
         )
@@ -448,15 +451,14 @@ def cmd_cat2(kind, host_name):
         for repo, repo_data in data.items():
             #print(f"Repo: {repo} | Value: {repo_data}")
             snapshots = repo_data.get("snapshots",{})
-            list = []
+            snap_list = []
             for s in snapshots:
-                list.append(s["snapshot"])
+                snap_list.append(s["snapshot"])
             out[repo] = {}
-            out[repo]["snapshots"] = list
+            out[repo]["snapshots"] = snap_list
         pass
     elif kind == "repos":
         out = data
-        pass
     elif kind == "indices":
         out = []
         for i in data:
@@ -464,7 +466,6 @@ def cmd_cat2(kind, host_name):
             index["index"]=i["index"]
             out.append(index)
         out.sort(key=lambda x: x["index"])
-        pass
     elif kind == "recovery":
         out = data
     print(json.dumps(out, indent=2))
@@ -513,17 +514,16 @@ def cmd_repo_show(host_name, repo):
     out[repo] = repo_data
 
     snapshots = read_cache(host_name, "snapshots")
-    
+
     if not snapshots:
         print(json.dumps(data.get(repo, {}), indent=2))
         return
-    
     snapshots = snapshots.get(repo,{}).get("snapshots",{})
-    list = []
+    snap_list = []
     for s in snapshots:
-        list.append(s["snapshot"])
+        snap_list.append(s["snapshot"])
 
-    out[repo]["snapshots"] = list
+    out[repo]["snapshots"] = snap_list
     print(json.dumps(out, indent=2))
 
 def cmd_snap_show(host_name, spec):
@@ -555,7 +555,7 @@ def cat_recovery(config, host):
     ssh, es = connect_es(config, host)
     try:
         out = []
-        data = es.request("GET", f"/_cat/recovery?format=json")
+        data = es.request("GET", "/_cat/recovery?format=json")
         for r in data:
             info = {}
             info["index"] = r["index"]
@@ -581,7 +581,7 @@ def create_repo(config, host, name, repo_type, location, dry_run, push):
 
     body = {"type": repo_type, "settings": {"location": location}}
     if dry_run:
-        print(f"HOST:{host}")
+        print_dry_run()
         print("PUT", f"/_snapshot/{name}")
         print(json.dumps(body, indent=2))
         return
@@ -612,7 +612,7 @@ def delete_repo(config, host, name, dry_run, push, force):
             return
 
     if dry_run:
-        print(f"HOST:{host}")
+        print_dry_run()
         print("DELETE", f"/_snapshot/{name}")
         return
     ssh, es = connect_es(config, host)
@@ -647,7 +647,7 @@ def create_snapshot(config, host, spec, indices, include_global_state, ignore_un
     body["include_global_state"] = include_global_state
     body["ignore_unavailable"] = ignore_unavailable
     if dry_run:
-        print(f"HOST:{host}")
+        print_dry_run()
         print("PUT", f"/_snapshot/{repo}/{snap}")
         print(json.dumps(body, indent=2))
         return
@@ -678,7 +678,7 @@ def delete_snapshot(config, host, spec, dry_run, push, force):
             return
 
     if dry_run:
-        print(f"HOST:{host}")
+        print_dry_run()
         print("DELETE", f"/_snapshot/{repo}/{snap}")
         return
     ssh, es = connect_es(config, host)
@@ -703,7 +703,7 @@ def restore_snapshot(config, host, spec, dry_run, push):
     body["include_global_state"] = False
     
     if dry_run:
-        print(f"HOST:{host}")
+        print_dry_run()
         print("POST", f"/_snapshot/{repo}/{snap}/_restore")
         print(json.dumps(body, indent=2))
         return
@@ -734,7 +734,7 @@ def delete_index(config, host, index, dry_run, push, force):
 
     url = f"/{index}"
     if dry_run:
-        print(f"HOST:{host}")
+        print_dry_run()
         print(HTTP_METHOD_DELETE, url)
         return
     ssh, es = connect_es(config, host)
@@ -769,7 +769,7 @@ def create_index(config, host, index, mapping, dry_run, push):
 
     url = f"/{index}"
     if dry_run:
-        print(f"HOST:{host}")
+        print_dry_run()
         print(HTTP_METHOD_PUT, url)
         print(json.dumps(body, indent=2))
         return
@@ -832,7 +832,7 @@ def reindex(config, host, src, dst, mapping, dry_run, push):
     # default: don't wait
     url = f"/_reindex?wait_for_completion=false"
     if dry_run:
-        print(f"HOST:{host}")
+        print_dry_run()
         print(HTTP_METHOD_POST, url)
         print(json.dumps(body, indent=2))
         return
@@ -956,20 +956,22 @@ def run_rsync(config, rsync_config, host, dry_run, push):
         ssh.close()
 
 def build_parser():
-    p = argparse.ArgumentParser(prog="eskit")
-    p.add_argument("--config", default=DEFAULT_CONFIG)
-    p.add_argument("--dry-run", action="store_true")
-    p.add_argument("--push", action="store_true")
-    p.add_argument("--force", action="store_true")
+    p = argparse.ArgumentParser(
+        prog="eskit",
+        description="a light weight Elasticsearch toolkit for managing repo, snapshots, and index.")
+    p.add_argument("-c","--config", default=DEFAULT_CONFIG, help="set config file")
+    p.add_argument("-dry","--dry-run", action="store_true", help="shows only request/command w/o executing it")
+    p.add_argument("--push", action="store_true", help="used to confirm to execute a request/command that would modify resources on push-protected host")
+    p.add_argument("--force", action="store_true", help="force to execute delete request/command")
 
     sub = p.add_subparsers(dest="cmd", required=True)
 
     sub.add_parser("host")
 
-    host_set = sub.add_parser("host-set")
+    host_set = sub.add_parser("host-set", help="set as current host")
     host_set.add_argument("host")
 
-    sub.add_parser("host-get")
+    sub.add_parser("host-get", help="get current host")
 
     pull = sub.add_parser("pull")
     pull.add_argument("--host")
@@ -1017,7 +1019,7 @@ def build_parser():
     index_create = sub.add_parser("index-create")
     index_create.add_argument("--host")
     index_create.add_argument("index")
-    index_create.add_argument("--mapping")
+    index_create.add_argument("-m","--mapping", help="name of mapping in the config")
 
     index_show = sub.add_parser("index-show")
     index_show.add_argument("--host")
@@ -1029,7 +1031,7 @@ def build_parser():
     reindex.add_argument("src")
     reindex.add_argument("dst")
     reindex.add_argument("--host")
-    reindex.add_argument("--mapping")
+    reindex.add_argument("-m","--mapping", help="name of mapping in the config")
 
     task_get = sub.add_parser("task-get")
     task_get.add_argument("--host")
