@@ -4,6 +4,10 @@ import json
 from pathlib import Path
 import paramiko
 import getpass
+from dataclasses import dataclass, asdict
+from datetime import datetime, timezone
+import uuid
+import time
 
 DEFAULT_CONFIG = "config.json"
 CACHE_ROOT = Path(".eskit")
@@ -13,6 +17,19 @@ HTTP_METHOD_POST = "POST"
 HTTP_METHOD_GET = "GET"
 
 ## EXCEPTIONS
+
+@dataclass
+class ESKitJob:
+    id: str
+    name: str
+    type: str              # reindex | rsync
+    host: str
+    status: str            # running | success | failed
+    created_at: str
+    updated_at: str
+    payload: dict
+    result: dict | None = None
+    error: str | None = None
 
 class ESKitError(Exception):
     def __init__(self, msg):
@@ -52,6 +69,8 @@ class HostError(ESKitError):
     pass
 
 ##
+def print_host(host):
+    print(f"\n=== ESKit HOST: {host} ===\n")
 
 def load_config(path):
     with open(path, "r", encoding="utf-8") as f:
@@ -59,6 +78,12 @@ def load_config(path):
 
 def get_host(config, name):
     for h in config.get("hosts", []):
+        if h["name"] == name:
+            return h
+    raise SystemExit(f"Host not found: {name}")
+
+def get_rsync_config(config, name):
+    for h in config.get("rsync-configs", []):
         if h["name"] == name:
             return h
     raise SystemExit(f"Host not found: {name}")
@@ -74,6 +99,16 @@ def check_push_protected(config, host, dry_run, push):
         raise SystemExit("Host is push protected. Please use --push to make change or --dry-run to check command")
     return
 
+def is_push_protected(config, host):
+    host_config = get_host(config, host)
+    return "push-protected" in host_config and host_config["push-protected"]
+
+def confirm_delete(kind, name):
+    print(f"About to delete {kind}: {name}\n")
+    x = input("Confirm delete by typing:")
+    print("\n")
+    return x == name
+
 def get_current_host():
     with open(CACHE_ROOT / f".current_host", "r", encoding="utf-8") as f:
         for line in f:
@@ -86,8 +121,25 @@ def set_current_host(host):
 def cache_dir(host):
     return CACHE_ROOT / host / "cache"
 
+def cache_age(path):
+    if not path.exists():
+        return None
+    age_sec = time.time() - path.stat().st_mtime
+    return age_sec
+
+def cache_date(path):
+    if not path.exists():
+        return None
+    return datetime.fromtimestamp(path.stat().st_mtime).strftime('%A, %B %d, %Y at %I:%M %p')
+
+def job_dir(host):
+    return CACHE_ROOT / host / "cache" / "jobs"
+
 def ensure_cache(host):
     cache_dir(host).mkdir(parents=True, exist_ok=True)
+
+def ensure_job_dir(host):
+    job_dir(host).mkdir(parents=True, exist_ok=True)
 
 def write_cache(host, name, data):
     ensure_cache(host)
@@ -101,6 +153,29 @@ def read_cache(host, name):
         return None
     with open(p, "r", encoding="utf-8") as f:
         return json.load(f)
+    
+def write_job(host, job: ESKitJob):
+    ensure_job_dir(host)
+    shot_id = job.id.split('-')[-1]
+    with open(job_dir(host) / f"{job.type}-{job.name}-{shot_id}.json", "w") as f:
+        json.dump(asdict(job), f, indent=2)
+
+def read_job(host, job_id):
+    path = job_dir(host) / f"{job_id}.json"
+    if not path.exists():
+        return None
+    return json.load(open(path))
+
+def list_jobs(host):
+    if not job_dir(host).exists():
+        return []
+
+    jobs = []
+    for f in job_dir(host).glob("*.json"):
+        jobs.append(json.load(open(f)))
+
+    jobs.sort(key=lambda x: x["created_at"], reverse=True)
+    return jobs
 
 def is_agent_available():
     try:
@@ -117,6 +192,23 @@ def find_index(host, index):
     for i in index_cache:
         if index == i["index"]:
             return True
+    
+    return False
+
+def find_repo(host, repo):
+    repos_cache = read_cache(host, "repos")
+    for repo_name, repo_data in repos_cache.items():
+        return repo == repo_name
+    
+    return False
+
+def find_snapshot(host, repo, snapshot):
+    snapshots_cache = read_cache(host, "snapshots")
+    if not "repo" in snapshots_cache:
+        return False
+    snap_list = snapshots_cache[repo]["snapshots"]
+    for s in snap_list:
+        return snapshot == s["snapshot"]
     
     return False
 
@@ -236,9 +328,8 @@ def pull_host(host_name, es):
     if host_name is None:
         host_name = get_current_host()
 
-    if host_name is None:
-        print("Please specify host or set host")
-        return
+    check_host(host_name)
+    print_host(host_name)
 
     repos = es.request("GET", "/_snapshot")
     write_cache(host_name, "repos", repos)
@@ -251,7 +342,7 @@ def pull_host(host_name, es):
 
     indices = es.request("GET", "/_cat/indices?format=json")
     write_cache(host_name, "indices", indices)
-    print("Cache updated.")
+    print("\nCache updated.\n")
 
 def connect_es(config, host_name):
 
@@ -277,6 +368,59 @@ def cmd_host_set(host):
 
 def cmd_host_get():
     print(get_current_host())
+
+def cmd_list_job(host_name):
+    if host_name is None:
+        host_name = get_current_host()
+    
+    check_host(host_name)
+
+    return list_jobs(host_name)
+
+def cmd_read_job(host_name, job_id):
+    if host_name is None:
+        host_name = get_current_host()
+    
+    check_host(host_name)
+
+    return read_job(host_name, job_id)
+
+def cmd_status(config, host_name):
+    if host_name is None:
+        host_name = get_current_host()
+
+    check_host(host_name)
+
+    print(f"Host:")
+    print(f"    Name: {host_name}")
+
+    # push protected
+    print(f"    Push Protected: {is_push_protected(config, host_name)}")
+
+    cache_root = cache_dir(host_name)
+
+    print("Cache Last Update:")
+    for name in ["indices", "repos", "snapshots"]:
+        path = cache_root / f"{name}.json"
+        date = cache_date(path)
+
+        if date is None:
+            print(f"    {name}: missing")
+        else:
+            print(f"    {name}: {date}")
+
+    ''' TODO
+    jobs = list_jobs(host_name)
+
+    running = sum(1 for j in jobs if j["status"] == "running")
+    failed = sum(1 for j in jobs if j["status"] == "failed")
+    success = sum(1 for j in jobs if j["status"] == "success")
+
+    print("\nJobs:")
+    print(f"  running: {running}")
+    print(f"  success: {success}")
+    print(f"  failed:  {failed}")
+    '''
 
 def cmd_pull(config, host_name):
 
@@ -429,6 +573,11 @@ def create_repo(config, host, name, repo_type, location, dry_run, push):
 
     check_host(host)
     check_push_protected(config, host, dry_run, push)
+    print_host(host)
+
+    if not find_repo(host, name):
+        print(f"Repo:{name} found in cache. Please pull latest.")
+        return
 
     body = {"type": repo_type, "settings": {"location": location}}
     if dry_run:
@@ -439,17 +588,28 @@ def create_repo(config, host, name, repo_type, location, dry_run, push):
     ssh, es = connect_es(config, host)
     try:
         es.request("PUT", f"/_snapshot/{name}", body)
+        print(f"Repo:{name} created. Updating Cache...")
         pull_host(host, es)
     finally:
         ssh.close()
 
-def delete_repo(config, host, name, dry_run, push):
+def delete_repo(config, host, name, dry_run, push, force):
 
     if host is None:
         host = get_current_host()
 
     check_host(host)
     check_push_protected(config, host, dry_run, push)
+    print_host(host)
+
+    if not find_repo(host, name):
+        print(f"Repo:{name} not found in cache. Please pull latest.")
+        return
+
+    if not dry_run and not force:
+        if not confirm_delete("repo", name):
+            print("cancelled")
+            return
 
     if dry_run:
         print(f"HOST:{host}")
@@ -458,6 +618,7 @@ def delete_repo(config, host, name, dry_run, push):
     ssh, es = connect_es(config, host)
     try:
         es.request("DELETE", f"/_snapshot/{name}")
+        print(f"Repo:{name} deleted. Updating Cache...")
         pull_host(host, es)
     finally:
         ssh.close()
@@ -469,8 +630,17 @@ def create_snapshot(config, host, spec, indices, include_global_state, ignore_un
 
     check_host(host)
     check_push_protected(config, host, dry_run, push)
+    print_host(host)
 
-    repo, snap = spec.split("/", 1)
+    repo, delim, snap = spec.partition("/")
+    if not repo or not snap:
+        print(f"Snapshot:{spec} is not in valid format <repo>/<snapshot>")
+        return
+    
+    if find_snapshot(host, repo, snap):
+        print(f"Snapshot:{spec} found in chace. Please pull latest.")
+        return
+
     body = {}
     if indices:
         body["indices"] = indices
@@ -488,13 +658,24 @@ def create_snapshot(config, host, spec, indices, include_global_state, ignore_un
     finally:
         ssh.close()
 
-def delete_snapshot(config, host, spec, dry_run, push):
-    repo, snap = spec.split("/", 1)
+def delete_snapshot(config, host, spec, dry_run, push, force):
+
+    repo, delim, snap = spec.partition("/")
     if host is None:
         host = get_current_host()
 
     check_host(host)
     check_push_protected(config, host, dry_run, push)
+    print_host(host)
+
+    if not find_snapshot(host, repo, snap):
+        print(f"Snapshot:{spec} not found in chace. Please pull latest.")
+        return
+    
+    if not dry_run and not force:
+        if not confirm_delete("snapshot", spec):
+            print("cancelled")
+            return
 
     if dry_run:
         print(f"HOST:{host}")
@@ -503,17 +684,19 @@ def delete_snapshot(config, host, spec, dry_run, push):
     ssh, es = connect_es(config, host)
     try:
         es.request("DELETE", f"/_snapshot/{repo}/{snap}")
+        print(f"Snap{spec} created. Updating Cache...")
         pull_host(host, es)
     finally:
         ssh.close()
 
 def restore_snapshot(config, host, spec, dry_run, push):
-    repo, snap = spec.split("/", 1)
+    repo, delim, snap = spec.partition("/")
     if host is None:
         host = get_current_host()
 
     check_host(host)
     check_push_protected(config, host, dry_run, push)
+    print_host(host)
 
     body = {}
     body["indices"] = "*"
@@ -527,15 +710,27 @@ def restore_snapshot(config, host, spec, dry_run, push):
     ssh, es = connect_es(config, host)
     try:
         es.request("POST", f"/_snapshot/{repo}/{snap}/_restore",body)
+        print(f"Snap:{spec} restored. Updating Cache...")
+        pull_host(host, es)
     finally:
         ssh.close()
 
-def delete_index(config, host, index, dry_run, push):
+def delete_index(config, host, index, dry_run, push, force):
     if host is None:
         host = get_current_host()
 
     check_host(host)
     check_push_protected(config, host, dry_run, push)
+    print_host(host)
+
+    if not find_index(host, index):
+        print(f"Index:{index} not found in cache. Please pull latest")
+        return
+
+    if not dry_run and not force:
+        if not confirm_delete("index", index):
+            print("cancelled")
+            return
 
     url = f"/{index}"
     if dry_run:
@@ -546,6 +741,7 @@ def delete_index(config, host, index, dry_run, push):
     try:
         res = es.request(HTTP_METHOD_DELETE, url)
         print(res)
+        print(f"Index:{index} deleted. Updating Cache...")
         pull_host(host, es)
     except Exception as e:
         print(e)
@@ -559,6 +755,7 @@ def create_index(config, host, index, mapping, dry_run, push):
 
     check_host(host)
     check_push_protected(config, host, dry_run, push)
+    print_host(host)
 
     if find_index(host, index):
         print("index already exist in cache. Please pull latest or delete the index")
@@ -580,6 +777,7 @@ def create_index(config, host, index, mapping, dry_run, push):
     try:
         res = es.request(HTTP_METHOD_PUT, url, body)
         print(res)
+        print(f"Index:{index} created. Updating Cache...")
         pull_host(host, es)
     except Exception as e:
         print(e)
@@ -593,6 +791,7 @@ def reindex(config, host, src, dst, mapping, dry_run, push):
 
     check_host(host)
     check_push_protected(config, host, dry_run, push)
+    print_host(host)
 
     body = {}
     m = None
@@ -613,6 +812,19 @@ def reindex(config, host, src, dst, mapping, dry_run, push):
         print(f"creating a new dst:{dst}")
         create_index(config, host, dst, mapping, dry_run, push)
 
+    job = ESKitJob(
+        id=str(uuid.uuid4()),
+        name=src,
+        type="reindex",
+        host=host,
+        status="running",
+        created_at=datetime.now(timezone.utc).isoformat(),
+        updated_at=datetime.now(timezone.utc).isoformat(),
+        payload={"src": src, "dst": dst}
+    )
+
+    write_job(host, job)
+
     body={}
     body["source"] = {"index":src}
     body["dest"] = {"index":dst}
@@ -627,9 +839,21 @@ def reindex(config, host, src, dst, mapping, dry_run, push):
     ssh, es = connect_es(config, host)
     try:
         res = es.request(HTTP_METHOD_POST, url, body)
-        print(json.dumps(res, indent=2))
-        print("check status with task-get command with the id")
+       # print(json.dumps(res, indent=2))
+       # print("check status with task-get command with the id")
+    
+        job.status = "running"
+        job.result = {"task_id": res.get("task")}
+        job.updated_at = datetime.now(timezone.utc).isoformat()
+
+        write_job(host, job)
+
+        print(f"[{host}] reindex job started: {job.id}")
+
     except Exception as e:
+        job.status = "failed"
+        job.error = str(e)
+        write_job(host, job)
         print(e)
     finally:
         ssh.close()
@@ -640,6 +864,7 @@ def get_task(config, host, task_id):
         host = get_current_host()
 
     check_host(host)
+    print_host(host)
 
     url = f"/_tasks/{task_id}"
 
@@ -657,6 +882,7 @@ def show_index(config, host, index):
         host = get_current_host()
 
     check_host(host)
+    print_host(host)
 
     url = f"/{index}"
 
@@ -675,11 +901,66 @@ def show_index(config, host, index):
     finally:
         ssh.close()
 
+def run_rsync(config, rsync_config, host, dry_run, push):
+     
+    rsync_src = rsync_config["src"]
+    rsync_dst = rsync_config["dst"]
+
+    print(rsync_src)
+    print(rsync_dst)
+
+    src_host = get_host(config, rsync_src["host"])
+    dst_host = get_host(config, rsync_dst["host"])
+
+    print(src_host)
+    print(dst_host)
+
+    #check_host(host)
+    #check_push_protected(config, host, dry_run, push)
+
+    job = ESKitJob(
+        id=str(uuid.uuid4()),
+        name=rsync_src["path"],
+        type="rsync",
+        host=host,
+        status="running",
+        created_at=datetime.now(timezone.utc).isoformat(),
+        updated_at=datetime.now(timezone.utc).isoformat(),
+        payload={"src": rsync_src, "dst": rsync_dst}
+    )
+
+    write_job(host, job)
+
+    ssh_config = rsync_dst["auth"]["ssh"]
+
+    # sudo rsync -av --progress -e "ssh -p 22 -i .ssh/example-key" demo-user@example.com:/home/demo-user/elk/snapshot elk
+    cmd = f"nohup rsync -avz --info=progress2 -e \"ssh -p {ssh_config['port']} -i {ssh_config['identity']}\" {ssh_config['user']}@{src_host['ip']}:{rsync_src['path']} {rsync_dst['path']} "
+    cmd += f" >/tmp/eskit_rsync_{job.id}.log 2>&1 & echo $!"
+    print(cmd)
+
+    ssh, _ = connect_es(config, rsync_dst["host"])
+
+    try:
+        output = ssh.run(cmd)
+
+        job.status = "started"
+        job.result = {"output": output}
+
+    except Exception as e:
+        job.status = "failed"
+        job.error = str(e)
+
+    finally:
+        job.updated_at = datetime.now(timezone.utc).isoformat()
+        write_job(host, job)
+        ssh.close()
+
 def build_parser():
     p = argparse.ArgumentParser(prog="eskit")
     p.add_argument("--config", default=DEFAULT_CONFIG)
     p.add_argument("--dry-run", action="store_true")
     p.add_argument("--push", action="store_true")
+    p.add_argument("--force", action="store_true")
 
     sub = p.add_subparsers(dest="cmd", required=True)
 
@@ -754,6 +1035,20 @@ def build_parser():
     task_get.add_argument("--host")
     task_get.add_argument("task_id")
 
+    rsync = sub.add_parser("rsync")
+    rsync.add_argument("--host")
+    rsync.add_argument("config_name")
+
+    job_list = sub.add_parser("job-list")
+    job_list.add_argument("--host")
+
+    job_show = sub.add_parser("job-show")
+    job_show.add_argument("--host")
+    job_show.add_argument("job_id")
+
+    status = sub.add_parser("status")
+    status.add_argument("--host")
+
     return p
 
 def main():
@@ -776,13 +1071,13 @@ def main():
     elif args.cmd == "repo-create":
         create_repo(config, args.host, args.repo, args.type, args.location, args.dry_run, args.push)
     elif args.cmd == "repo-delete":
-        delete_repo(config, args.host, args.repo, args.dry_run, args.push)
+        delete_repo(config, args.host, args.repo, args.dry_run, args.push, args.force)
     elif args.cmd == "snap-show":
         cmd_snap_show(args.host, args.snapshot)
     elif args.cmd == "snap-create":
         create_snapshot(config, args.host, args.snapshot, args.index, args.include_global_state,args.ignore_unavailable, args.dry_run, args.push)
     elif args.cmd == "snap-delete":
-        delete_snapshot(config, args.host, args.snapshot, args.dry_run, args.push)
+        delete_snapshot(config, args.host, args.snapshot, args.dry_run, args.push, args.force)
     elif args.cmd == "snap-restore":
         restore_snapshot(config, args.host, args.snapshot, args.dry_run, args.push)
     elif args.cmd == "snap-restore-check":
@@ -790,7 +1085,7 @@ def main():
     elif args.cmd == "reindex-mapping":
         cmd_reindex_mapping(config)
     elif args.cmd == "index-delete":
-        delete_index(config, args.host,args.index, args.dry_run, args.push)
+        delete_index(config, args.host,args.index, args.dry_run, args.push, args.force)
     elif args.cmd == "index-create":
         create_index(config, args.host,args.index, args.mapping, args.dry_run, args.push)
     elif args.cmd == "reindex":
@@ -799,7 +1094,13 @@ def main():
         get_task(config, args.host, args.task_id)
     elif args.cmd == "index-show":
         show_index(config, args.host,args.index)
-
-
+    elif args.cmd == "rsync":
+        run_rsync(config, get_rsync_config(config, args.config_name), args.host, args.dry_run, args.push)
+    elif args.cmd == "job-list":
+        print(json.dumps(cmd_list_job(args.host), indent=2))
+    elif args.cmd == "job-show":
+        print(json.dumps(cmd_read_job(args.host, args.job_id), indent=2))
+    elif args.cmd == "status":
+        cmd_status(config, args.host)
 if __name__ == "__main__":
     main()
