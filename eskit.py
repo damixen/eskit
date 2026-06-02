@@ -7,6 +7,51 @@ import getpass
 
 DEFAULT_CONFIG = "config.json"
 CACHE_ROOT = Path(".eskit")
+HTTP_METHOD_DELETE = "DELETE"
+HTTP_METHOD_PUT = "PUT"
+HTTP_METHOD_POST = "POST"
+HTTP_METHOD_GET = "GET"
+
+## EXCEPTIONS
+
+class ESKitError(Exception):
+    def __init__(self, msg):
+        self.msg = msg
+        super().__init__(msg)
+
+class ElasticsearchError(ESKitError):
+     def __init__(self, status, response):
+
+        self.status = status
+        self.response = response
+        error_type = None
+        reason = None
+        
+        if isinstance(response, dict):
+            error = response.get("error", {})
+
+            if isinstance(error, dict):
+                error_type = error.get("type")
+                reason = error.get("reason")
+
+        msg = f"HTTP {status}"
+        if error_type:
+            msg += f" [{error_type}]"
+        if reason:
+            msg += f": {reason}"
+
+        super().__init__(msg)
+
+class CacheError(ESKitError):
+    pass
+
+class ConfigError(ESKitError):
+    pass
+
+class HostError(ESKitError):
+    pass
+
+##
 
 def load_config(path):
     with open(path, "r", encoding="utf-8") as f:
@@ -21,7 +66,13 @@ def get_host(config, name):
 def check_host(host):
     if host is None:
         raise SystemExit("Host not found. Please specify host or set host.")
-    return;
+    return
+
+def check_push_protected(config, host, dry_run, push):
+    host_config = get_host(config, host)
+    if "push-protected" in host_config and host_config["push-protected"] and not dry_run and not push:
+        raise SystemExit("Host is push protected. Please use --push to make change or --dry-run to check command")
+    return
 
 def get_current_host():
     with open(CACHE_ROOT / f".current_host", "r", encoding="utf-8") as f:
@@ -57,6 +108,26 @@ def is_agent_available():
         return len(agent.get_keys()) > 0
     except Exception:
         return False
+    
+def find_index(host, index):
+    index_cache = read_cache(host, "indices")
+    if not index_cache:
+        return False
+    
+    for i in index_cache:
+        if index == i["index"]:
+            return True
+    
+    return False
+
+def get_reindex_mapping(config, host, name):
+    reindex_configs = config.get("reindex-configs")
+    if not reindex_configs:
+        return None
+    for c in reindex_configs:
+        if c["name"] == name:
+            return c["mappings"]
+    return None
 
 def load_private_key(key_path, passphrase=None):
     try:
@@ -121,22 +192,44 @@ class ESClient:
 
     def request(self, method, path, body=None):
         port = 9200
-        if "port" in self.config:
+        if self.config and "port" in self.config:
             port = self.config["port"]
-        cmd = f"curl -s -X {method.upper()} 'http://localhost:{port}{path}'"
+
+        username = None
+        password = None
+        if self.config and "user" in self.config:
+            username = self.config["user"].get("name")
+            password = self.config["user"].get("password")
+        cmd ="curl "
+        cmd += f"-w '\\n%{{http_code}}' "
+
+        if username and password:
+            cmd += f" -u {username}:{password}"
+        
+        cmd += f" -s -X {method.upper()} 'http://localhost:{port}{path}'"
+        
         if body is not None:
             payload = json.dumps(body).replace("'", "'\"'\"'")
             cmd += f" -H 'Content-Type: application/json' -d '{payload}'"
-        print("elastic_config", self.config)
-        if "user" in self.config:
-            cmd += f" -u {self.config["user"]["name"]}:{self.config["user"]["password"]}"
-            pass
-        print("cmd:", cmd)
+            #print("elastic_config", self.config)
+
+        safe_cmd = cmd
+        if password:
+             safe_cmd = safe_cmd.replace(
+                password,
+                "******"
+        )
+             
+        print("cmd:", safe_cmd)
         result = self.transport.run(cmd)
-        try:
-            return json.loads(result)
-        except Exception:
-            return result
+        body, status = result.rsplit("\n", 1)
+        status = int(status)
+        body = json.loads(body)
+
+        if status >= 400:
+            raise ElasticsearchError(status, body)
+        
+        return body
 
 def pull_host(host_name, es):
 
@@ -215,7 +308,7 @@ def cmd_cat2(kind, host_name):
             for s in snapshots:
                 list.append(s["snapshot"])
             out[repo] = {}
-            out[repo]["snapshots"] = list;
+            out[repo]["snapshots"] = list
         pass
     elif kind == "repos":
         out = data
@@ -224,7 +317,7 @@ def cmd_cat2(kind, host_name):
         out = []
         for i in data:
             index = {}
-            index["index"]=i["index"];
+            index["index"]=i["index"]
             out.append(index)
         out.sort(key=lambda x: x["index"])
         pass
@@ -265,13 +358,13 @@ def cmd_repo_show(host_name, repo):
 
     data = read_cache(host_name, "repos")
     if not data:
-        return;
+        return
 
     out={}
 
     repo_data = data.get(repo, {})
     if not repo_data:
-        return;
+        return
 
     out[repo] = repo_data
 
@@ -286,7 +379,7 @@ def cmd_repo_show(host_name, repo):
     for s in snapshots:
         list.append(s["snapshot"])
 
-    out[repo]["snapshots"] = list;
+    out[repo]["snapshots"] = list
     print(json.dumps(out, indent=2))
 
 def cmd_snap_show(host_name, spec):
@@ -305,6 +398,9 @@ def cmd_snap_show(host_name, spec):
             print(json.dumps(s, indent=2))
             return
     print("Snapshot not found.")
+
+def cmd_reindex_mapping(config):
+    print(json.dumps(config["reindex-configs"], indent=2))
 
 def cat_recovery(config, host):
     if host is None:
@@ -326,12 +422,13 @@ def cat_recovery(config, host):
     finally:
         ssh.close()
 
-def create_repo(config, host, name, repo_type, location, dry_run):
+def create_repo(config, host, name, repo_type, location, dry_run, push):
 
     if host is None:
         host = get_current_host()
 
     check_host(host)
+    check_push_protected(config, host, dry_run, push)
 
     body = {"type": repo_type, "settings": {"location": location}}
     if dry_run:
@@ -346,12 +443,13 @@ def create_repo(config, host, name, repo_type, location, dry_run):
     finally:
         ssh.close()
 
-def delete_repo(config, host, name, dry_run):
+def delete_repo(config, host, name, dry_run, push):
 
     if host is None:
         host = get_current_host()
 
     check_host(host)
+    check_push_protected(config, host, dry_run, push)
 
     if dry_run:
         print(f"HOST:{host}")
@@ -364,12 +462,13 @@ def delete_repo(config, host, name, dry_run):
     finally:
         ssh.close()
 
-def create_snapshot(config, host, spec, indices, include_global_state, ignore_unavailable, dry_run):
+def create_snapshot(config, host, spec, indices, include_global_state, ignore_unavailable, dry_run, push):
 
     if host is None:
         host = get_current_host()
 
     check_host(host)
+    check_push_protected(config, host, dry_run, push)
 
     repo, snap = spec.split("/", 1)
     body = {}
@@ -389,12 +488,13 @@ def create_snapshot(config, host, spec, indices, include_global_state, ignore_un
     finally:
         ssh.close()
 
-def delete_snapshot(config, host, spec, dry_run):
+def delete_snapshot(config, host, spec, dry_run, push):
     repo, snap = spec.split("/", 1)
     if host is None:
         host = get_current_host()
 
     check_host(host)
+    check_push_protected(config, host, dry_run, push)
 
     if dry_run:
         print(f"HOST:{host}")
@@ -407,12 +507,13 @@ def delete_snapshot(config, host, spec, dry_run):
     finally:
         ssh.close()
 
-def restore_snapshot(config, host, spec, dry_run):
+def restore_snapshot(config, host, spec, dry_run, push):
     repo, snap = spec.split("/", 1)
     if host is None:
         host = get_current_host()
 
     check_host(host)
+    check_push_protected(config, host, dry_run, push)
 
     body = {}
     body["indices"] = "*"
@@ -429,10 +530,156 @@ def restore_snapshot(config, host, spec, dry_run):
     finally:
         ssh.close()
 
+def delete_index(config, host, index, dry_run, push):
+    if host is None:
+        host = get_current_host()
+
+    check_host(host)
+    check_push_protected(config, host, dry_run, push)
+
+    url = f"/{index}"
+    if dry_run:
+        print(f"HOST:{host}")
+        print(HTTP_METHOD_DELETE, url)
+        return
+    ssh, es = connect_es(config, host)
+    try:
+        res = es.request(HTTP_METHOD_DELETE, url)
+        print(res)
+        pull_host(host, es)
+    except Exception as e:
+        print(e)
+    finally:
+        ssh.close()    
+
+def create_index(config, host, index, mapping, dry_run, push):
+    
+    if host is None:
+        host = get_current_host()
+
+    check_host(host)
+    check_push_protected(config, host, dry_run, push)
+
+    if find_index(host, index):
+        print("index already exist in cache. Please pull latest or delete the index")
+        return
+
+    body = {}
+    if mapping:
+        m = get_reindex_mapping(config, host, mapping)
+        if m:
+            body["mappings"] = m
+
+    url = f"/{index}"
+    if dry_run:
+        print(f"HOST:{host}")
+        print(HTTP_METHOD_PUT, url)
+        print(json.dumps(body, indent=2))
+        return
+    ssh, es = connect_es(config, host)
+    try:
+        res = es.request(HTTP_METHOD_PUT, url, body)
+        print(res)
+        pull_host(host, es)
+    except Exception as e:
+        print(e)
+    finally:
+        ssh.close()
+
+def reindex(config, host, src, dst, mapping, dry_run, push):
+    
+    if host is None:
+        host = get_current_host()
+
+    check_host(host)
+    check_push_protected(config, host, dry_run, push)
+
+    body = {}
+    m = None
+    if mapping:
+        m = get_reindex_mapping(config, host, mapping)
+        if m:
+            body["mappings"] = m
+        else:
+            print(f"mapping:{mapping} does not exist in the config.")
+            return
+    
+    dst_exists = find_index(host, dst)
+    if m and dst_exists:
+        print("mapping specified, but index already exist in cache. Please pull latest or delete the index")
+        return
+
+    if not dst_exists:
+        print(f"creating a new dst:{dst}")
+        create_index(config, host, dst, mapping, dry_run, push)
+
+    body={}
+    body["source"] = {"index":src}
+    body["dest"] = {"index":dst}
+
+    # default: don't wait
+    url = f"/_reindex?wait_for_completion=false"
+    if dry_run:
+        print(f"HOST:{host}")
+        print(HTTP_METHOD_POST, url)
+        print(json.dumps(body, indent=2))
+        return
+    ssh, es = connect_es(config, host)
+    try:
+        res = es.request(HTTP_METHOD_POST, url, body)
+        print(json.dumps(res, indent=2))
+        print("check status with task-get command with the id")
+    except Exception as e:
+        print(e)
+    finally:
+        ssh.close()
+
+def get_task(config, host, task_id):
+    
+    if host is None:
+        host = get_current_host()
+
+    check_host(host)
+
+    url = f"/_tasks/{task_id}"
+
+    ssh, es = connect_es(config, host)
+    try:
+        res = es.request(HTTP_METHOD_GET, url)
+        print(json.dumps(res, indent=2))
+    except Exception as e:
+        print(e)
+    finally:
+        ssh.close()
+
+def show_index(config, host, index):
+    if host is None:
+        host = get_current_host()
+
+    check_host(host)
+
+    url = f"/{index}"
+
+    ssh, es = connect_es(config, host)
+    try:
+        res = es.request(HTTP_METHOD_GET, url)
+        index_data = res[index]
+        out = {}
+        out["mappings"] = {}
+        out["mappings"]["properties"] = {}
+        out["mappings"]["properties"]["@timestamp"] = index_data["mappings"]["properties"]["@timestamp"]
+        out["settings"] = index_data["settings"]
+        print(json.dumps(out, indent=2))
+    except Exception as e:
+        print(e)
+    finally:
+        ssh.close()
+
 def build_parser():
     p = argparse.ArgumentParser(prog="eskit")
     p.add_argument("--config", default=DEFAULT_CONFIG)
     p.add_argument("--dry-run", action="store_true")
+    p.add_argument("--push", action="store_true")
 
     sub = p.add_subparsers(dest="cmd", required=True)
 
@@ -482,6 +729,31 @@ def build_parser():
     snap_restore_check = sub.add_parser("snap-restore-check")
     snap_restore_check.add_argument("--host")
 
+    index_delete = sub.add_parser("index-delete")
+    index_delete.add_argument("--host")
+    index_delete.add_argument("index")
+
+    index_create = sub.add_parser("index-create")
+    index_create.add_argument("--host")
+    index_create.add_argument("index")
+    index_create.add_argument("--mapping")
+
+    index_show = sub.add_parser("index-show")
+    index_show.add_argument("--host")
+    index_show.add_argument("index")
+
+    sub.add_parser("reindex-mapping")
+    
+    reindex = sub.add_parser("reindex")
+    reindex.add_argument("src")
+    reindex.add_argument("dst")
+    reindex.add_argument("--host")
+    reindex.add_argument("--mapping")
+
+    task_get = sub.add_parser("task-get")
+    task_get.add_argument("--host")
+    task_get.add_argument("task_id")
+
     return p
 
 def main():
@@ -502,19 +774,32 @@ def main():
     elif args.cmd == "repo-show":
         cmd_repo_show2(args.host, args.repo)
     elif args.cmd == "repo-create":
-        create_repo(config, args.host, args.repo, args.type, args.location, args.dry_run)
+        create_repo(config, args.host, args.repo, args.type, args.location, args.dry_run, args.push)
     elif args.cmd == "repo-delete":
-        delete_repo(config, args.host, args.repo, args.dry_run)
+        delete_repo(config, args.host, args.repo, args.dry_run, args.push)
     elif args.cmd == "snap-show":
         cmd_snap_show(args.host, args.snapshot)
     elif args.cmd == "snap-create":
-        create_snapshot(config, args.host, args.snapshot, args.index, args.include_global_state,args.ignore_unavailable, args.dry_run)
+        create_snapshot(config, args.host, args.snapshot, args.index, args.include_global_state,args.ignore_unavailable, args.dry_run, args.push)
     elif args.cmd == "snap-delete":
-        delete_snapshot(config, args.host, args.snapshot, args.dry_run)
+        delete_snapshot(config, args.host, args.snapshot, args.dry_run, args.push)
     elif args.cmd == "snap-restore":
-        restore_snapshot(config, args.host, args.snapshot, args.dry_run)
+        restore_snapshot(config, args.host, args.snapshot, args.dry_run, args.push)
     elif args.cmd == "snap-restore-check":
         cat_recovery(config, args.host)
+    elif args.cmd == "reindex-mapping":
+        cmd_reindex_mapping(config)
+    elif args.cmd == "index-delete":
+        delete_index(config, args.host,args.index, args.dry_run, args.push)
+    elif args.cmd == "index-create":
+        create_index(config, args.host,args.index, args.mapping, args.dry_run, args.push)
+    elif args.cmd == "reindex":
+        reindex(config, args.host,args.src, args.dst, args.mapping, args.dry_run, args.push)
+    elif args.cmd == "task-get":
+        get_task(config, args.host, args.task_id)
+    elif args.cmd == "index-show":
+        show_index(config, args.host,args.index)
+
 
 if __name__ == "__main__":
     main()
