@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 import uuid
 import time
 
-DEFAULT_CONFIG = "config.json"
+DEFAULT_CONFIG = ".eskit/config.json"
 CACHE_ROOT = Path(".eskit")
 HTTP_METHOD_DELETE = "DELETE"
 HTTP_METHOD_PUT = "PUT"
