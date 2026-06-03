@@ -31,6 +31,10 @@ class ESKitJob:
     result: dict | None = None
     error: str | None = None
 
+    def get_output_id(self):
+        short_id = self.id.split('-')[-1]
+        return f"{self.type}-{self.name}-{short_id}"
+
 class ESKitError(Exception):
     def __init__(self, msg):
         self.msg = msg
@@ -159,8 +163,7 @@ def read_cache(host, name):
     
 def write_job(host, job: ESKitJob):
     ensure_job_dir(host)
-    shot_id = job.id.split('-')[-1]
-    with open(job_dir(host) / f"{job.type}-{job.name}-{shot_id}.json", "w") as f:
+    with open(job_dir(host) / f"{job.get_output_id()}.json", "w") as f:
         json.dump(asdict(job), f, indent=2)
 
 def read_job(host, job_id):
@@ -201,7 +204,8 @@ def find_index(host, index):
 def find_repo(host, repo):
     repos_cache = read_cache(host, "repos")
     for repo_name, repo_data in repos_cache.items():
-        return repo == repo_name
+        if repo == repo_name:
+            return True
     
     return False
 
@@ -231,6 +235,70 @@ def load_private_key(key_path, passphrase=None):
         # fallback to prompt if not provided
         passphrase = getpass.getpass(f"Passphrase for {key_path}: ")
         return paramiko.Ed25519Key.from_private_key_file(key_path, password=passphrase)
+
+def get_path(data, path):
+    current = data
+    for part in path.split("."):
+        if not isinstance(current, dict):
+            return None
+        part = part.replace("$", ".")
+        if part not in current:
+            return None
+        current = current[part]
+    return current
+
+def set_path(data, path, value):
+    parts = path.split(".")
+    current = data
+    for part in parts[:-1]:
+        part = part.replace("$", ".")
+        if part not in current:
+            current[part] = {}
+        current = current[part]
+    current[parts[-1].replace("$", ".")] = value
+
+def apply_view(data, fields, flat):
+    out = {}
+
+    for field in fields:
+        value = get_path(data, field)
+        if flat:
+            out[field] = value
+        elif value is not None:
+            set_path(out, field, value)
+
+    return out
+
+def get_view(config, views):
+    views_config = config.get("views", {})
+    out = []
+    for name in views:
+        if name not in views_config:
+            raise ConfigError(f"view not found: {name}")
+        out.extend(views_config[name])
+    return out
+
+def build_field_list(config, views, fields):
+    result = []
+
+    for view in views:
+        result.extend(config["views"].get(view, []))
+
+    if fields:
+        result.extend(fields.split(',',1))
+
+    return list(dict.fromkeys(result))
+
+def build_projection(data, field_paths):
+    out = {}
+
+    for path in field_paths:
+        value = get_path(data, path)
+
+        if value is not None:
+            out[path] = value
+
+    return out
 
 class SSHConnection:
     def __init__(self, host_cfg):
@@ -438,36 +506,49 @@ def cmd_pull(config, host_name):
     finally:
         ssh.close()
 
-def cmd_cat2(kind, host_name):
+def cmd_cat2(config, kind, host_name, views, fields, flat):
 
     if host_name is None:
         host_name = get_current_host()
 
     check_host(host_name)
 
+    target_fields = build_field_list(config, views, fields)
     data = read_cache(host_name, kind)
-    out = {}
+
     if kind == "snapshots":
         for repo, repo_data in data.items():
             #print(f"Repo: {repo} | Value: {repo_data}")
             snapshots = repo_data.get("snapshots",{})
             snap_list = []
             for s in snapshots:
-                snap_list.append(s["snapshot"])
-            out[repo] = {}
-            out[repo]["snapshots"] = snap_list
-        pass
+                if len(target_fields) > 0:
+                    snap_list.append(apply_view(s, target_fields, flat))
+                else:
+                    snap_list.append(s)
+            out = snap_list
     elif kind == "repos":
-        out = data
+        out = {}
+        for repo, repo_data in data.items():
+            #print(f"Repo: {repo} | Value: {repo_data}")
+            out_repo = repo_data
+            if len(target_fields) > 0:
+                out_repo = apply_view(repo_data, target_fields, flat)
+                
+            out[repo] = out_repo
     elif kind == "indices":
-        out = []
-        for i in data:
-            index = {}
-            index["index"]=i["index"]
-            out.append(index)
+        out = data
+        if len(target_fields) > 0:
+            # add index by default
+            if "index" not in target_fields:
+                target_fields.insert(0,"index")
+            out = []
+            for i in data:
+                out.append(apply_view(i, target_fields, flat))
         out.sort(key=lambda x: x["index"])
     elif kind == "recovery":
         out = data
+
     print(json.dumps(out, indent=2))
 
     
@@ -482,7 +563,7 @@ def cmd_cat(kind, host_name):
     if data is not None:
         print(json.dumps(data, indent=2))
 
-def cmd_repo_show2(host_name, path):
+def cmd_repo_show2(config, host_name, path, views, fields, flat):
 
     if host_name is None:
         host_name = get_current_host()
@@ -490,11 +571,11 @@ def cmd_repo_show2(host_name, path):
     check_host(host_name)
     repo, sep, snap= path.partition("/")
     if repo and snap:
-        cmd_snap_show(host_name, path)
+        cmd_snap_show(config, host_name, path, views, fields, flat)
     else:
-        cmd_repo_show(host_name, repo)
+        cmd_repo_show(config, host_name, repo, views, fields, flat)
 
-def cmd_repo_show(host_name, repo):
+def cmd_repo_show(config, host_name, repo, views, fields, flat):
 
     if host_name is None:
         host_name = get_current_host()
@@ -511,7 +592,7 @@ def cmd_repo_show(host_name, repo):
     if not repo_data:
         return
 
-    out[repo] = repo_data
+    out = repo_data
 
     snapshots = read_cache(host_name, "snapshots")
 
@@ -523,15 +604,23 @@ def cmd_repo_show(host_name, repo):
     for s in snapshots:
         snap_list.append(s["snapshot"])
 
-    out[repo]["snapshots"] = snap_list
-    print(json.dumps(out, indent=2))
+    out["snapshots"] = snap_list
 
-def cmd_snap_show(host_name, spec):
+    target_fields = build_field_list(config, views, fields)
+    
+    if len(target_fields) > 0:
+        print(json.dumps(apply_view(out, target_fields, flat), indent=2))
+    else:
+        print(json.dumps(out, indent=2))
+
+def cmd_snap_show(config, host_name, spec, views, fields, flat):
 
     if host_name is None:
         host_name = get_current_host()
 
     check_host(host_name)
+
+    target_fields = build_field_list(config, views, fields)
 
     repo, snap = spec.split("/", 1)
     data = read_cache(host_name, "snapshots")
@@ -539,7 +628,10 @@ def cmd_snap_show(host_name, spec):
         return
     for s in data.get(repo, {}).get("snapshots", []):
         if s.get("snapshot") == snap:
-            print(json.dumps(s, indent=2))
+            if len(target_fields) > 0:
+                print(json.dumps(apply_view(s, target_fields, flat), indent=2))
+            else:
+                print(json.dumps(s, indent=2))
             return
     print("Snapshot not found.")
 
@@ -575,11 +667,11 @@ def create_repo(config, host, name, repo_type, location, dry_run, push):
     check_push_protected(config, host, dry_run, push)
     print_host(host)
 
-    if not find_repo(host, name):
+    if find_repo(host, name):
         print(f"Repo:{name} found in cache. Please pull latest.")
         return
 
-    body = {"type": repo_type, "settings": {"location": location}}
+    body = {"type": repo_type, "settings": {"location": location, "compress": True}}
     if dry_run:
         print_dry_run()
         print("PUT", f"/_snapshot/{name}")
@@ -814,7 +906,7 @@ def reindex(config, host, src, dst, mapping, dry_run, push):
 
     job = ESKitJob(
         id=str(uuid.uuid4()),
-        name=src,
+        name=dst,
         type="reindex",
         host=host,
         status="running",
@@ -822,8 +914,6 @@ def reindex(config, host, src, dst, mapping, dry_run, push):
         updated_at=datetime.now(timezone.utc).isoformat(),
         payload={"src": src, "dst": dst}
     )
-
-    write_job(host, job)
 
     body={}
     body["source"] = {"index":src}
@@ -836,6 +926,8 @@ def reindex(config, host, src, dst, mapping, dry_run, push):
         print(HTTP_METHOD_POST, url)
         print(json.dumps(body, indent=2))
         return
+    
+    write_job(host, job)
     ssh, es = connect_es(config, host)
     try:
         res = es.request(HTTP_METHOD_POST, url, body)
@@ -848,7 +940,7 @@ def reindex(config, host, src, dst, mapping, dry_run, push):
 
         write_job(host, job)
 
-        print(f"[{host}] reindex job started: {job.id}")
+        print(f"[{host}] reindex job started search id/output name: {job.get_output_id()}")
 
     except Exception as e:
         job.status = "failed"
@@ -877,7 +969,7 @@ def get_task(config, host, task_id):
     finally:
         ssh.close()
 
-def show_index(config, host, index):
+def show_index(config, host, index, views, fields, flat):
     if host is None:
         host = get_current_host()
 
@@ -890,12 +982,16 @@ def show_index(config, host, index):
     try:
         res = es.request(HTTP_METHOD_GET, url)
         index_data = res[index]
-        out = {}
-        out["mappings"] = {}
-        out["mappings"]["properties"] = {}
-        out["mappings"]["properties"]["@timestamp"] = index_data["mappings"]["properties"]["@timestamp"]
-        out["settings"] = index_data["settings"]
-        print(json.dumps(out, indent=2))
+        target_fields = build_field_list(config, views, fields)
+
+        if len(target_fields) > 0:
+            print(json.dumps(
+                apply_view(index_data, target_fields, flat),
+                indent=2
+            ))
+        else:
+            print(json.dumps(index_data, indent=2))
+
     except Exception as e:
         print(e)
     finally:
@@ -979,10 +1075,24 @@ def build_parser():
     cat = sub.add_parser("cat")
     cat.add_argument("kind", choices=["repo", "snap", "index"])
     cat.add_argument("--host")
+    cat.add_argument(
+        "--view",
+        action="append",
+        default=[]
+    )
+    cat.add_argument("--fields")
+    cat.add_argument("--flat", action="store_true")
 
     repo = sub.add_parser("repo-show")
     repo.add_argument("--host")
     repo.add_argument("repo")
+    repo.add_argument(
+        "--view",
+        action="append",
+        default=[]
+    )
+    repo.add_argument("--fields")
+    repo.add_argument("--flat", action="store_true")
 
     repo_create = sub.add_parser("repo-create")
     repo_create.add_argument("--host")
@@ -1024,6 +1134,13 @@ def build_parser():
     index_show = sub.add_parser("index-show")
     index_show.add_argument("--host")
     index_show.add_argument("index")
+    index_show.add_argument(
+        "--view",
+        action="append",
+        default=[]
+    )
+    index_show.add_argument("--fields")
+    index_show.add_argument("--flat", action="store_true")
 
     sub.add_parser("reindex-mapping")
     
@@ -1037,6 +1154,7 @@ def build_parser():
     task_get.add_argument("--host")
     task_get.add_argument("task_id")
 
+    #TODO: rsync is not currently operational
     rsync = sub.add_parser("rsync")
     rsync.add_argument("--host")
     rsync.add_argument("config_name")
@@ -1046,7 +1164,7 @@ def build_parser():
 
     job_show = sub.add_parser("job-show")
     job_show.add_argument("--host")
-    job_show.add_argument("job_id")
+    job_show.add_argument("job_search_id")
 
     status = sub.add_parser("status")
     status.add_argument("--host")
@@ -1067,15 +1185,15 @@ def main():
         cmd_pull(config, args.host)
     elif args.cmd == "cat":
         mapping = {"repo":"repos","snap":"snapshots","index":"indices"}
-        cmd_cat2(mapping[args.kind], args.host)
+        cmd_cat2(config, mapping[args.kind], args.host, args.view, args.fields, args.flat)
     elif args.cmd == "repo-show":
-        cmd_repo_show2(args.host, args.repo)
+        cmd_repo_show2(config, args.host, args.repo, args.view, args.fields, args.flat)
     elif args.cmd == "repo-create":
         create_repo(config, args.host, args.repo, args.type, args.location, args.dry_run, args.push)
     elif args.cmd == "repo-delete":
         delete_repo(config, args.host, args.repo, args.dry_run, args.push, args.force)
     elif args.cmd == "snap-show":
-        cmd_snap_show(args.host, args.snapshot)
+        cmd_snap_show(config, args.host, args.snapshot, args.view, args.fields, args.flat)
     elif args.cmd == "snap-create":
         create_snapshot(config, args.host, args.snapshot, args.index, args.include_global_state,args.ignore_unavailable, args.dry_run, args.push)
     elif args.cmd == "snap-delete":
@@ -1095,13 +1213,13 @@ def main():
     elif args.cmd == "task-get":
         get_task(config, args.host, args.task_id)
     elif args.cmd == "index-show":
-        show_index(config, args.host,args.index)
+        show_index(config, args.host,args.index, args.view, args.fields, args.flat)
     elif args.cmd == "rsync":
         run_rsync(config, get_rsync_config(config, args.config_name), args.host, args.dry_run, args.push)
     elif args.cmd == "job-list":
         print(json.dumps(cmd_list_job(args.host), indent=2))
     elif args.cmd == "job-show":
-        print(json.dumps(cmd_read_job(args.host, args.job_id), indent=2))
+        print(json.dumps(cmd_read_job(args.host, args.job_search_id), indent=2))
     elif args.cmd == "status":
         cmd_status(config, args.host)
 if __name__ == "__main__":
