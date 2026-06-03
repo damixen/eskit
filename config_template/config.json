@@ -61,5 +61,34 @@
                 }
             }
         }
-    ]
+    ],
+    "views": {
+        "index-basic": [
+            "settings.index.provided_name",
+            "mappings.properties.@timestamp",
+            "settings.index.creation_date"
+        ],
+
+        "repo-basic": [
+            "type",
+            "settings.location"
+        ],
+
+        "snapshot-basic": [
+            "snapshot",
+            "repository",
+            "state",
+            "start_time",
+            "end_time",
+            "indices"
+        ],
+
+        "cat-index-basic":[
+            "index",
+            "health",
+            "status",
+            "docs$count",
+            "store$size"
+        ]
+    }
 }
