@@ -462,24 +462,22 @@ def cmd_status(config, host_name):
 
     check_host(host_name)
 
-    print(f"Host:")
-    print(f"    Name: {host_name}")
-
-    # push protected
-    print(f"    Push Protected: {is_push_protected(config, host_name)}")
+    status = {}
+    status["host"]={"name":host_name, "push-protected":is_push_protected(config, host_name)}
+    status["caches"]={}
 
     cache_root = cache_dir(host_name)
 
-    print("Cache Last Update:")
     for name in ["indices", "repos", "snapshots"]:
         path = cache_root / f"{name}.json"
         date = cache_date(path)
-
+        status["caches"][name]={}
         if date is None:
-            print(f"    {name}: missing")
+            status["caches"][name]["last-updated"]=""
         else:
-            print(f"    {name}: {date}")
-
+            status["caches"][name]["last-updated"]=date
+    print(json.dumps(status, indent=2))
+    
     ''' TODO
     jobs = list_jobs(host_name)
 
