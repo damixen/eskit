@@ -32,8 +32,7 @@ class ESKitJob:
     error: str | None = None
 
     def get_output_id(self):
-        short_id = self.id.split('-')[-1]
-        return f"{self.type}-{self.name}-{short_id}"
+        return self.id
 
 class ESKitError(Exception):
     def __init__(self, msg):
@@ -124,6 +123,7 @@ def get_current_host():
 def set_current_host(host):
     with open(CACHE_ROOT / ".current_host", "w", encoding="utf-8") as f:
         f.write(host)
+    print(f"Host is set to:{host}")
 
 def cache_dir(host):
     return CACHE_ROOT / host / "cache"
@@ -211,11 +211,12 @@ def find_repo(host, repo):
 
 def find_snapshot(host, repo, snapshot):
     snapshots_cache = read_cache(host, "snapshots")
-    if not "repo" in snapshots_cache:
+    if not repo in snapshots_cache:
         return False
     snap_list = snapshots_cache[repo]["snapshots"]
     for s in snap_list:
-        return snapshot == s["snapshot"]
+        if snapshot == s["snapshot"]:
+            return True
     
     return False
 
@@ -285,7 +286,7 @@ def build_field_list(config, views, fields):
         result.extend(config["views"].get(view, []))
 
     if fields:
-        result.extend(fields.split(',',1))
+        result.extend(fields.split(','))
 
     return list(dict.fromkeys(result))
 
@@ -434,31 +435,81 @@ def cmd_host(config):
     for h in config.get("hosts", []):
         print(h["name"])
 
-def cmd_host_set(host):
-    set_current_host(host)
+def cmd_host_set(args):
+    set_current_host(args.host)
 
-def cmd_host_get():
+def cmd_host_get(args):
     print(get_current_host())
 
-def cmd_list_job(host_name):
+def cmd_list_job(args):
+    host_name = args.host
     if host_name is None:
         host_name = get_current_host()
     
     check_host(host_name)
 
-    return list_jobs(host_name)
+    config = None
+    if "config" in args:
+        config = load_config(args.config)
 
-def cmd_read_job(host_name, job_id):
+    data  = list_jobs(host_name)
+    data.sort(key=lambda x: datetime.fromisoformat(x["updated_at"]), reverse=True)
+
+    views = args.view
+    fields = args.fields
+    flat = args.flat
+    target_fields = build_field_list(config, views, fields)
+    out = []
+    
+    if len(target_fields) > 0:
+        for job in data:
+            out.append(apply_view(job, target_fields, flat))
+    else:
+        out = data
+
+    print(json.dumps(out, indent=2))
+
+def cmd_read_job(args):
+
+    host_name = args.host
     if host_name is None:
         host_name = get_current_host()
-    
+
     check_host(host_name)
 
-    return read_job(host_name, job_id)
+    config = None
+    if "config" in args:
+        config = load_config(args.config)
 
-def cmd_status(config, host_name):
+    views = args.view
+    fields = args.fields
+    flat = args.flat
+    job_search_id = args.job_search_id
+    target_fields = build_field_list(config, views, fields)
+    out = {}
+    
+    data = read_job(host_name, job_search_id)
+    
+    if len(target_fields) > 0:
+        out = apply_view(data, target_fields, flat)
+    else:
+        out = data
+    
+    print(json.dumps(out, indent=2))
+
+    return
+
+def cmd_status(args):
+
+    host_name = args.host
     if host_name is None:
         host_name = get_current_host()
+
+    check_host(host_name)
+
+    config = None
+    if "config" in args:
+        config = load_config(args.config)
 
     check_host(host_name)
 
@@ -477,7 +528,7 @@ def cmd_status(config, host_name):
         else:
             status["caches"][name]["last-updated"]=date
     print(json.dumps(status, indent=2))
-    
+
     ''' TODO
     jobs = list_jobs(host_name)
 
@@ -491,7 +542,13 @@ def cmd_status(config, host_name):
     print(f"  failed:  {failed}")
     '''
 
-def cmd_pull(config, host_name):
+def cmd_pull(args):
+
+    config = None
+    if "config" in args:
+        config = load_config(args.config)
+
+    host_name = args.host
 
     if host_name is None:
         host_name = get_current_host()
@@ -504,7 +561,20 @@ def cmd_pull(config, host_name):
     finally:
         ssh.close()
 
-def cmd_cat2(config, kind, host_name, views, fields, flat):
+def cmd_cat2(args):
+
+    # config, kind, host_name, views, fields, flat
+    config = None
+    if "config" in args:
+        config = load_config(args.config)
+
+    mapping = {"repo":"repos","snap":"snapshots","index":"indices"}
+    kind = mapping[args.kind]
+    views = args.view
+    fields = args.fields
+    flat = args.flat
+
+    host_name = args.host
 
     if host_name is None:
         host_name = get_current_host()
@@ -514,6 +584,7 @@ def cmd_cat2(config, kind, host_name, views, fields, flat):
     target_fields = build_field_list(config, views, fields)
     data = read_cache(host_name, kind)
 
+    out = {}
     if kind == "snapshots":
         for repo, repo_data in data.items():
             #print(f"Repo: {repo} | Value: {repo_data}")
@@ -561,17 +632,67 @@ def cmd_cat(kind, host_name):
     if data is not None:
         print(json.dumps(data, indent=2))
 
-def cmd_repo_show2(config, host_name, path, views, fields, flat):
+def cmd_repo_show2(args):
 
+    config = None
+    if "config" in args:
+        config = load_config(args.config)
+
+    host_name = args.host
+    
     if host_name is None:
         host_name = get_current_host()
-
     check_host(host_name)
+
+    path = args.path
+    views = args.view
+    fields = args.fields
+    flat = args.flat
+
     repo, sep, snap= path.partition("/")
     if repo and snap:
         cmd_snap_show(config, host_name, path, views, fields, flat)
     else:
         cmd_repo_show(config, host_name, repo, views, fields, flat)
+
+def cmd_delete_repo(args):
+
+    config = None
+    if "config" in args:
+        config = load_config(args.config)
+
+    host_name = args.host
+    
+    if host_name is None:
+        host_name = get_current_host()
+    check_host(host_name)
+
+    name = args.path
+    dry_run = args.dry_run
+    push = args.push
+    force = args.force
+
+    delete_repo(config, host_name, name, dry_run, push, force)
+
+def cmd_create_repo(args):
+
+    config = None
+    if "config" in args:
+        config = load_config(args.config)
+
+    host_name = args.host
+    
+    if host_name is None:
+        host_name = get_current_host()
+    check_host(host_name)
+
+    name = args.path
+    dry_run = args.dry_run
+    push = args.push
+    repo_type = args.type
+    location = args.location
+
+    create_repo(config, host_name, name, repo_type, location, dry_run, push)
 
 def cmd_repo_show(config, host_name, repo, views, fields, flat):
 
@@ -588,6 +709,8 @@ def cmd_repo_show(config, host_name, repo, views, fields, flat):
 
     repo_data = data.get(repo, {})
     if not repo_data:
+        print_host(host_name)
+        print(f"Repo:{repo} not found in cache.")
         return
 
     out = repo_data
@@ -633,24 +756,242 @@ def cmd_snap_show(config, host_name, spec, views, fields, flat):
             return
     print("Snapshot not found.")
 
-def cmd_reindex_mapping(config):
+def cmd_reindex_mapping(args):
+    config = None
+    if "config" in args:
+        config = load_config(args.config)
     print(json.dumps(config["reindex-configs"], indent=2))
 
-def cat_recovery(config, host):
+def cmd_create_snapshot(args):
+
+    config = None
+    if "config" in args:
+        config = load_config(args.config)
+
+    host_name = args.host
+    
+    if host_name is None:
+        host_name = get_current_host()
+    check_host(host_name)
+
+    name = args.path
+    indices = args.index
+    dry_run = args.dry_run
+    push = args.push
+    include_global_state = args.include_global_state
+    ignore_unavailable = args.ignore_unavailable
+
+    create_snapshot(
+        config, 
+        host_name, 
+        name, 
+        indices, 
+        include_global_state, 
+        ignore_unavailable, 
+        dry_run, push)
+
+def cmd_delete_snapshot(args):
+
+    config = None
+    if "config" in args:
+        config = load_config(args.config)
+
+    host_name = args.host
+    
+    if host_name is None:
+        host_name = get_current_host()
+    check_host(host_name)
+
+    name = args.path
+    dry_run = args.dry_run
+    push = args.push
+    force = args.force
+
+    delete_snapshot(
+        config,
+        host_name,
+        name,
+        dry_run,
+        push,
+        force)
+    
+def cmd_restore_snapshot(args):
+
+    config = None
+    if "config" in args:
+        config = load_config(args.config)
+
+    host_name = args.host
+    
+    if host_name is None:
+        host_name = get_current_host()
+    check_host(host_name)
+
+    name = args.path
+    dry_run = args.dry_run
+    push = args.push
+
+    restore_snapshot(
+        config,
+        host_name,
+        name,
+        dry_run,
+        push)
+    
+def cmd_restore_status(args):
+
+    config = None
+    if "config" in args:
+        config = load_config(args.config)
+
+    host_name = args.host
+    
+    if host_name is None:
+        host_name = get_current_host()
+    check_host(host_name)
+
+    index = args.index;
+
+    show_recovery(
+        config,
+        host_name,
+        index,
+        args.view,
+        args.fields,
+        args.flat)
+    
+def cmd_delete_index(args):
+
+    config = None
+    if "config" in args:
+        config = load_config(args.config)
+
+    host_name = args.host
+    
+    if host_name is None:
+        host_name = get_current_host()
+    check_host(host_name)
+
+    index = args.index
+    dry_run = args.dry_run
+    push = args.push
+    force = args.force
+
+    delete_index(
+        config,
+        host_name,
+        index,
+        dry_run,
+        push,
+        force)
+    
+def cmd_create_index(args):
+
+    config = None
+    if "config" in args:
+        config = load_config(args.config)
+
+    host_name = args.host
+    
+    if host_name is None:
+        host_name = get_current_host()
+    check_host(host_name)
+
+    index = args.index
+    mapping = args.mapping
+    dry_run = args.dry_run
+    push = args.push
+
+    create_index(
+        config,
+        host_name,
+        index,
+        mapping,
+        dry_run,
+        push)
+    
+def cmd_show_index(args):
+
+    config = None
+    if "config" in args:
+        config = load_config(args.config)
+
+    host_name = args.host
+    
+    if host_name is None:
+        host_name = get_current_host()
+    check_host(host_name)
+
+    index = args.index
+    views = args.view
+    fields = args.fields
+    flat = args.flat
+
+    show_index(
+        config,
+        host_name,
+        index,
+        views,
+        fields,
+        flat)
+
+def cmd_reindex(args):
+
+    config = None
+    if "config" in args:
+        config = load_config(args.config)
+
+    host_name = args.host
+    
+    if host_name is None:
+        host_name = get_current_host()
+    check_host(host_name)
+
+    src = args.src
+    dst = args.dst
+    mapping = args.mapping
+    dry_run = args.dry_run
+    push = args.push
+
+    reindex(
+        config,
+        host_name,
+        src,
+        dst,
+        mapping,
+        dry_run,
+        push)
+
+def cmd_get_task(args):
+    config = None
+    if "config" in args:
+        config = load_config(args.config)
+    
+    host_name = args.host
+    if host_name is None:
+        host_name = get_current_host()
+    check_host(host_name)
+
+    task_id = args.task_id
+    get_task(config, host_name, task_id)
+
+def show_recovery(config, host, index, views, fields, flat):
     if host is None:
         host = get_current_host()
 
     check_host(host)
 
+    target_fields = build_field_list(config, views, fields)
+
     ssh, es = connect_es(config, host)
     try:
         out = []
-        data = es.request("GET", "/_cat/recovery?format=json")
+        data = es.request("GET", f"/_cat/recovery/{index}?format=json")
         for r in data:
-            info = {}
-            info["index"] = r["index"]
-            info["files_percent"] = r["files_percent"]
-            out.append(info)
+            if len(target_fields) > 0:
+                out.append(apply_view(r, target_fields, flat))
+            else:
+                out.append(r)
         out.sort(key=lambda x: x["index"])
         print(json.dumps(out, indent=2))
     finally:
@@ -974,6 +1315,10 @@ def show_index(config, host, index, views, fields, flat):
     check_host(host)
     print_host(host)
 
+    if not find_index(host, index):
+        print(f"Index:{index} not found in cache or does not exist. Please update cache and try again.")
+        return
+
     url = f"/{index}"
 
     ssh, es = connect_es(config, host)
@@ -1053,172 +1398,170 @@ def build_parser():
     p = argparse.ArgumentParser(
         prog="eskit",
         description="a light weight Elasticsearch toolkit for managing repo, snapshots, and index.")
-    p.add_argument("-c","--config", default=DEFAULT_CONFIG, help="set config file")
-    p.add_argument("-dry","--dry-run", action="store_true", help="shows only request/command w/o executing it")
-    p.add_argument("--push", action="store_true", help="used to confirm to execute a request/command that would modify resources on push-protected host")
-    p.add_argument("--force", action="store_true", help="force to execute delete request/command")
+    
+    # common parsers
+    common_parser = argparse.ArgumentParser(add_help=False)
+    common_parser.add_argument("-c","--config", default=DEFAULT_CONFIG, help="set config file. Optional as default value is .eskit/config.json")
+    common_parser.add_argument("--host", help="Specify which host to operate. Optional if found in .current_host file.")
 
-    sub = p.add_subparsers(dest="cmd", required=True)
+    # mutating command common
+    mutating_parser = argparse.ArgumentParser(add_help=False)
+    mutating_parser.add_argument(
+        "-dry",
+        "--dry-run", 
+        action="store_true", 
+        help="shows only request/command w/o executing it")
+    
+    mutating_parser.add_argument(
+        "--push", 
+        action="store_true", 
+        help="used to confirm to execute a request/command that would modify resources on push-protected host")
+    
+    # destructive command common
+    destructive_command_parser = argparse.ArgumentParser(add_help=False)
+    destructive_command_parser.add_argument(
+        "--force", 
+        action="store_true", 
+        help="force to execute delete request/command")
+    
+    # common viewer
+    viewer_command_parser = argparse.ArgumentParser(add_help=False)
+    viewer_command_parser.add_argument(
+        "--view",
+        action="append",
+        default=[]
+    )
+    viewer_command_parser.add_argument("--fields")
+    viewer_command_parser.add_argument("--flat", action="store_true")
 
-    sub.add_parser("host")
+    sub = p.add_subparsers(required=True)
 
-    host_set = sub.add_parser("host-set", help="set as current host")
-    host_set.add_argument("host")
+    # Host commands
+    host_parser = sub.add_parser("host")
+    host_parser_sub = host_parser.add_subparsers(required=True)
+    host_set_parser = host_parser_sub.add_parser("set", help="set as current host")
+    host_set_parser.add_argument("host")
+    host_set_parser.set_defaults(function=cmd_host_set)
 
-    sub.add_parser("host-get", help="get current host")
+    host_get_parser = host_parser_sub.add_parser("get", help="get current host")
+    host_get_parser.set_defaults(function=cmd_host_get)
+    #
 
-    pull = sub.add_parser("pull")
-    pull.add_argument("--host")
+    # Pull
+    pull = sub.add_parser("pull", parents=[common_parser])
+    pull.set_defaults(function=cmd_pull)
 
-    cat = sub.add_parser("cat")
+    # Cat
+    cat = sub.add_parser("cat", parents=[common_parser, viewer_command_parser])
     cat.add_argument("kind", choices=["repo", "snap", "index"])
-    cat.add_argument("--host")
-    cat.add_argument(
-        "--view",
-        action="append",
-        default=[]
-    )
-    cat.add_argument("--fields")
-    cat.add_argument("--flat", action="store_true")
+    cat.set_defaults(function=cmd_cat2)
 
-    repo = sub.add_parser("repo-show")
-    repo.add_argument("--host")
-    repo.add_argument("repo")
-    repo.add_argument(
-        "--view",
-        action="append",
-        default=[]
-    )
-    repo.add_argument("--fields")
-    repo.add_argument("--flat", action="store_true")
+    # Repo sub command
+    common_repo_parser = argparse.ArgumentParser(add_help=False)
+    common_repo_parser.add_argument("path", help="path to repo or snapshot. <repo> or <repo>/<snapshot>")
 
-    repo_create = sub.add_parser("repo-create")
-    repo_create.add_argument("--host")
-    repo_create.add_argument("repo")
+    repo = sub.add_parser("repo", parents=[common_parser])
+    
+    repo_sub = repo.add_subparsers(required=True)
+    
+    repo_show_parser = repo_sub.add_parser("show", parents=[common_parser, common_repo_parser, viewer_command_parser])
+    repo_show_parser.set_defaults(function=cmd_repo_show2)
+    
+    repo_create = repo_sub.add_parser("create", parents=[common_parser, common_repo_parser, mutating_parser])
     repo_create.add_argument("--type", default="fs")
     repo_create.add_argument("--location", required=True)
+    repo_create.set_defaults(function=cmd_create_repo)
 
-    repo_delete = sub.add_parser("repo-delete")
-    repo_delete.add_argument("--host")
-    repo_delete.add_argument("repo")
+    repo_delete = repo_sub.add_parser("delete", parents=[common_parser, common_repo_parser, mutating_parser, destructive_command_parser])
+    repo_delete.set_defaults(function=cmd_delete_repo)
 
-    snap_create = sub.add_parser("snap-create")
-    snap_create.add_argument("--host")
-    snap_create.add_argument("snapshot")
-    snap_create.add_argument("--index")
-    snap_create.add_argument("--include_global-state", default=False)
-    snap_create.add_argument("--ignore_unavailable", default=True)
+    # Snapshot Sub Commands
+    snap = sub.add_parser("snap", parents=[common_parser])
+    snap_sub = snap.add_subparsers(required=True)
 
-    snap_delete = sub.add_parser("snap-delete")
-    snap_delete.add_argument("--host")
-    snap_delete.add_argument("snapshot")
+    # common snap parser
+    common_snap_parser = argparse.ArgumentParser(add_help=False)
+    common_snap_parser.add_argument("path", help="path to snapshot. must be <repo>/<snapshot>")
 
-    snap_restore = sub.add_parser("snap-restore")
-    snap_restore.add_argument("--host")
-    snap_restore.add_argument("snapshot")
+    # common snapshot index parser
+    common_snap_index_parser = argparse.ArgumentParser(add_help=False)
+    common_snap_index_parser.add_argument("--index", help="index to add to the snapshot. * is allowed as wild card. multiple indices allowed by comma separated.")
+    common_snap_index_parser.add_argument("--include_global_state", default=False, action="store_true")
+    common_snap_index_parser.add_argument("--ignore_unavailable", type=bool, default=True)
 
-    snap_restore_check = sub.add_parser("snap-restore-check")
-    snap_restore_check.add_argument("--host")
+    snap_create = snap_sub.add_parser("create", parents=[common_parser, common_snap_parser, common_snap_index_parser, mutating_parser])
+    snap_create.set_defaults(function=cmd_create_snapshot)
 
-    index_delete = sub.add_parser("index-delete")
-    index_delete.add_argument("--host")
-    index_delete.add_argument("index")
+    snap_delete = snap_sub.add_parser("delete", parents=[common_parser, common_snap_parser, mutating_parser, destructive_command_parser])
+    snap_delete.set_defaults(function=cmd_delete_snapshot)
 
-    index_create = sub.add_parser("index-create")
-    index_create.add_argument("--host")
-    index_create.add_argument("index")
-    index_create.add_argument("-m","--mapping", help="name of mapping in the config")
+    snap_restore = snap_sub.add_parser("restore", parents=[common_parser, common_snap_index_parser, mutating_parser])
+    snap_restore.add_argument("--path")
+    snap_restore.set_defaults(function=cmd_restore_snapshot)
 
-    index_show = sub.add_parser("index-show")
-    index_show.add_argument("--host")
-    index_show.add_argument("index")
-    index_show.add_argument(
-        "--view",
-        action="append",
-        default=[]
-    )
-    index_show.add_argument("--fields")
-    index_show.add_argument("--flat", action="store_true")
+    # Index commands
+    common_index_parser = argparse.ArgumentParser(add_help=False)
+    common_index_parser.add_argument("index")
 
-    sub.add_parser("reindex-mapping")
-    
-    reindex = sub.add_parser("reindex")
-    reindex.add_argument("src")
-    reindex.add_argument("dst")
-    reindex.add_argument("--host")
-    reindex.add_argument("-m","--mapping", help="name of mapping in the config")
+    index_mapper_parser = argparse.ArgumentParser(add_help=False)
+    index_mapper_parser.add_argument("-m","--mapping", help="name of mapping in the config.")
 
-    task_get = sub.add_parser("task-get")
-    task_get.add_argument("--host")
-    task_get.add_argument("task_id")
+    index_parser = sub.add_parser("index")
+    index_sub = index_parser.add_subparsers(required=True)
+
+    index_delete = index_sub.add_parser("delete", parents=[common_parser, common_index_parser, mutating_parser, destructive_command_parser])
+    index_delete.set_defaults(function=cmd_delete_index)
+
+    index_create = index_sub.add_parser("create", parents=[common_parser, common_index_parser, index_mapper_parser, mutating_parser])
+    index_create.set_defaults(function=cmd_create_index)
+
+    index_show = index_sub.add_parser("show", parents=[common_parser, common_index_parser, viewer_command_parser])
+    index_show.set_defaults(function=cmd_show_index)
+
+    index_status = index_sub.add_parser("status", parents=[common_parser, common_index_parser, viewer_command_parser])
+    index_status.set_defaults(function=cmd_restore_status)
+
+
+    # Reindex Commands
+    reindex = sub.add_parser("reindex", parents=[common_parser, index_mapper_parser, mutating_parser])
+    reindex.add_argument("src", help="source index. it can be multiple by comma separated or * wild card can be used")
+    reindex.add_argument("dst", help="destination index")
+    reindex.set_defaults(function=cmd_reindex)
+
+    reindex_mapping = sub.add_parser("mapping", help="shows mappings in the config", parents=[common_parser])
+    reindex_mapping.set_defaults(function=cmd_reindex_mapping)
+
+    task = sub.add_parser("task", help="Elasticsearch Task Commands")
+    task_sub = task.add_subparsers(required=True)
+
+    task_get = task_sub.add_parser("get", help="get task status on elasticsearch", parents=[common_parser])
+    task_get.add_argument("task_id", help="elasticsearch task id")
+    task_get.set_defaults(function=cmd_get_task)
 
     #TODO: rsync is not currently operational
-    rsync = sub.add_parser("rsync")
-    rsync.add_argument("--host")
+    rsync = sub.add_parser("rsync", parents=[common_parser])
     rsync.add_argument("config_name")
 
-    job_list = sub.add_parser("job-list")
-    job_list.add_argument("--host")
+    job = sub.add_parser("job")
 
-    job_show = sub.add_parser("job-show")
-    job_show.add_argument("--host")
-    job_show.add_argument("job_search_id")
+    job_sub = job.add_subparsers(required=True)
+    job_list = job_sub.add_parser("list", parents=[common_parser, viewer_command_parser])
+    job_list.set_defaults(function=cmd_list_job)
 
-    status = sub.add_parser("status")
-    status.add_argument("--host")
+    job_show = job_sub.add_parser("show", parents=[common_parser, viewer_command_parser])
+    job_show.add_argument("job_search_id", help="job search id / job output file name in the jobs cache")
+    job_show.set_defaults(function=cmd_read_job)
+
+    status = sub.add_parser("status", parents=[common_parser])
+    status.set_defaults(function=cmd_status)
 
     return p
 
 def main():
     args = build_parser().parse_args()
-    config = load_config(args.config)
+    config = None
 
-    if args.cmd == "host":
-        cmd_host(config)
-    elif args.cmd == "host-set":
-        cmd_host_set(args.host)
-    elif args.cmd == "host-get":
-        cmd_host_get()
-    elif args.cmd == "pull":
-        cmd_pull(config, args.host)
-    elif args.cmd == "cat":
-        mapping = {"repo":"repos","snap":"snapshots","index":"indices"}
-        cmd_cat2(config, mapping[args.kind], args.host, args.view, args.fields, args.flat)
-    elif args.cmd == "repo-show":
-        cmd_repo_show2(config, args.host, args.repo, args.view, args.fields, args.flat)
-    elif args.cmd == "repo-create":
-        create_repo(config, args.host, args.repo, args.type, args.location, args.dry_run, args.push)
-    elif args.cmd == "repo-delete":
-        delete_repo(config, args.host, args.repo, args.dry_run, args.push, args.force)
-    elif args.cmd == "snap-show":
-        cmd_snap_show(config, args.host, args.snapshot, args.view, args.fields, args.flat)
-    elif args.cmd == "snap-create":
-        create_snapshot(config, args.host, args.snapshot, args.index, args.include_global_state,args.ignore_unavailable, args.dry_run, args.push)
-    elif args.cmd == "snap-delete":
-        delete_snapshot(config, args.host, args.snapshot, args.dry_run, args.push, args.force)
-    elif args.cmd == "snap-restore":
-        restore_snapshot(config, args.host, args.snapshot, args.dry_run, args.push)
-    elif args.cmd == "snap-restore-check":
-        cat_recovery(config, args.host)
-    elif args.cmd == "reindex-mapping":
-        cmd_reindex_mapping(config)
-    elif args.cmd == "index-delete":
-        delete_index(config, args.host,args.index, args.dry_run, args.push, args.force)
-    elif args.cmd == "index-create":
-        create_index(config, args.host,args.index, args.mapping, args.dry_run, args.push)
-    elif args.cmd == "reindex":
-        reindex(config, args.host,args.src, args.dst, args.mapping, args.dry_run, args.push)
-    elif args.cmd == "task-get":
-        get_task(config, args.host, args.task_id)
-    elif args.cmd == "index-show":
-        show_index(config, args.host,args.index, args.view, args.fields, args.flat)
-    elif args.cmd == "rsync":
-        run_rsync(config, get_rsync_config(config, args.config_name), args.host, args.dry_run, args.push)
-    elif args.cmd == "job-list":
-        print(json.dumps(cmd_list_job(args.host), indent=2))
-    elif args.cmd == "job-show":
-        print(json.dumps(cmd_read_job(args.host, args.job_search_id), indent=2))
-    elif args.cmd == "status":
-        cmd_status(config, args.host)
+    args.function(args)
+    return
 if __name__ == "__main__":
     main()

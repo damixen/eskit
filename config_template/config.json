@@ -34,10 +34,6 @@
             "name": "sync-with-host2",
             "dest": {
                 "host": "host1",
-                "path": "<path to folder to sync"
-            },
-            "src": {
-                "host": "host2",
                 "path": "<path to folder to sync",
                 "auth": {
                     "ssh": {
@@ -46,6 +42,10 @@
                         "identity": "<path to ssh key>"
                     }
                 }
+            },
+            "src": {
+                "host": "host2",
+                "path": "<path to folder to sync"
             }
         }
     ],
@@ -89,6 +89,13 @@
             "status",
             "docs$count",
             "store$size"
+        ],
+        "index-status-basic":[
+            "index",
+            "bytes_percent",
+            "stage",
+            "repository",
+            "snapshot"
         ]
     }
 }
