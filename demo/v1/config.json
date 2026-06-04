@@ -1,27 +1,27 @@
 {
     "hosts": [
         {
-            "name": "Host1",
-            "ip": "192.168.1.146",
+            "name": "DemoHost1",
+            "ip": "192.0.2.10",
             "ssh": {
                 "port": 22,
                 "user": "demo-user",
-                "password": "12345"
+                "password": "example-password"
             },
             "elastic":{
                 "user":{
                     "name": "elastic",
-                    "password": "12345"
+                    "password": "example-password"
                 } 
             }
         },
         {
-            "name": "Host2",
-            "ip": "192.168.1.150",
+            "name": "DemoHost2",
+            "ip": "192.0.2.11",
             "ssh": {
                 "port": 22,
-                "user": "mike",
-                "identity": "C:\\Users\\mike\\.ssh\\id_ed25519"
+                "user": "example-user",
+                "identity": "C:\\Users\\example-user\\.ssh\\id_ed25519"
             },
             "elastic":{
                 "port":9999
@@ -31,9 +31,9 @@
     ],
     "rsync-configs": [
         {
-            "name": "sync-with-host2",
+            "name": "sync-with-DemoHost2",
             "dest": {
-                "host": "host1",
+                "host": "DemoHost1",
                 "path": "<path to folder to sync",
                 "auth": {
                     "ssh": {
@@ -44,7 +44,7 @@
                 }
             },
             "src": {
-                "host": "host2",
+                "host": "DemoHost1",
                 "path": "<path to folder to sync"
             }
         }
