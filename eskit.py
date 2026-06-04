@@ -114,7 +114,7 @@ def get_rsync_config(config, name):
 def check_host(host):
     if host is None:
         raise SystemExit(
-            "Host not found. Please specify host or set host by host set command."
+            "Host not found. Please specify the host or set the host by the host set command."
         )
     return
 
@@ -129,7 +129,7 @@ def check_push_protected(config, host, dry_run, push):
     ):
         print_host(host)
         raise SystemExit(
-            f"Host:{host} is push protected. Please use --push to make change or --dry-run to check command"
+            f"Host:{host} is push protected. Please use --push to make a change or --dry-run to check command."
         )
     return
 
@@ -1303,7 +1303,7 @@ def create_index(config, host, index, mapping, dry_run, push):
 
     if find_index(host, index):
         print(
-            f"Index:{index} already exists in the cache. Please pull latest or delete the index."
+            f"Index:{index} already exists in the cache. Please pull the latest or delete the index."
         )
         return
 
@@ -1353,7 +1353,7 @@ def reindex(config, host, src, dst, mapping, dry_run, push):
     dst_exists = find_index(host, dst)
     if m and dst_exists:
         print(
-            "Mapping specified, but index already exist in cache. Please pull latest or delete the index"
+            "Mapping specified, but index already exists in cache. Please pull latest or delete the index."
         )
         return
 
@@ -1526,7 +1526,7 @@ def cmd_root(args):
 def build_parser():
     p = argparse.ArgumentParser(
         prog="eskit",
-        description="a light weight Elasticsearch toolkit for managing repo, snapshots, and index.",
+        description="a light-weight Elasticsearch toolkit for managing repo, snapshots, and index.",
     )
 
     p.add_argument("--version", action="store_true")
@@ -1545,7 +1545,7 @@ def build_parser():
         help="Specify which host to operate. Optional if found in .current_host file.",
     )
 
-    # mutating command common
+    # Mutating Operation common
     mutating_parser = argparse.ArgumentParser(add_help=False)
     mutating_parser.add_argument(
         "-dry",
@@ -1560,7 +1560,7 @@ def build_parser():
         help="Used to confirm to execute a request/command that would modify resources on push-protected host",
     )
 
-    # destructive command common
+    # Destructive Operation common
     destructive_command_parser = argparse.ArgumentParser(add_help=False)
     destructive_command_parser.add_argument(
         "--force", action="store_true", help="Force to execute delete request/command"
@@ -1662,7 +1662,7 @@ def build_parser():
     common_snap_index_parser = argparse.ArgumentParser(add_help=False)
     common_snap_index_parser.add_argument(
         "--index",
-        help="Index to add to the snapshot. * is allowed as wild card. multiple indices allowed by comma separated.",
+        help="Index to add to the snapshot. * is allowed as a wildcard. Multiple indices allowed by comma separated."
     )
     common_snap_index_parser.add_argument(
         "--include_global_state", default=False, action="store_true"
@@ -1813,3 +1813,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+
