@@ -4,7 +4,7 @@ ESKit is a lightweight command-line toolkit for managing Elasticsearch repositor
 
 It is designed for operators who regularly work with snapshot-based backup and restore workflows and want a simple, cache-driven interface instead of repeatedly typing Elasticsearch API requests.
 
-> **Status:** Work in Progress (WIP)
+> --Status:-- Work in Progress (WIP)
 >
 > Core snapshot and index management workflows are operational and actively used. Rsync-based repository synchronization is still under development.
 
@@ -14,13 +14,13 @@ It is designed for operators who regularly work with snapshot-based backup and r
 
 Managing Elasticsearch snapshots often involves repetitive API calls:
 
-* List repositories
-* List snapshots
-* Create snapshots
-* Restore snapshots
-* Delete indices
-* Reindex data
-* Check restore progress
+- List repositories
+- List snapshots
+- Create snapshots
+- Restore snapshots
+- Delete indices
+- Reindex data
+- Check restore progress
 
 ESKit provides a consistent CLI workflow:
 
@@ -35,41 +35,39 @@ ESKit provides a consistent CLI workflow:
 
 ### Repository Management
 
-* Create snapshot repositories
-* Delete repositories
-* View repository configuration
-* Browse cached repository information
----
-* Please note that if you using docker, then repository location needs to be mounted on docker in the configuration. 
+- Create snapshot repositories
+- Delete repositories
+- View repository configuration
+- Browse cached repository information
 
 ### Snapshot Management
 
-* Create snapshots
-* Delete snapshots
-* Restore snapshots
-* View snapshot details
-* Browse cached snapshot metadata
+- Create snapshots
+- Delete snapshots
+- Restore snapshots
+- View snapshot details
+- Browse cached snapshot metadata
 
 ### Index Management
 
-* Create indices
-* Delete indices
-* View mappings and settings
-* Browse cached index information
+- Create indices
+- Delete indices
+- View mappings and settings
+- Browse cached index information
 
 ### Reindex Operations
 
-* Start asynchronous reindex jobs
-* Store job metadata locally
-* Track Elasticsearch task IDs
+- Start asynchronous reindex jobs
+- Store job metadata locally
+- Track Elasticsearch task IDs
 
 ### Cache System
 
 ESKit maintains a local cache for:
 
-* Repositories
-* Snapshots
-* Indices
+- Repositories
+- Snapshots
+- Indices
 
 This allows fast inspection without repeatedly querying Elasticsearch.
 
@@ -81,8 +79,8 @@ Examples:
 
 ```bash
 eskit cat index --view basic
-eskit repo-show backup-repo --view summary
-eskit index-show logs-2026.06 --fields mappings.properties
+eskit repo show backup-repo --view summary
+eskit index show logs-2026.06 --fields mappings.properties
 ```
 
 ---
@@ -95,11 +93,11 @@ flowchart
     subgraph canvas["ESKit Example"]
         eskit["ESKit"]
         subgraph vm[VM e.g. Detection Hub]
-            host_vm["Host1"]
+            host_vm["Host"]
             elasticsearch_vm["Elasticsearch"]
         end
         subgraph remotehost[Remote e.g. Honeypot]
-            host_remote["Host2"]
+            host_remote["Host"]
             elasticsearch_remote["Elasticsearch"]
         end
     end
@@ -117,7 +115,7 @@ flowchart
 
 - No Elasticsearch Python client is required.
 - API requests are executed remotely using curl to localhost.
-- No TLS or remote access configuration required on Elasticsearch
+- No TLS required on Elasticsearch
 
 ---
 
@@ -136,149 +134,61 @@ Install dependencies:
 pip install paramiko
 ```
 
----
+Running:
 
-## Configuration
-
-Create:
-
-```text
-.eskit/config.json
+```bash
+python eskit.py --help
 ```
-* Once created you, may omit --config option as it reads the config file in the location.
-
-Example:
-
-```json
-{
-  "hosts": [
-    {
-      "name": "prod",
-      "ip": "10.0.0.10",
-      "push-protected": true,
-      "ssh": {
-        "user": "elastic",
-        "identity": "~/.ssh/id_ed25519"
-      }
-    }
-  ]
-}
+```bash
+python eskit.py init --demo
 ```
-
-<details>
-  <summary><b>More Config Example</b> (Click to read)</summary>
-
-  ```json
-{
-    "hosts": [
-        {
-            "name": "Host1",
-            "ip": "192.168.1.146",
-            "ssh": {
-                "port": 22,
-                "user": "demo-user",
-                "password": "12345"
-            },
-            "elastic":{
-                "user":{
-                    "name": "elastic",
-                    "password": "12345"
-                } 
-            }
-        },
-        {
-            "name": "Host2",
-            "ip": "192.168.1.150",
-            "ssh": {
-                "port": 22,
-                "user": "mike",
-                "identity": "C:\\Users\\mike\\.ssh\\id_ed25519"
-            },
-            "elastic":{
-                "port":9999
-            },
-            "push-protected":true
-        }
-    ],
-    "rsync-configs": [
-        {
-            "name": "sync-with-host2",
-            "dest": {
-                "host": "host1",
-                "path": "<path to folder to sync",
-                "auth": {
-                    "ssh": {
-                        "port": 22,
-                        "user": "demo-user",
-                        "identity": "<path to ssh key>"
-                    }
-                }
-            },
-            "src": {
-                "host": "host2",
-                "path": "<path to folder to sync"
-                
-            }
-        }
-    ],
-    "reindex-configs": [
-        {
-            "name": "timestamp-mapping",
-            "mappings": {
-                "properties": {
-                    "@timestamp": {
-                        "type": "date",
-                        "format": "strict_date_optional_time||epoch_millis"
-                    }
-                }
-            }
-        }
-    ],
-    "views": {
-        "index-basic": [
-            "settings.index.provided_name",
-            "mappings.properties.@timestamp",
-            "settings.index.creation_date"
-        ],
-
-        "repo-basic": [
-            "type",
-            "settings.location"
-        ],
-
-        "snapshot-basic": [
-            "snapshot",
-            "repository",
-            "state",
-            "start_time",
-            "end_time",
-            "indices"
-        ],
-
-        "cat-index-basic":[
-            "index",
-            "health",
-            "status",
-            "docs$count",
-            "store$size"
-        ]
-    }
-}
-```
-* Pleae note that when there is a dot in the fields. e.g. docs.count, then please change it to '$'. e.g. docs$count
-</details>
-
 
 ---
 
-## Quick Start
+## Quick Demo
+```bash
+git clone ...
+cd eskit
+
+pip install paramiko
+
+python eskit.py init --demo
+python eskit.py status
+python eskit.py cat repo
+```
+
+---
+
+## Command Overview
+
+#### Initialize ESKit
+
+```bash
+eskit init
+```
+
+This creates an initial config file.
+
+#### Initialize Demo
+```bash
+eskit init --demo
+```
+
+This initializes with demo cache file to explore the tool.
+Please see DEMO for more details.
 
 ### Select a Host
 
 ```bash
-eskit host
-eskit host-set prod
-eskit host-get
+eskit host show
+eskit host set prod
+eskit host get
+```
+
+### Show ESKit Status
+
+```bash
+eskit status
 ```
 
 ### Pull Metadata
@@ -286,6 +196,7 @@ eskit host-get
 ```bash
 eskit pull
 ```
+- Data Source: Elasticsearch
 
 This updates the local cache:
 
@@ -300,26 +211,42 @@ This updates the local cache:
 
 ---
 
+## View Metadata
+```bash
+eskit cat <repo/snap/index>
+```
+- Data Source: Cache
+- Operation Type: View
+
+This shows the metadata in cache.
+
 ## Repository Workflow
 
 Create a repository:
 
 ```bash
-eskit repo-create backup-repo \
+eskit repo create backup-repo \
   --location /data/snapshots
 ```
+- Data Destination: Elasticsearch
+- Operation Type: Mutating
 
-Show repository information:
+Show repository or snapshot information:
 
 ```bash
-eskit repo-show backup-repo
+eskit repo show backup-repo
+eskit repo show backup-repo/snapshot1
 ```
+- Data Source: Cache
+- Operation Type: View
 
 Delete a repository:
 
 ```bash
-eskit repo-delete backup-repo
+eskit repo delete backup-repo
 ```
+- Data Destination: Elasticsearch
+- Operation Type: Mutating | Destructive
 
 ---
 
@@ -328,20 +255,26 @@ eskit repo-delete backup-repo
 Create a snapshot:
 
 ```bash
-eskit snap-create backup-repo/nightly-2026.06.01
+eskit snap create backup-repo/nightly-2026.06.01
 ```
+- Data Destination: Elasticsearch
+- Operation Type: Mutating
 
 Restore a snapshot:
 
 ```bash
-eskit snap-restore backup-repo/nightly-2026.06.01
+eskit snap restore backup-repo/nightly-2026.06.01
 ```
+- Data Destination: Elasticsearch
+- Operation Type: Mutating
 
 Delete a snapshot:
 
 ```bash
-eskit snap-delete backup-repo/nightly-2026.06.01
+eskit snap delete backup-repo/nightly-2026.06.01
 ```
+- Data Destination: Elasticsearch
+- Operation Type: Mutating | Destructive
 
 ---
 
@@ -350,20 +283,26 @@ eskit snap-delete backup-repo/nightly-2026.06.01
 Create an index:
 
 ```bash
-eskit index-create test-index
+eskit index create test-index
 ```
+- Data Destination: Elasticsearch
+- Operation Type: Mutating
 
 Delete an index:
 
 ```bash
-eskit index-delete test-index
+eskit index delete test-index
 ```
+- Data Destination: Elasticsearch
+- Operation Type: Mutating | Destructive
 
 Show index information:
 
 ```bash
-eskit index-show test-index
+eskit index show test-index
 ```
+- Data Source: Elasticsearch
+- Operation Type: View
 
 ---
 
@@ -374,36 +313,38 @@ Start a reindex operation:
 ```bash
 eskit reindex source-index destination-index
 ```
+- Data Source: Elasticsearch
+- Operation Type: Mutating
 
 Check jobs:
 
 ```bash
-eskit job-list
+eskit job list
 ```
+- Data Source: Cache
+- Operation Type: View
 
 Show a job:
 
 ```bash
-eskit job-show reindex-destination-index-123abc
+eskit job show <job-id>
 ```
+- Data Source: Cache
+- Operation Type: View
 
 Check Elasticsearch task status:
 
 ```bash
-eskit task-get <task-id>
+eskit task get <task-id>
 ```
-
-Optionally, you may set mapping configuration with 
-```
-eskit reindex src-index dst-index -m <mapping in config>
-```
-- If the destination index does not exist, then ESKit will automatically create one. If a mapping config is specified, and the destination index already exists, it will abort the operation. 
+- Data Source: Elasticsearch
+- Operation Type: View
 
 ---
 
 ## Output Views
 
-Views allow reusable output projections.
+Views provide reusable output projections for commands that return metadata.
 
 Example:
 
@@ -466,7 +407,7 @@ Mutating operations require:
 Example:
 
 ```bash
-eskit repo-create backup-repo \
+eskit repo create backup-repo \
   --push
 ```
 
@@ -475,7 +416,7 @@ eskit repo-create backup-repo \
 Preview requests without executing them:
 
 ```bash
-eskit snap-create backup-repo/test \
+eskit snap create backup-repo/test \
   --dry-run
 ```
 
@@ -491,12 +432,64 @@ is specified.
 
 ---
 
-## Current Limitations
+## Configuration
 
-* Rsync workflow is still under development
-* Job tracking is currently focused on reindex operations
-* No automatic polling of Elasticsearch task completion
-* Single-user local cache model
+Create:
+
+```text
+.eskit/config.json
+```
+
+Example:
+
+```json
+{
+  "hosts": [
+    {
+      "name": "prod",
+      "ip": "10.0.0.10",
+      "push-protected": true,
+      "ssh": {
+        "user": "elastic",
+        "identity": "~/.ssh/id_ed25519"
+      }
+    }
+  ]
+}
+```
+
+---
+
+## Current Limitations
+- Snapshot compatibility validation is not currently performed automatically.
+- Restores between Elasticsearch versions must be validated by the operator.
+- Rsync workflow is still under development
+- Job tracking is currently focused on reindex operations
+- No automatic polling of Elasticsearch task completion
+- Single-user local cache model
+- Currently this tool has tested with Elasticsearch/Kibana version of 
+- Project-local configuration and cache model (.eskit)
+
+---
+
+## SSH Login
+
+This tool supports connecting to hosts with SSH by using paramiko. Currently it supports:
+- Key authentication
+- Password autentication
+
+For the key authentication, it support SSH-Agent, Run-Time passphrase prompt (Ed25519Key only), or unencrypted key. It's highly recommend to utilize SSH-Agent to avoid repeated passphrase prompts. 
+
+For password authentication, it currently does not support environement variable, so the passwords need to be in the config file. This is intended primarily for lab and development environments.
+
+---
+
+## Future Updates and Improvements
+- Local host support - running commands without SSH when running the tool on elasticsearch host itself 
+- Complete Rsync workflo
+- Job tracking and updates
+- Streaming output support - being able to monitor long running operations or docker log command support. 
+- Shell interactive mode
 
 ---
 
@@ -504,10 +497,10 @@ is specified.
 
 ESKit is intended to remain:
 
-* Lightweight
-* Scriptable
-* SSH-first
-* Dependency-light
-* Focused on operational workflows rather than full Elasticsearch administration
+- Lightweight
+- Scriptable
+- SSH-first
+- Dependency-light
+- Focused on operational workflows rather than full Elasticsearch administration
 
 The goal is not to replace Kibana or official Elasticsearch tooling, but to provide a fast command-line workflow for snapshot, restore, and migration tasks.
