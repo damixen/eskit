@@ -79,7 +79,7 @@ ESKit maintains a local cache for:
 - Snapshots
 - Indices
 - Cluster Version
-
+```text
 .eskit/
 └── <host>/
     └── cache/
@@ -87,7 +87,7 @@ ESKit maintains a local cache for:
         ├── repos.json
         ├── snapshots.json
         └── version.json
-
+```
 This allows fast inspection without repeatedly querying Elasticsearch.
 
 ### Views and Field Projection
