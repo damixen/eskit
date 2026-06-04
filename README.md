@@ -4,9 +4,11 @@ ESKit is a lightweight command-line toolkit for managing Elasticsearch repositor
 
 It is designed for operators who regularly work with snapshot-based backup and restore workflows and want a simple, cache-driven interface instead of repeatedly typing Elasticsearch API requests.
 
-> --Status:-- Work in Progress (WIP)
->
-> Core snapshot and index management workflows are operational and actively used. Rsync-based repository synchronization is still under development.
+> ⚠️ **Status: Work in Progress (WIP)**\
+> Snapshot, repository, and index workflows are stable and actively
+> used.\
+> Rsync-based repository synchronization and advanced job tracking are
+> still in development.
 
 ---
 
@@ -21,6 +23,14 @@ Managing Elasticsearch snapshots often involves repetitive API calls:
 - Delete indices
 - Reindex data
 - Check restore progress
+
+Design Philosophy:
+- For repeatable operational workflows
+- Fail-safe by default
+- No direct cluster coupling
+- Explicit destructive operations
+- Cache-first visibility
+- SSH as the only control plane
 
 ESKit provides a consistent CLI workflow:
 
@@ -70,6 +80,14 @@ ESKit maintains a local cache for:
 - Indices
 - Cluster Version
 
+.eskit/
+└── <host>/
+    └── cache/
+        ├── indices.json
+        ├── repos.json
+        ├── snapshots.json
+        └── version.json
+
 This allows fast inspection without repeatedly querying Elasticsearch.
 
 ### Views and Field Projection
@@ -115,12 +133,29 @@ flowchart
 ```
 
 - No Elasticsearch Python client is required.
-- API requests are executed remotely using curl to localhost.
-- No TLS required on Elasticsearch
+- Elasticsearch is accessed locally on each host via curl localhost:<port> over SSH, so ESKit does not require a TLS-enabled client connection to the cluster.
+---
+
+## SSH Login
+
+This tool supports connecting to hosts with SSH by using paramiko. Currently, it supports:
+- Key authentication
+- Password authentication
+
+For key authentication, it supports SSH-Agent, a Runtime passphrase prompt (Ed25519Key only), or an unencrypted key. It's highly recommended to utilize SSH-Agent to avoid repeated passphrase prompts.
+
+For password authentication, it currently does not support environment variables, so passwords needs be in the config file. This is intended primarily for lab and development environments.
 
 ---
 
 ## Installation
+
+### Requirements
+
+-   Python 3.9+
+-   paramiko
+
+### Setup
 
 Clone the repository:
 
@@ -206,18 +241,6 @@ This command shows the host information, including the Elasticsearch cluster inf
 eskit pull
 ```
 - Data Source: Elasticsearch
-
-This updates the local cache:
-
-```text
-.eskit/
-└── prod/
-    └── cache/
-        ├── indices.json
-        ├── repos.json
-        ├── snapshots.json
-        └── version.json
-```
 
 ---
 
@@ -359,6 +382,7 @@ eskit task get <task-id>
 - Operation Type: View
 
 ---
+
 
 ## Output Views
 
@@ -572,11 +596,10 @@ python eskit.py repo show daily_repo/2026.05.31
 I use rsync for this operation, but currently eskit does not support it.
 So I manually run the command on the host.
 ```bash
-sudo rsync -av --progress -e "ssh -p 22 -i .ssh/id_ed22519" demo@<ip>:/home/demo/data/elk/snapshot /home/demo/data/elk
+sudo rsync -av --progress -e "ssh -p 22 -i .ssh/id_ed25519" demo@<ip>:/home/demo/data/elk/snapshot /home/demo/data/elk
 ```
 8. Restore the snapshot for my other host.
 * Make sure to change the host if you are operating on a single folder for multiple hosts.
-* Also, you can use the "push-protection" flag in the host configuration to avoid accidental command executions. For destructive operations such as deletion, it's protected by requiring an input from the operator. You can use "--force" to bypass the confirmation, but please be careful.
 ```base
 python eskit.py host set <host>
 ```
@@ -610,36 +633,17 @@ python eskit.py task get iJB85gfpT2uErgzlMvmJbA:2176368
 python eskit.py index delete logs-2026.05.31
 ```
 
-## Current Limitations
-- Snapshot compatibility validation is not currently performed automatically.
-- Restores between Elasticsearch versions must be validated by the operator.
-- Rsync workflow is still under development
-- Job tracking is currently focused on reindex operations
-- No automatic polling of Elasticsearch task completion
-- Single-user local cache model
-- Currently, this tool has been tested with the Elasticsearch/Kibana version of 9.2.3.
-- Project-local configuration and cache model (.eskit)
-
----
-
-## SSH Login
-
-This tool supports connecting to hosts with SSH by using paramiko. Currently, it supports:
-- Key authentication
-- Password authentication
-
-For key authentication, it supports SSH-Agent, a Runtime passphrase prompt (Ed25519Key only), or an unencrypted key. It's highly recommended to utilize SSH-Agent to avoid repeated passphrase prompts.
-
-For password authentication, it currently does not support environment variables, so passwords must be in the config file. This is intended primarily for lab and development environments.
+## Limitations
+- This tool has been tested with the Elasticsearch/Kibana version of 9.2.3.
 
 ---
 
 ## Future Updates and Improvements
-- Local host support - running commands without SSH when running the tool on the elasticsearch host itself
-- Complete Rsync workflow
-- Job tracking and updates
-- Streaming output support - being able to monitor long-running operations or “docker log” command support.
-- Shell interactive mode
+- Automatic snapshot compatibility validation.
+- Continuous task monitoring / polling.
+- Complete Rsync workflow.
+- Streaming logs for long-running operations.
+- Shell interactive mode.
 
 ---
 
@@ -654,7 +658,3 @@ ESKit is intended to remain:
 - Focused on operational workflows rather than full Elasticsearch administration
 
 The goal is not to replace Kibana or official Elasticsearch tooling, but to provide a fast command-line workflow for snapshot, restore, and migration tasks.
-
-Before this tool, I was using Kibana's Dev Tool on both hosts, but sometimes I get confused or I accidentally perform unintended commands. Also, if I had to perform repeated operations, I had to run multiple commands or keep track of reindex status separately, which could be cumbersome or error-prone. With this tool and safeguard configured, it helped a lot to avoid operational mistakes. The future plan is to automate this process using the tool and manage multiple hosts to see how it scales. 
-
-Thank you for stopping by and taking a look at the tool.
