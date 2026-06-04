@@ -68,6 +68,7 @@ ESKit maintains a local cache for:
 - Repositories
 - Snapshots
 - Indices
+- Cluster Version
 
 This allows fast inspection without repeatedly querying Elasticsearch.
 
@@ -609,8 +610,6 @@ python eskit.py task get iJB85gfpT2uErgzlMvmJbA:2176368
 python eskit.py index delete logs-2026.05.31
 ```
 
-Before this tool, I was using Kibana's Dev Tool on both hosts, but sometimes I get confused or I accidentally perform unintended commands. Also, if I had to perform repeated operations, I had to run multiple commands or keep track of reindex status separately, which could be cumbersome or error-prone. With this tool and safeguard configured, it helped a lot to avoid operational mistakes. The future plan is to automate this process using the tool and manage multiple hosts to see how it scales. Thank you for stopping by and taking a look at the tool.
-
 ## Current Limitations
 - Snapshot compatibility validation is not currently performed automatically.
 - Restores between Elasticsearch versions must be validated by the operator.
@@ -655,3 +654,7 @@ ESKit is intended to remain:
 - Focused on operational workflows rather than full Elasticsearch administration
 
 The goal is not to replace Kibana or official Elasticsearch tooling, but to provide a fast command-line workflow for snapshot, restore, and migration tasks.
+
+Before this tool, I was using Kibana's Dev Tool on both hosts, but sometimes I get confused or I accidentally perform unintended commands. Also, if I had to perform repeated operations, I had to run multiple commands or keep track of reindex status separately, which could be cumbersome or error-prone. With this tool and safeguard configured, it helped a lot to avoid operational mistakes. The future plan is to automate this process using the tool and manage multiple hosts to see how it scales. 
+
+Thank you for stopping by and taking a look at the tool.
