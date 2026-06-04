@@ -1302,7 +1302,9 @@ def create_index(config, host, index, mapping, dry_run, push):
     print_host(host)
 
     if find_index(host, index):
-        print(f"Index:{index} already exists in the cache. Please pull latest or delete the index.")
+        print(
+            f"Index:{index} already exists in the cache. Please pull latest or delete the index."
+        )
         return
 
     body = {}
@@ -1517,6 +1519,8 @@ def run_rsync(config, rsync_config, host, dry_run, push):
 def cmd_root(args):
     if args.version:
         print(__version__)
+    else:
+        print("Please use -h/--help for more information.")
 
 
 def build_parser():
@@ -1534,7 +1538,7 @@ def build_parser():
         "-c",
         "--config",
         default=DEFAULT_CONFIG,
-        help="set config file. Optional as default value is .eskit/config.json",
+        help="Set config file. Optional as default value is .eskit/config.json",
     )
     common_parser.add_argument(
         "--host",
@@ -1547,19 +1551,19 @@ def build_parser():
         "-dry",
         "--dry-run",
         action="store_true",
-        help="shows only request/command w/o executing it",
+        help="Shows only request/command w/o executing it",
     )
 
     mutating_parser.add_argument(
         "--push",
         action="store_true",
-        help="used to confirm to execute a request/command that would modify resources on push-protected host",
+        help="Used to confirm to execute a request/command that would modify resources on push-protected host",
     )
 
     # destructive command common
     destructive_command_parser = argparse.ArgumentParser(add_help=False)
     destructive_command_parser.add_argument(
-        "--force", action="store_true", help="force to execute delete request/command"
+        "--force", action="store_true", help="Force to execute delete request/command"
     )
 
     # common viewer
@@ -1571,45 +1575,53 @@ def build_parser():
     sub = p.add_subparsers()
 
     # Init command
-    init = sub.add_parser("init")
+    init = sub.add_parser("init", help="Initializes ESKit.")
     init.set_defaults(function=cmd_init)
     init.add_argument(
-        "--demo", action="store_true", help="initialize with demo data set"
+        "--demo", action="store_true", help="Initialize with demo data set"
     )
 
     # Host commands
-    host_parser = sub.add_parser("host")
+    host_parser = sub.add_parser("host", help="Host related commands.")
     host_parser_sub = host_parser.add_subparsers(required=True)
 
     host_show_parser = host_parser_sub.add_parser(
-        "show", parents=[common_parser], help="show available hosts in the config"
+        "show", parents=[common_parser], help="Show available hosts in the config"
     )
     host_show_parser.set_defaults(function=cmd_host)
 
-    host_set_parser = host_parser_sub.add_parser("set", help="set as current host")
+    host_set_parser = host_parser_sub.add_parser("set", help="Set as current host")
     host_set_parser.add_argument("host")
     host_set_parser.set_defaults(function=cmd_host_set)
 
-    host_get_parser = host_parser_sub.add_parser("get", help="get current host")
+    host_get_parser = host_parser_sub.add_parser("get", help="Get current host")
     host_get_parser.set_defaults(function=cmd_host_get)
     #
 
     # Pull
-    pull = sub.add_parser("pull", parents=[common_parser])
+    pull = sub.add_parser(
+        "pull",
+        parents=[common_parser],
+        help="Pulls resource data from the current host.",
+    )
     pull.set_defaults(function=cmd_pull)
 
     # Cat
-    cat = sub.add_parser("cat", parents=[common_parser, viewer_command_parser])
+    cat = sub.add_parser(
+        "cat",
+        parents=[common_parser, viewer_command_parser],
+        help="Show cached information.",
+    )
     cat.add_argument("kind", choices=["repo", "snap", "index"])
     cat.set_defaults(function=cmd_cat2)
 
     # Repo sub command
     common_repo_parser = argparse.ArgumentParser(add_help=False)
     common_repo_parser.add_argument(
-        "name", help="name of repo or snapshot. <repo> or <repo>/<snapshot>"
+        "name", help="Name of repo or snapshot. <repo> or <repo>/<snapshot>"
     )
 
-    repo = sub.add_parser("repo", parents=[common_parser])
+    repo = sub.add_parser("repo", parents=[common_parser], help="Repository commands.")
 
     repo_sub = repo.add_subparsers(required=True)
 
@@ -1637,20 +1649,20 @@ def build_parser():
     repo_delete.set_defaults(function=cmd_delete_repo)
 
     # Snapshot Sub Commands
-    snap = sub.add_parser("snap", parents=[common_parser])
+    snap = sub.add_parser("snap", parents=[common_parser], help="Snapshot commands")
     snap_sub = snap.add_subparsers(required=True)
 
     # common snap parser
     common_snap_parser = argparse.ArgumentParser(add_help=False)
     common_snap_parser.add_argument(
-        "name", help="name to snapshot. must be <repo>/<snapshot>"
+        "name", help="Name to snapshot. must be <repo>/<snapshot>"
     )
 
     # common snapshot index parser
     common_snap_index_parser = argparse.ArgumentParser(add_help=False)
     common_snap_index_parser.add_argument(
         "--index",
-        help="index to add to the snapshot. * is allowed as wild card. multiple indices allowed by comma separated.",
+        help="Index to add to the snapshot. * is allowed as wild card. multiple indices allowed by comma separated.",
     )
     common_snap_index_parser.add_argument(
         "--include_global_state", default=False, action="store_true"
@@ -1698,10 +1710,10 @@ def build_parser():
 
     index_mapper_parser = argparse.ArgumentParser(add_help=False)
     index_mapper_parser.add_argument(
-        "-m", "--mapping", help="name of mapping in the config."
+        "-m", "--mapping", help="Name of mapping in the config."
     )
 
-    index_parser = sub.add_parser("index")
+    index_parser = sub.add_parser("index", help="Index commands.")
     index_sub = index_parser.add_subparsers(required=True)
 
     index_delete = index_sub.add_parser(
@@ -1738,17 +1750,19 @@ def build_parser():
 
     # Reindex Commands
     reindex = sub.add_parser(
-        "reindex", parents=[common_parser, index_mapper_parser, mutating_parser]
+        "reindex",
+        parents=[common_parser, index_mapper_parser, mutating_parser],
+        help="Reindex command.",
     )
     reindex.add_argument(
         "src",
-        help="source index. it can be multiple by comma separated or * wild card can be used",
+        help="Source index. it can be multiple by comma separated or * wild card can be used",
     )
     reindex.add_argument("dst", help="destination index")
     reindex.set_defaults(function=cmd_reindex)
 
     reindex_mapping = sub.add_parser(
-        "mapping", help="shows mappings in the config", parents=[common_parser]
+        "mapping", help="Shows mappings in the config", parents=[common_parser]
     )
     reindex_mapping.set_defaults(function=cmd_reindex_mapping)
 
@@ -1756,7 +1770,7 @@ def build_parser():
     task_sub = task.add_subparsers(required=True)
 
     task_get = task_sub.add_parser(
-        "get", help="get task status on elasticsearch", parents=[common_parser]
+        "get", help="Get task status on elasticsearch", parents=[common_parser]
     )
     task_get.add_argument("task_id", help="elasticsearch task id")
     task_get.set_defaults(function=cmd_get_task)
@@ -1777,11 +1791,13 @@ def build_parser():
         "show", parents=[common_parser, viewer_command_parser]
     )
     job_show.add_argument(
-        "job_search_id", help="job search id / job output file name in the jobs cache"
+        "job_search_id", help="Job search id / job output file name in the jobs cache"
     )
     job_show.set_defaults(function=cmd_read_job)
 
-    status = sub.add_parser("status", parents=[common_parser])
+    status = sub.add_parser(
+        "status", parents=[common_parser], help="Show current ESKit status."
+    )
     status.set_defaults(function=cmd_status)
 
     return p
