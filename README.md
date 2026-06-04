@@ -102,7 +102,7 @@ flowchart
         end
     end
 
-    eskit -->|ssh|host_vm 
+    eskit -->|ssh|host_vm
     host_vm -->|curl localhost:9200| elasticsearch_vm
 
     eskit -->|ssh|host_remote
@@ -110,7 +110,7 @@ flowchart
 
     host_vm-->|rsync|host_remote
 
-    
+   
 ```
 
 - No Elasticsearch Python client is required.
@@ -157,6 +157,13 @@ python eskit.py status
 python eskit.py cat repo
 ```
 
+### What you can do with the demo
+In the demo, you can explore how eskit works out of the box:
+- You can view cached data with commands.
+- You can try to use the --dry-run option on commands that would modify data on the host side. The option will give you a preview of the Elasticsearch API request.
+
+Also, you could extend the configuration to your host and try.
+
 ---
 
 ## Command Overview
@@ -174,8 +181,7 @@ This creates an initial config file.
 eskit init --demo
 ```
 
-This initializes with demo cache file to explore the tool.
-Please see DEMO for more details.
+This initializes with a demo cache file to explore the tool.
 
 ### Select a Host
 
@@ -191,7 +197,7 @@ eskit host get
 eskit status
 ```
 - Data Source: Config | Cache
-This commands shows the host information including elasticsearch cluster information in cache.
+This command shows the host information, including the Elasticsearch cluster information in cache.
 
 ### Pull Metadata
 
@@ -307,6 +313,14 @@ eskit index show test-index
 - Data Source: Elasticsearch
 - Operation Type: View
 
+Check index status (after restoring snapshot):
+
+```bash
+eskit index status test-index
+```
+- Data Source: Elasticsearch
+- Operation Type: View
+
 ---
 
 ## Reindex Workflow
@@ -335,7 +349,7 @@ eskit job show <job-id>
 - Data Source: Cache
 - Operation Type: View
 
-Check Elasticsearch task status:
+Check the Elasticsearch task status:
 
 ```bash
 eskit task get <task-id>
@@ -384,6 +398,62 @@ Additional fields can be included:
 eskit cat snap \
   --view snapshot-basic \
   --fields duration_in_millis
+```
+
+Please check the command argument to see whether the --view or --fields options are supported.
+Also, the config file in the demo or template shows some sample view configurations.
+
+#### Example:
+Before applying the view:
+```bash
+python eskit.py cat index
+```
+```json
+[
+  ...
+  {
+    "health": "yellow",
+    "status": "open",
+    "index": "metric-2026.05.18",
+    "uuid": "o0C_RTpaSJme0se-n3LWkQ",
+    "pri": "1",
+    "rep": "1",
+    "docs.count": "169875",
+    "docs.deleted": "0",
+    "store.size": "127mb",
+    "pri.store.size": "127mb",
+    "dataset.size": "127mb"
+  }
+  ...
+]
+```
+
+After applying the view:
+```json
+"cat-index-basic":[
+    "index",
+    "health",
+    "status",
+    "docs$count",
+    "store$size"
+]
+```
+* Please note that if the fields contain the period "." in the name, please replace it with "$".
+```bash
+python eskit.py cat index --view cat-index-basic
+```
+```json
+[
+  ...
+  {
+    "index": "metric-2026.05.18",
+    "health": "yellow",
+    "status": "open",
+    "docs.count": "169875",
+    "store.size": "127mb"
+  }
+  ...
+]
 ```
 
 ---
@@ -463,6 +533,84 @@ Example:
 
 ---
 
+## Operation Workflow Example
+This is how I use the eskit to perform my repository/snapshot workflow for my other project.
+
+1. Double-check which host I am working on.
+```
+python eskit.py host get
+python eskit.py host set <host>
+```
+2. Check the status of the host that I would like to operate on.
+```bash
+python eskit.py status
+```
+3. Pull the latest information.
+```bash
+python eskit.py pull
+```
+4. Check available indices
+```bash
+python eskit.py cat index
+```
+5. Create a snapshot
+```bash
+python eskit.py snap create --index *2026.05.31* daily_repo/2026.05.31
+```
+- Wildcard is supported.
+- Modifying operation will automatically update the cache after successful execution.
+
+
+6. Verify the created snapshot with the intended indices and state, etc.
+```bash
+python eskit.py repo show daily_repo/2026.05.31
+```
+- Optionally, you can use "view" to control what information is returned.
+
+7. Synchronize the snapshot from the host to my other host for investigation.
+I use rsync for this operation, but currently eskit does not support it.
+So I manually run the command on the host.
+```bash
+sudo rsync -av --progress -e "ssh -p 22 -i .ssh/id_ed22519" demo@<ip>:/home/demo/data/elk/snapshot /home/demo/data/elk
+```
+8. Restore the snapshot for my other host.
+* Make sure to change the host if you are operating on a single folder for multiple hosts.
+* Also, you can use the "push-protection" flag in the host configuration to avoid accidental command executions. For destructive operations such as deletion, it's protected by requiring an input from the operator. You can use "--force" to bypass the confirmation, but please be careful.
+```base
+python eskit.py host set <host>
+```
+```base
+python eskit.py snap restore daily_repo/2026.05.31
+```
+
+9. Check index status for restore completion.
+```bash
+python eskit.py index status logs-2026.05.31
+```
+It will display data such as "bytes_percent" and "stage" to verify the restoration status.
+
+Typical workflow ends here, but I ran one more step to reindex the restored index.
+
+10. Run the reindex command
+For my specific use case, I will change the index's timestamp format.
+```bash
+python eskit.py reindex -m timestamp-mapping logs-2026.05.31 logs-2026.05.31-ts-format-fix
+```
+Since reindexing can take time, it's requested without waiting for the completion of the job. The command will create a file for a job/task in a cache file, and output a job ID which can be used to get the job information in the cache. e.g. host/cache/jobs/job_id.json.
+
+- Currently, eskit doesn't support updating job status since it's created, so you would need to use a command to get the status.
+
+```base
+python eskit.py task get iJB85gfpT2uErgzlMvmJbA:2176368  
+```
+
+11. Once completed and verified, I will delete the original index.
+```base
+python eskit.py index delete logs-2026.05.31
+```
+
+Before this tool, I was using Kibana's Dev Tool on both hosts, but sometimes I get confused or I accidentally perform unintended commands. Also, if I had to perform repeated operations, I had to run multiple commands or keep track of reindex status separately, which could be cumbersome or error-prone. With this tool and safeguard configured, it helped a lot to avoid operational mistakes. The future plan is to automate this process using the tool and manage multiple hosts to see how it scales. Thank you for stopping by and taking a look at the tool.
+
 ## Current Limitations
 - Snapshot compatibility validation is not currently performed automatically.
 - Restores between Elasticsearch versions must be validated by the operator.
@@ -470,28 +618,28 @@ Example:
 - Job tracking is currently focused on reindex operations
 - No automatic polling of Elasticsearch task completion
 - Single-user local cache model
-- Currently this tool has tested with Elasticsearch/Kibana version of 
+- Currently, this tool has been tested with the Elasticsearch/Kibana version of 9.2.3.
 - Project-local configuration and cache model (.eskit)
 
 ---
 
 ## SSH Login
 
-This tool supports connecting to hosts with SSH by using paramiko. Currently it supports:
+This tool supports connecting to hosts with SSH by using paramiko. Currently, it supports:
 - Key authentication
-- Password autentication
+- Password authentication
 
-For the key authentication, it support SSH-Agent, Run-Time passphrase prompt (Ed25519Key only), or unencrypted key. It's highly recommend to utilize SSH-Agent to avoid repeated passphrase prompts. 
+For key authentication, it supports SSH-Agent, a Runtime passphrase prompt (Ed25519Key only), or an unencrypted key. It's highly recommended to utilize SSH-Agent to avoid repeated passphrase prompts.
 
-For password authentication, it currently does not support environement variable, so the passwords need to be in the config file. This is intended primarily for lab and development environments.
+For password authentication, it currently does not support environment variables, so passwords must be in the config file. This is intended primarily for lab and development environments.
 
 ---
 
 ## Future Updates and Improvements
-- Local host support - running commands without SSH when running the tool on elasticsearch host itself 
-- Complete Rsync workflo
+- Local host support - running commands without SSH when running the tool on the elasticsearch host itself
+- Complete Rsync workflow
 - Job tracking and updates
-- Streaming output support - being able to monitor long running operations or docker log command support. 
+- Streaming output support - being able to monitor long-running operations or “docker log” command support.
 - Shell interactive mode
 
 ---

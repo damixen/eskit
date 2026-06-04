@@ -1,6 +1,5 @@
 # eskit specific
 .eskit
-.current_host
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

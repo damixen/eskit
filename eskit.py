@@ -620,14 +620,16 @@ def cmd_status(args):
     }
 
     cluster_version = read_cache(host_name, "version")
-    status["cluster"] = {
-        "name": cluster_version["name"],
-        "cluster_name": cluster_version["cluster_name"],
-        "version": {
-            "number": cluster_version["version"]["number"],
-            "build_flavor": cluster_version["version"]["build_flavor"],
-        },
-    }
+    status["cluster"] = {}
+    if cluster_version:
+        status["cluster"] = {
+            "name": cluster_version["name"],
+            "cluster_name": cluster_version["cluster_name"],
+            "version": {
+                "number": cluster_version["version"]["number"],
+                "build_flavor": cluster_version["version"]["build_flavor"],
+            },
+        }
 
     status["caches"] = {}
 

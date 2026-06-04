@@ -1,0 +1,17 @@
+{
+  "name": "cluster-node-02",
+  "cluster_name": "cluster",
+  "cluster_uuid": "UUID",
+  "version": {
+    "number": "9.2.3",
+    "build_flavor": "default",
+    "build_type": "deb",
+    "build_hash": "d8972a71dbbd64ff17f2f4dba9ca2c3fe09fb100",
+    "build_date": "2025-12-16T10:09:08.849001802Z",
+    "build_snapshot": false,
+    "lucene_version": "10.3.2",
+    "minimum_wire_compatibility_version": "8.19.0",
+    "minimum_index_compatibility_version": "8.0.0"
+  },
+  "tagline": "You Know, for Search"
+}
