@@ -1,0 +1,17 @@
+{
+  "test_repo": {
+    "type": "fs",
+    "uuid": "R4Nc8N8zQ4WGMM8bC0edBQ",
+    "settings": {
+      "location": "/data/elk/snapshot/test"
+    }
+  },
+  "daily_repo": {
+    "type": "fs",
+    "uuid": "pb2Hs9ueTr6agXhGeY5o4w",
+    "settings": {
+      "compress": "true",
+      "location": "/data/elk/snapshot/daily"
+    }
+  }
+}

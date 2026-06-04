@@ -44,7 +44,7 @@
                 }
             },
             "src": {
-                "host": "DemoHost2",
+                "host": "DemoHost1",
                 "path": "<path to folder to sync"
             }
         }
