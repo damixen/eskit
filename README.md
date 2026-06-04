@@ -190,6 +190,8 @@ eskit host get
 ```bash
 eskit status
 ```
+- Data Source: Config | Cache
+This commands shows the host information including elasticsearch cluster information in cache.
 
 ### Pull Metadata
 
@@ -206,7 +208,8 @@ This updates the local cache:
     └── cache/
         ├── indices.json
         ├── repos.json
-        └── snapshots.json
+        ├── snapshots.json
+        └── version.json
 ```
 
 ---

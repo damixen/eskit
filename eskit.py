@@ -484,6 +484,10 @@ def pull_host(host_name, es):
 
     indices = es.request("GET", "/_cat/indices?format=json")
     write_cache(host_name, "indices", indices)
+
+    version = es.request("GET", "/")
+    write_cache(host_name, "version", version)
+
     print("\nCache updated.\n")
 
 
@@ -614,11 +618,22 @@ def cmd_status(args):
         "name": host_name,
         "push-protected": is_push_protected(config, host_name),
     }
+
+    cluster_version = read_cache(host_name, "version")
+    status["cluster"] = {
+        "name": cluster_version["name"],
+        "cluster_name": cluster_version["cluster_name"],
+        "version": {
+            "number": cluster_version["version"]["number"],
+            "build_flavor": cluster_version["version"]["build_flavor"],
+        },
+    }
+
     status["caches"] = {}
 
     cache_root = cache_dir(host_name)
 
-    for name in ["indices", "repos", "snapshots"]:
+    for name in ["indices", "repos", "snapshots", "version"]:
         path = cache_root / f"{name}.json"
         date = cache_date(path)
         status["caches"][name] = {}
@@ -1662,7 +1677,7 @@ def build_parser():
     common_snap_index_parser = argparse.ArgumentParser(add_help=False)
     common_snap_index_parser.add_argument(
         "--index",
-        help="Index to add to the snapshot. * is allowed as a wildcard. Multiple indices allowed by comma separated."
+        help="Index to add to the snapshot. * is allowed as a wildcard. Multiple indices allowed by comma separated.",
     )
     common_snap_index_parser.add_argument(
         "--include_global_state", default=False, action="store_true"
@@ -1813,6 +1828,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-
