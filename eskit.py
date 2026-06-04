@@ -209,7 +209,7 @@ def write_cache(host, name, data):
 def read_cache(host, name):
     p = cache_dir(host) / f"{name}.json"
     if not p.exists():
-        print(f"No cached {name} information found. Run: eskit pull {host}")
+        print(f"Cached:{name} information not found. Run: eskit pull {host}")
         return None
     with open(p, "r", encoding="utf-8") as f:
         return json.load(f)
@@ -521,7 +521,7 @@ def cmd_host(args):
         hosts = out
 
     if len(hosts) == 0:
-        print("No host found.")
+        print("Host not found.")
         return
 
     print(json.dumps(hosts, indent=2))
@@ -691,7 +691,6 @@ def cmd_cat2(args):
     out = {}
     if kind == "snapshots":
         for repo, repo_data in data.items():
-            # print(f"Repo: {repo} | Value: {repo_data}")
             snapshots = repo_data.get("snapshots", {})
             snap_list = []
             for s in snapshots:
@@ -703,7 +702,6 @@ def cmd_cat2(args):
     elif kind == "repos":
         out = {}
         for repo, repo_data in data.items():
-            # print(f"Repo: {repo} | Value: {repo_data}")
             out_repo = repo_data
             if len(target_fields) > 0:
                 out_repo = apply_view(repo_data, target_fields, flat)
@@ -818,7 +816,7 @@ def cmd_repo_show(config, host_name, repo, views, fields, flat):
     repo_data = data.get(repo, {})
     if not repo_data:
         print_host(host_name)
-        print(f"Repo:{repo} not found in cache.")
+        print(f"Repository:{repo} not found in cache.")
         return
 
     out = repo_data
@@ -1062,7 +1060,7 @@ def cmd_init(args):
 def init_eskit(is_demo):
 
     if CACHE_ROOT.exists():
-        print(".eskit folder already exists")
+        print(".eskit folder already exists.")
         if is_demo:
             print("If you want to reset, please remove the folder first.")
         return
@@ -1114,7 +1112,7 @@ def create_repo(config, host, name, repo_type, location, dry_run, push):
     print_host(host)
 
     if find_repo(host, name):
-        print(f"Repo:{name} found in cache. Please pull latest.")
+        print(f"Repository:{name} found in cache. Please pull latest.")
         return
 
     body = {"type": repo_type, "settings": {"location": location, "compress": True}}
@@ -1126,7 +1124,7 @@ def create_repo(config, host, name, repo_type, location, dry_run, push):
     ssh, es = connect_es(config, host)
     try:
         es.request("PUT", f"/_snapshot/{name}", body)
-        print(f"Repo:{name} created. Updating Cache...")
+        print(f"Repository:{name} created. Updating Cache...")
         pull_host(host, es)
     finally:
         ssh.close()
@@ -1142,12 +1140,12 @@ def delete_repo(config, host, name, dry_run, push, force):
     print_host(host)
 
     if not find_repo(host, name):
-        print(f"Repo:{name} not found in cache. Please pull latest.")
+        print(f"Repository:{name} not found in cache. Please pull latest.")
         return
 
     if not dry_run and not force:
         if not confirm_delete("repo", name):
-            print("cancelled")
+            print("Cancelled.")
             return
 
     if dry_run:
@@ -1157,7 +1155,7 @@ def delete_repo(config, host, name, dry_run, push, force):
     ssh, es = connect_es(config, host)
     try:
         es.request("DELETE", f"/_snapshot/{name}")
-        print(f"Repo:{name} deleted. Updating Cache...")
+        print(f"Repository:{name} deleted. updating cache...")
         pull_host(host, es)
     finally:
         ssh.close()
@@ -1176,11 +1174,11 @@ def create_snapshot(
 
     repo, delim, snap = spec.partition("/")
     if not repo or not snap:
-        print(f"Snapshot:{spec} is not in valid format <repo>/<snapshot>")
+        print(f"Snapshot:{spec} is not in valid format. <repo>/<snapshot>")
         return
 
     if find_snapshot(host, repo, snap):
-        print(f"Snapshot:{spec} found in chace. Please pull latest.")
+        print(f"Snapshot:{spec} found in chace. please pull latest.")
         return
 
     body = {}
@@ -1212,12 +1210,12 @@ def delete_snapshot(config, host, spec, dry_run, push, force):
     print_host(host)
 
     if not find_snapshot(host, repo, snap):
-        print(f"Snapshot:{spec} not found in chace. Please pull latest.")
+        print(f"Snapshot:{spec} not found in chace. Please pull the latest.")
         return
 
     if not dry_run and not force:
         if not confirm_delete("snapshot", spec):
-            print("cancelled")
+            print("Cancelled.")
             return
 
     if dry_run:
@@ -1227,7 +1225,7 @@ def delete_snapshot(config, host, spec, dry_run, push, force):
     ssh, es = connect_es(config, host)
     try:
         es.request("DELETE", f"/_snapshot/{repo}/{snap}")
-        print(f"Snap{spec} created. Updating Cache...")
+        print(f"Snapshot:{spec} created. Updating Cache.")
         pull_host(host, es)
     finally:
         ssh.close()
@@ -1254,7 +1252,7 @@ def restore_snapshot(config, host, spec, dry_run, push):
     ssh, es = connect_es(config, host)
     try:
         es.request("POST", f"/_snapshot/{repo}/{snap}/_restore", body)
-        print(f"Snap:{spec} restored. Updating Cache...")
+        print(f"Snapshot:{spec} restored. Updating Cache.")
         pull_host(host, es)
     finally:
         ssh.close()
@@ -1269,12 +1267,12 @@ def delete_index(config, host, index, dry_run, push, force):
     print_host(host)
 
     if not find_index(host, index):
-        print(f"Index:{index} not found in cache. Please pull latest")
+        print(f"Index:{index} not found in cache. Please pull the latest.")
         return
 
     if not dry_run and not force:
         if not confirm_delete("index", index):
-            print("cancelled")
+            print("Cancelled.")
             return
 
     url = f"/{index}"
@@ -1286,7 +1284,7 @@ def delete_index(config, host, index, dry_run, push, force):
     try:
         res = es.request(HTTP_METHOD_DELETE, url)
         print(res)
-        print(f"Index:{index} deleted. Updating Cache...")
+        print(f"Index:{index} deleted. Updating Cache.")
         pull_host(host, es)
     except Exception as e:
         print(e)
@@ -1304,7 +1302,7 @@ def create_index(config, host, index, mapping, dry_run, push):
     print_host(host)
 
     if find_index(host, index):
-        print("index already exist in cache. Please pull latest or delete the index")
+        print(f"Index:{index} already exists in the cache. Please pull latest or delete the index.")
         return
 
     body = {}
@@ -1323,7 +1321,7 @@ def create_index(config, host, index, mapping, dry_run, push):
     try:
         res = es.request(HTTP_METHOD_PUT, url, body)
         print(res)
-        print(f"Index:{index} created. Updating Cache...")
+        print(f"Index:{index} created. Updating Cache.")
         pull_host(host, es)
     except Exception as e:
         print(e)
@@ -1347,18 +1345,18 @@ def reindex(config, host, src, dst, mapping, dry_run, push):
         if m:
             body["mappings"] = m
         else:
-            print(f"mapping:{mapping} does not exist in the config.")
+            print(f"Mapping:{mapping} does not exist in the config.")
             return
 
     dst_exists = find_index(host, dst)
     if m and dst_exists:
         print(
-            "mapping specified, but index already exist in cache. Please pull latest or delete the index"
+            "Mapping specified, but index already exist in cache. Please pull latest or delete the index"
         )
         return
 
     if not dst_exists:
-        print(f"creating a new dst:{dst}")
+        print(f"Creating a new index:{dst}.")
         create_index(config, host, dst, mapping, dry_run, push)
 
     job = ESKitJob(
