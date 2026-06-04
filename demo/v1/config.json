@@ -1,0 +1,101 @@
+{
+    "hosts": [
+        {
+            "name": "Host1",
+            "ip": "192.168.1.146",
+            "ssh": {
+                "port": 22,
+                "user": "demo-user",
+                "password": "12345"
+            },
+            "elastic":{
+                "user":{
+                    "name": "elastic",
+                    "password": "12345"
+                } 
+            }
+        },
+        {
+            "name": "Host2",
+            "ip": "192.168.1.150",
+            "ssh": {
+                "port": 22,
+                "user": "mike",
+                "identity": "C:\\Users\\mike\\.ssh\\id_ed25519"
+            },
+            "elastic":{
+                "port":9999
+            },
+            "push-protected":true
+        }
+    ],
+    "rsync-configs": [
+        {
+            "name": "sync-with-host2",
+            "dest": {
+                "host": "host1",
+                "path": "<path to folder to sync",
+                "auth": {
+                    "ssh": {
+                        "port": 22,
+                        "user": "demo-user",
+                        "identity": "<path to ssh key>"
+                    }
+                }
+            },
+            "src": {
+                "host": "host2",
+                "path": "<path to folder to sync"
+            }
+        }
+    ],
+    "reindex-configs": [
+        {
+            "name": "timestamp-mapping",
+            "mappings": {
+                "properties": {
+                    "@timestamp": {
+                        "type": "date",
+                        "format": "strict_date_optional_time||epoch_millis"
+                    }
+                }
+            }
+        }
+    ],
+    "views": {
+        "index-basic": [
+            "settings.index.provided_name",
+            "mappings.properties.@timestamp",
+            "settings.index.creation_date"
+        ],
+
+        "repo-basic": [
+            "type",
+            "settings.location"
+        ],
+
+        "snapshot-basic": [
+            "snapshot",
+            "repository",
+            "state",
+            "start_time",
+            "end_time",
+            "indices"
+        ],
+
+        "cat-index-basic":[
+            "index",
+            "health",
+            "status",
+            "docs$count",
+            "store$size"
+        ],
+        "index-status-basic":[
+            "index",
+            "bytes_percent",
+            "stage",
+            "repository",
+            "snapshot"
+        ]
+    }
+}

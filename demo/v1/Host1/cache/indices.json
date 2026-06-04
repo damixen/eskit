@@ -1,0 +1,54 @@
+[
+  {
+    "health": "yellow",
+    "status": "open",
+    "index": "metric-2026.05.16",
+    "uuid": "d4uiVdFCRgG15sxACApZlw",
+    "pri": "1",
+    "rep": "1",
+    "docs.count": "172334",
+    "docs.deleted": "0",
+    "store.size": "148.8mb",
+    "pri.store.size": "148.8mb",
+    "dataset.size": "148.8mb"
+  },
+  {
+    "health": "yellow",
+    "status": "open",
+    "index": "metric-2026.05.15",
+    "uuid": "ARbESf9_QIuJdj1b1LcELw",
+    "pri": "1",
+    "rep": "1",
+    "docs.count": "171310",
+    "docs.deleted": "0",
+    "store.size": "145.8mb",
+    "pri.store.size": "145.8mb",
+    "dataset.size": "145.8mb"
+  },
+  {
+    "health": "yellow",
+    "status": "open",
+    "index": "metric-2026.05.18",
+    "uuid": "o0C_RTpaSJme0se-n3LWkQ",
+    "pri": "1",
+    "rep": "1",
+    "docs.count": "169875",
+    "docs.deleted": "0",
+    "store.size": "127mb",
+    "pri.store.size": "127mb",
+    "dataset.size": "127mb"
+  },
+  {
+    "health": "green",
+    "status": "open",
+    "index": "log-2026.05.17",
+    "uuid": "z_wFt9GOSqCsia56RLXQFA",
+    "pri": "1",
+    "rep": "0",
+    "docs.count": "835694",
+    "docs.deleted": "0",
+    "store.size": "342.8mb",
+    "pri.store.size": "342.8mb",
+    "dataset.size": "342.8mb"
+  }
+]

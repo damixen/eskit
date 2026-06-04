@@ -8,6 +8,10 @@ from dataclasses import dataclass, asdict
 from datetime import datetime, timezone
 import uuid
 import time
+import shutil
+
+__version__ = "0.8.0"
+__cache_version__ = "v1"
 
 DEFAULT_CONFIG = ".eskit/config.json"
 CACHE_ROOT = Path(".eskit")
@@ -15,6 +19,7 @@ HTTP_METHOD_DELETE = "DELETE"
 HTTP_METHOD_PUT = "PUT"
 HTTP_METHOD_POST = "POST"
 HTTP_METHOD_GET = "GET"
+CURRENT_HOST = ".current_host"
 
 ## EXCEPTIONS
 
@@ -96,13 +101,14 @@ def get_rsync_config(config, name):
 
 def check_host(host):
     if host is None:
-        raise SystemExit("Host not found. Please specify host or set host.")
+        raise SystemExit("Host not found. Please specify host or set host by host set command.")
     return
 
 def check_push_protected(config, host, dry_run, push):
     host_config = get_host(config, host)
     if "push-protected" in host_config and host_config["push-protected"] and not dry_run and not push:
-        raise SystemExit("Host is push protected. Please use --push to make change or --dry-run to check command")
+        print_host(host)
+        raise SystemExit(f"Host:{host} is push protected. Please use --push to make change or --dry-run to check command")
     return
 
 def is_push_protected(config, host):
@@ -116,17 +122,23 @@ def confirm_delete(kind, name):
     return x == name
 
 def get_current_host():
-    with open(CACHE_ROOT / ".current_host", "r", encoding="utf-8") as f:
+    if not (CACHE_ROOT / CURRENT_HOST).exists():
+        return
+
+    with open(CACHE_ROOT / CURRENT_HOST, "r", encoding="utf-8") as f:
         for line in f:
             return line
 
 def set_current_host(host):
-    with open(CACHE_ROOT / ".current_host", "w", encoding="utf-8") as f:
+    with open(CACHE_ROOT / CURRENT_HOST, "w", encoding="utf-8") as f:
         f.write(host)
     print(f"Host is set to:{host}")
 
 def cache_dir(host):
     return CACHE_ROOT / host / "cache"
+
+def root_dir():
+    return CACHE_ROOT
 
 def cache_age(path):
     if not path.exists():
@@ -141,6 +153,9 @@ def cache_date(path):
 
 def job_dir(host):
     return CACHE_ROOT / host / "cache" / "jobs"
+
+def ensure_root():
+    CACHE_ROOT.mkdir(parents=True, exist_ok=True)
 
 def ensure_cache(host):
     cache_dir(host).mkdir(parents=True, exist_ok=True)
@@ -431,9 +446,29 @@ def connect_es(config, host_name):
         elastic_config = host_cfg["elastic"]
     return ssh, ESClient(ssh, elastic_config)
 
-def cmd_host(config):
-    for h in config.get("hosts", []):
-        print(h["name"])
+def cmd_host(args):
+
+    config = None
+    if "config" in args:
+        config = load_config(args.config)
+
+    host = args.host
+
+    hosts = config.get("hosts", [])
+    if host:
+        out = []
+        for h in hosts:
+            if h["name"] == host:
+                out.append(h)
+                break
+        hosts = out
+
+    if len(hosts) == 0:
+        print("No host found.")
+        return
+    
+    print(json.dumps(hosts, indent=2))
+    
 
 def cmd_host_set(args):
     set_current_host(args.host)
@@ -584,6 +619,9 @@ def cmd_cat2(args):
     target_fields = build_field_list(config, views, fields)
     data = read_cache(host_name, kind)
 
+    if not data:
+        return
+
     out = {}
     if kind == "snapshots":
         for repo, repo_data in data.items():
@@ -644,14 +682,14 @@ def cmd_repo_show2(args):
         host_name = get_current_host()
     check_host(host_name)
 
-    path = args.path
+    name = args.name
     views = args.view
     fields = args.fields
     flat = args.flat
 
-    repo, sep, snap= path.partition("/")
+    repo, sep, snap= name.partition("/")
     if repo and snap:
-        cmd_snap_show(config, host_name, path, views, fields, flat)
+        cmd_snap_show(config, host_name, name, views, fields, flat)
     else:
         cmd_repo_show(config, host_name, repo, views, fields, flat)
 
@@ -667,7 +705,7 @@ def cmd_delete_repo(args):
         host_name = get_current_host()
     check_host(host_name)
 
-    name = args.path
+    name = args.name
     dry_run = args.dry_run
     push = args.push
     force = args.force
@@ -686,7 +724,7 @@ def cmd_create_repo(args):
         host_name = get_current_host()
     check_host(host_name)
 
-    name = args.path
+    name = args.name
     dry_run = args.dry_run
     push = args.push
     repo_type = args.type
@@ -774,7 +812,7 @@ def cmd_create_snapshot(args):
         host_name = get_current_host()
     check_host(host_name)
 
-    name = args.path
+    name = args.name
     indices = args.index
     dry_run = args.dry_run
     push = args.push
@@ -802,7 +840,7 @@ def cmd_delete_snapshot(args):
         host_name = get_current_host()
     check_host(host_name)
 
-    name = args.path
+    name = args.name
     dry_run = args.dry_run
     push = args.push
     force = args.force
@@ -827,7 +865,7 @@ def cmd_restore_snapshot(args):
         host_name = get_current_host()
     check_host(host_name)
 
-    name = args.path
+    name = args.name
     dry_run = args.dry_run
     push = args.push
 
@@ -974,6 +1012,30 @@ def cmd_get_task(args):
 
     task_id = args.task_id
     get_task(config, host_name, task_id)
+
+def cmd_init(args):
+    init_eskit(args.demo)
+
+def init_eskit(is_demo):
+
+    if CACHE_ROOT.exists():
+        print(".eskit folder already exists")
+        if is_demo:
+            print("If you want to reset, please remove the folder first.")
+        return
+
+    ensure_root()
+
+    # write config for startup
+    config = {"hosts":[]}
+    with open(root_dir()/"config.json", "w", encoding="utf-8") as f:
+        json.dump(config, f, indent=2)
+
+    print(".eskit and .eskit/config.json created.")
+
+    if is_demo:
+        shutil.copytree(f"demo/{__cache_version__}", root_dir(), dirs_exist_ok=True)
+        print(f"demo/{__cache_version__} copied to .eskit folder.")
 
 def show_recovery(config, host, index, views, fields, flat):
     if host is None:
@@ -1372,7 +1434,6 @@ def run_rsync(config, rsync_config, host, dry_run, push):
 
     ssh_config = rsync_dst["auth"]["ssh"]
 
-    # sudo rsync -av --progress -e "ssh -p 22 -i .ssh/example-key" demo-user@example.com:/home/demo-user/elk/snapshot elk
     cmd = f"nohup rsync -avz --info=progress2 -e \"ssh -p {ssh_config['port']} -i {ssh_config['identity']}\" {ssh_config['user']}@{src_host['ip']}:{rsync_src['path']} {rsync_dst['path']} "
     cmd += f" >/tmp/eskit_rsync_{job.id}.log 2>&1 & echo $!"
     print(cmd)
@@ -1394,11 +1455,18 @@ def run_rsync(config, rsync_config, host, dry_run, push):
         write_job(host, job)
         ssh.close()
 
+def cmd_root(args):
+    if args.version:
+        print(__version__)
+
 def build_parser():
     p = argparse.ArgumentParser(
         prog="eskit",
         description="a light weight Elasticsearch toolkit for managing repo, snapshots, and index.")
     
+    p.add_argument("--version", action="store_true")
+    p.set_defaults(function=cmd_root)
+
     # common parsers
     common_parser = argparse.ArgumentParser(add_help=False)
     common_parser.add_argument("-c","--config", default=DEFAULT_CONFIG, help="set config file. Optional as default value is .eskit/config.json")
@@ -1434,11 +1502,22 @@ def build_parser():
     viewer_command_parser.add_argument("--fields")
     viewer_command_parser.add_argument("--flat", action="store_true")
 
-    sub = p.add_subparsers(required=True)
+
+
+    sub = p.add_subparsers()
+
+    # Init command
+    init = sub.add_parser("init")
+    init.set_defaults(function=cmd_init)
+    init.add_argument("--demo", action="store_true", help="initialize with demo data set")
 
     # Host commands
     host_parser = sub.add_parser("host")
     host_parser_sub = host_parser.add_subparsers(required=True)
+    
+    host_show_parser = host_parser_sub.add_parser("show", parents=[common_parser], help="show available hosts in the config")
+    host_show_parser.set_defaults(function=cmd_host)
+
     host_set_parser = host_parser_sub.add_parser("set", help="set as current host")
     host_set_parser.add_argument("host")
     host_set_parser.set_defaults(function=cmd_host_set)
@@ -1458,7 +1537,7 @@ def build_parser():
 
     # Repo sub command
     common_repo_parser = argparse.ArgumentParser(add_help=False)
-    common_repo_parser.add_argument("path", help="path to repo or snapshot. <repo> or <repo>/<snapshot>")
+    common_repo_parser.add_argument("name", help="name of repo or snapshot. <repo> or <repo>/<snapshot>")
 
     repo = sub.add_parser("repo", parents=[common_parser])
     
@@ -1481,7 +1560,7 @@ def build_parser():
 
     # common snap parser
     common_snap_parser = argparse.ArgumentParser(add_help=False)
-    common_snap_parser.add_argument("path", help="path to snapshot. must be <repo>/<snapshot>")
+    common_snap_parser.add_argument("name", help="name to snapshot. must be <repo>/<snapshot>")
 
     # common snapshot index parser
     common_snap_index_parser = argparse.ArgumentParser(add_help=False)
@@ -1495,8 +1574,7 @@ def build_parser():
     snap_delete = snap_sub.add_parser("delete", parents=[common_parser, common_snap_parser, mutating_parser, destructive_command_parser])
     snap_delete.set_defaults(function=cmd_delete_snapshot)
 
-    snap_restore = snap_sub.add_parser("restore", parents=[common_parser, common_snap_index_parser, mutating_parser])
-    snap_restore.add_argument("--path")
+    snap_restore = snap_sub.add_parser("restore", parents=[common_parser, common_snap_parser, common_snap_index_parser, mutating_parser])
     snap_restore.set_defaults(function=cmd_restore_snapshot)
 
     # Index commands

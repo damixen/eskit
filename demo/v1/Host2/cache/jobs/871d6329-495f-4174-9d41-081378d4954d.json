@@ -1,0 +1,16 @@
+{
+  "id": "871d6329-495f-4174-9d41-081378d4954d",
+  "type": "reindex",
+  "host": "Host1",
+  "status": "running",
+  "created_at": "2026-06-02T13:06:53.358790+00:00",
+  "updated_at": "2026-06-02T13:06:53.898244+00:00",
+  "payload": {
+    "src": "log-2026.05.25",
+    "dst": "log-2026.05.25"
+  },
+  "result": {
+    "task_id": "iJB85gfpT2uErgzlMvmJbA:1558703"
+  },
+  "error": null
+}

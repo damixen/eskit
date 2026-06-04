@@ -1,0 +1,41 @@
+[
+  {
+    "health": "yellow",
+    "status": "open",
+    "index": "metric-2026.05.12",
+    "uuid": "OSlNV9qhTM6N4qMArJl4wg",
+    "pri": "1",
+    "rep": "1",
+    "docs.count": "170456",
+    "docs.deleted": "0",
+    "store.size": "118.9mb",
+    "pri.store.size": "118.9mb",
+    "dataset.size": "118.9mb"
+  },
+  {
+    "health": "green",
+    "status": "open",
+    "index": "metrics-endpoint.metadata_current_default",
+    "uuid": "OLg3by0LRJio_C-_47yZAQ",
+    "pri": "1",
+    "rep": "0",
+    "docs.count": "0",
+    "docs.deleted": "0",
+    "store.size": "249b",
+    "pri.store.size": "249b",
+    "dataset.size": "249b"
+  },
+  {
+    "health": "green",
+    "status": "open",
+    "index": "log-2026.05.17",
+    "uuid": "z_wFt9GOSqCsia56RLXQFA",
+    "pri": "1",
+    "rep": "0",
+    "docs.count": "835694",
+    "docs.deleted": "0",
+    "store.size": "342.8mb",
+    "pri.store.size": "342.8mb",
+    "dataset.size": "342.8mb"
+  }
+]
