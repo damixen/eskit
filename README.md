@@ -568,44 +568,43 @@ Example:
 ## Operation Workflow Example
 This is how I use the eskit to perform my repository/snapshot workflow for my other project.
 
-1. Double-check which host I am working on.
+##### 1. Double-check which host I am working on.
 ```
 python eskit.py host get
 python eskit.py host set <host>
 ```
-2. Check the status of the host that I would like to operate on.
+##### 2. Check the status of the host that I would like to operate on.
 ```bash
 python eskit.py status
 ```
-3. Pull the latest information.
+##### 3. Pull the latest information.
 ```bash
 python eskit.py pull
 ```
-4. Check available indices
+##### 4. Check available indices
 ```bash
 python eskit.py cat index
 ```
-5. Create a snapshot
+##### 5. Create a snapshot
 ```bash
 python eskit.py snap create --index *2026.05.31* daily_repo/2026.05.31
 ```
 - Wildcard is supported.
 - Modifying operation will automatically update the cache after successful execution.
 
-
-6. Verify the created snapshot with the intended indices and state, etc.
+##### 6. Verify the created snapshot with the intended indices and state, etc.
 ```bash
 python eskit.py repo show daily_repo/2026.05.31
 ```
 - Optionally, you can use "view" to control what information is returned.
 
-7. Synchronize the snapshot from the host to my other host for investigation.
+##### 7. Synchronize the snapshot from the host to my other host for investigation.
 I use rsync for this operation, but currently eskit does not support it.
 So I manually run the command on the host.
 ```bash
 sudo rsync -av --progress -e "ssh -p 22 -i .ssh/id_ed25519" demo@<ip>:/home/demo/data/elk/snapshot /home/demo/data/elk
 ```
-8. Restore the snapshot for my other host.
+##### 8. Restore the snapshot for my other host.
 * Make sure to change the host if you are operating on a single folder for multiple hosts.
 ```base
 python eskit.py host set <host>
@@ -614,7 +613,7 @@ python eskit.py host set <host>
 python eskit.py snap restore daily_repo/2026.05.31
 ```
 
-9. Check index status for restore completion.
+##### 9. Check index status for restore completion.
 ```bash
 python eskit.py index status logs-2026.05.31
 ```
@@ -622,7 +621,7 @@ It will display data such as "bytes_percent" and "stage" to verify the restorati
 
 Typical workflow ends here, but I ran one more step to reindex the restored index.
 
-10. Run the reindex command
+##### 10. Run the reindex command
 For my specific use case, I will change the index's timestamp format.
 ```bash
 python eskit.py reindex -m timestamp-mapping logs-2026.05.31 logs-2026.05.31-ts-format-fix
@@ -635,7 +634,7 @@ Since reindexing can take time, it's requested without waiting for the completio
 python eskit.py task get iJB85gfpT2uErgzlMvmJbA:2176368  
 ```
 
-11. Once completed and verified, I will delete the original index.
+##### 11. Once completed and verified, I will delete the original index.
 ```base
 python eskit.py index delete logs-2026.05.31
 ```
