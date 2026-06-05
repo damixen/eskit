@@ -678,3 +678,15 @@ ESKit is intended to remain:
 - Focused on operational workflows rather than full Elasticsearch administration
 
 The goal is not to replace Kibana or official Elasticsearch tooling, but to provide a fast command-line workflow for snapshot, restore, and migration tasks.
+
+## Roadmap
+
+Planned or under consideration:
+
+- Local Elasticsearch mode (no SSH required)
+- Snapshot archive hub (ESKit as backup aggregator)
+- Optional desktop UI for management workflows
+
+## License
+
+This project is licensed under the MIT License. See the LICENSE file for details.
