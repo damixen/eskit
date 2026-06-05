@@ -144,7 +144,7 @@ This tool supports connecting to hosts with SSH by using paramiko. Currently, it
 
 For key authentication, it supports SSH-Agent, a Runtime passphrase prompt (Ed25519Key only), or an unencrypted key. It's highly recommended to utilize SSH-Agent to avoid repeated passphrase prompts.
 
-For password authentication, it currently does not support environment variables, so passwords needs be in the config file. This is intended primarily for lab and development environments.
+For password authentication, it currently does not support environment variables, so passwords need to be in the config file. This is intended primarily for lab and development environments.
 
 ### Security Notes
 
@@ -299,6 +299,9 @@ eskit snap create backup-repo/nightly-2026.06.01
 ```
 - Data Destination: Elasticsearch
 - Operation Type: Mutating
+- You can use **--index** option to speicify which indices to include.
+> ⚠️ **Wildcard Note**\
+> You may use a wildcard in the index name, but I observed that Elasticsearch would include hidden indices that match the expression. You may exclude such indices during restoration by explicitly specifying the index name.
 
 Restore a snapshot:
 
@@ -590,30 +593,40 @@ python eskit.py cat index
 python eskit.py snap create --index *2026.05.31* daily_repo/2026.05.31
 ```
 - Wildcard is supported.
-- Modifying operation will automatically update the cache after successful execution.
+- The mutating operation will automatically update the cache after successful execution.
 
 ##### 6. Verify the created snapshot with the intended indices and state, etc.
 ```bash
-python eskit.py repo show daily_repo/2026.05.31
+python eskit.py repo show daily_repo/2026.05.31 --view snapshot-basic
+or
+python eskit.py cat snap --view snapshot-basic # returns list of snapshots
 ```
+- You may need to wait until the **state** becomes **SUCCESS** by pulling data again.
 - Optionally, you can use "view" to control what information is returned.
 
-##### 7. Synchronize the snapshot from the host to my other host for investigation.
-I use rsync for this operation, but currently eskit does not support it.
+##### 7. Synchronize the snapshot from the host to my other host for restoration.
+I use rsync for this operation, but currently, eskit does not support it.
 So I manually run the command on the host.
 ```bash
 sudo rsync -av --progress -e "ssh -p 22 -i .ssh/id_ed25519" demo@<ip>:/home/demo/data/elk/snapshot /home/demo/data/elk
 ```
+> ⚠️ **Rsync Note**\
+> After a successful rsync operation, you may need to delete the repository on the destination host side in order to reflect the update. That's the behavior I observed so far. Although the repository is deleted, snapshots remain.
+> ```bash
+> eskit repo delete <repo>
+> eskit repo create <repo> --location abc
+> ```
+
 ##### 8. Restore the snapshot for my other host.
 * Make sure to change the host if you are operating on a single folder for multiple hosts.
-```base
+```bash
 python eskit.py host set <host>
 ```
-```base
+```bash
 python eskit.py snap restore daily_repo/2026.05.31
 ```
 
-##### 9. Check index status for restore completion.
+##### 9. Check the index status for restore completion.
 ```bash
 python eskit.py index status logs-2026.05.31
 ```
@@ -626,16 +639,17 @@ For my specific use case, I will change the index's timestamp format.
 ```bash
 python eskit.py reindex -m timestamp-mapping logs-2026.05.31 logs-2026.05.31-ts-format-fix
 ```
-Since reindexing can take time, it's requested without waiting for the completion of the job. The command will create a file for a job/task in a cache file, and output a job ID which can be used to get the job information in the cache. e.g. host/cache/jobs/job_id.json.
+Since reindexing can take time, it's requested without waiting for the job to complete. The command will create a cache file for a job/task and output a job ID that can be used to retrieve the job information in the cache. e.g. host/cache/jobs/job_id.json.
 
 - Currently, eskit doesn't support updating job status since it's created, so you would need to use a command to get the status.
 
-```base
+```bash
 python eskit.py task get iJB85gfpT2uErgzlMvmJbA:2176368  
 ```
+You can check "status.total" and "status.created" to see progress, and "completed".
 
 ##### 11. Once completed and verified, I will delete the original index.
-```base
+```bash
 python eskit.py index delete logs-2026.05.31
 ```
 
@@ -646,7 +660,7 @@ python eskit.py index delete logs-2026.05.31
 
 ## Future Updates and Improvements
 - Automatic snapshot compatibility validation.
-- Continuous task monitoring / polling.
+- Continuous task monitoring/polling.
 - Complete Rsync workflow.
 - Streaming logs for long-running operations.
 - Shell interactive mode.

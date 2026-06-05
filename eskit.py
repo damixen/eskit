@@ -954,8 +954,9 @@ def cmd_restore_snapshot(args):
     name = args.name
     dry_run = args.dry_run
     push = args.push
+    index = args.index
 
-    restore_snapshot(config, host_name, name, dry_run, push)
+    restore_snapshot(config, host_name, name, index, dry_run, push)
 
 
 def cmd_restore_status(args):
@@ -1248,7 +1249,7 @@ def delete_snapshot(config, host, spec, dry_run, push, force):
         ssh.close()
 
 
-def restore_snapshot(config, host, spec, dry_run, push):
+def restore_snapshot(config, host, spec, index, dry_run, push):
     repo, delim, snap = spec.partition("/")
     if host is None:
         host = get_current_host()
@@ -1258,7 +1259,10 @@ def restore_snapshot(config, host, spec, dry_run, push):
     print_host(host)
 
     body = {}
-    body["indices"] = "*"
+    if index:
+        body["indices"] = index
+    else:
+        body["indices"] = "*"
     body["include_global_state"] = False
 
     if dry_run:
