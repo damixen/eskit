@@ -10,7 +10,7 @@ import uuid
 import time
 import shutil
 
-__version__ = "0.8.0"
+__version__ = "0.1.0"
 __cache_version__ = "v1"
 
 DEFAULT_CONFIG = ".eskit/config.json"
