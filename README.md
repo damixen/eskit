@@ -133,7 +133,7 @@ flowchart
 ```
 
 - No Elasticsearch Python client is required.
-- Elasticsearch is accessed locally on each host via curl localhost:<port> over SSH, so ESKit does not require a TLS-enabled client connection to the cluster.
+- Elasticsearch is accessed locally on each host via curl localhost:9200 over SSH, so ESKit does not require a TLS-enabled client connection to the cluster.
 ---
 
 ## SSH Login
@@ -145,6 +145,13 @@ This tool supports connecting to hosts with SSH by using paramiko. Currently, it
 For key authentication, it supports SSH-Agent, a Runtime passphrase prompt (Ed25519Key only), or an unencrypted key. It's highly recommended to utilize SSH-Agent to avoid repeated passphrase prompts.
 
 For password authentication, it currently does not support environment variables, so passwords needs be in the config file. This is intended primarily for lab and development environments.
+
+### Security Notes
+
+- SSH key authentication is recommended.
+- Password authentication is supported primarily for lab and development environments.
+- Production deployments should use SSH keys or SSH-Agent where possible.
+- Do not commit `.eskit/config.json` to source control.
 
 ---
 
