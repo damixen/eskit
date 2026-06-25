@@ -1,7 +1,5 @@
-from job import ESKitJob
 import subprocess
-import os
-
+from job import ESKitJob
 
 class ESKitExecutor:
     def start(self, job):
@@ -33,12 +31,13 @@ class LocalExecutor(ESKitExecutor):
 class RsyncExecutor(LocalExecutor):
 
     def start(self, job: ESKitJob):
-
+        # NOT_IMPLEMENTED
         super().start(job)
 
 
 class ElasticsearchExecutor(ESKitExecutor):
     def start(self, job):
+        # NOT_IMPLEMENTED
         # Submit async request
         # task_id = submit_reindex(job.payload)
 
@@ -47,8 +46,8 @@ class ElasticsearchExecutor(ESKitExecutor):
         pass
 
     def refresh(self, job):
+        # NOT_IMPLEMENTED
         # task = get_task(job.payload["task_id"])
-
         # if task["completed"]:
         #    job.status = "success"
         #    job.result = task
@@ -57,5 +56,6 @@ class ElasticsearchExecutor(ESKitExecutor):
         pass
 
     def cancel(self, job):
+        # NOT_IMPLEMENTED
         # cancel_task(job.payload["task_id"])
         pass
