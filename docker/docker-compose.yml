@@ -1,0 +1,39 @@
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:9.2.3
+    container_name: eskit-es
+
+    environment:
+      # Single-node development cluster
+      - discovery.type=single-node
+
+      # Disable security for local development
+      - xpack.security.enabled=false
+
+      # Allow filesystem snapshot repositories. Example.
+      # Change this for your needs
+      - path.repo=/snapshots
+
+      # Java heap (adjust based on available RAM)
+      - ES_JAVA_OPTS=-Xms1g -Xmx1g
+
+    ports:
+      - "9201:9200"
+
+    volumes:
+      # Elasticsearch data
+      - ./data:/usr/share/elasticsearch/data
+
+      # Snapshot repository example.
+      # Change this for your needs
+      - ./snapshots:/snapshots
+
+    networks:
+      - eskit
+
+    restart: unless-stopped
+
+networks:
+  eskit:
+    driver: bridge
+
