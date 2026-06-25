@@ -580,8 +580,9 @@ class ESClient:
         if password:
             safe_cmd = safe_cmd.replace(password, "******")
 
+        print("Making Request to ES")
         print(f"transport:{self.transport.name}")
-        print(f"cmd:{safe_cmd}\n", safe_cmd)
+        print(f"cmd:{safe_cmd}\n")
 
         result = self.transport.run(cmd)
         body, status = result.rsplit("\n", 1)
@@ -599,7 +600,9 @@ class ESClient:
         return body
 
 
-def pull_host(config, host_name, es):
+def pull_host(config, host_name, es, kind):
+
+    print(f"kind:{kind}")
 
     if host_name is None:
         host_name = get_current_host()
@@ -607,23 +610,27 @@ def pull_host(config, host_name, es):
     check_host(host_name)
     print_host(host_name)
 
-    repos = es.request("GET", "/_snapshot")
-    write_cache(host_name, "repos", repos)
+    all = len(kind) == 0
 
-    snapshots = {}
-    if isinstance(repos, dict):
-        for repo in repos.keys():
-            snapshots[repo] = es.request("GET", f"/_snapshot/{repo}/_all")
-    write_cache(host_name, "snapshots", snapshots)
+    if "es" in kind or all:
+        repos = es.request("GET", "/_snapshot")
+        write_cache(host_name, "repos", repos)
 
-    indices = es.request("GET", "/_cat/indices?format=json")
-    write_cache(host_name, "indices", indices)
+        snapshots = {}
+        if isinstance(repos, dict):
+            for repo in repos.keys():
+                snapshots[repo] = es.request("GET", f"/_snapshot/{repo}/_all")
+        write_cache(host_name, "snapshots", snapshots)
 
-    version = es.request("GET", "/")
-    write_cache(host_name, "version", version)
+        indices = es.request("GET", "/_cat/indices?format=json")
+        write_cache(host_name, "indices", indices)
+
+        version = es.request("GET", "/")
+        write_cache(host_name, "version", version)
 
     # pull archive status
-    write_archive_all(config, host_name)
+    if "archive" in kind or all:
+        write_archive_all(config, host_name)
 
     print("\nCache updated.\n")
 
@@ -821,7 +828,7 @@ def cmd_pull(args):
 
     transport, es = connect_es(config, host_name)
     try:
-        pull_host(config, host_name, es)
+        pull_host(config, host_name, es, args.kind)
     finally:
         transport.close()
 
@@ -1770,6 +1777,10 @@ def get_file_stats(path, transport):
 
     cmd = f"TZ=UTC stat -c '{stas_format}' {path}"
 
+    print("Getting File Stat")
+    print(f"transport:{transport.name}")
+    print(f"cmd:{cmd}\n")
+
     out = transport.run(cmd)
 
     if not out:
@@ -2140,6 +2151,9 @@ def build_parser():
         "pull",
         parents=[common_parser],
         help="Pulls resource data from the current host.",
+    )
+    pull.add_argument(
+        "kind", choices=["es", "archive"], nargs="*", help="Kind of cache to pull. es - Elasticsearch Cache, archive - Archive Cache."
     )
     pull.set_defaults(function=cmd_pull)
 
