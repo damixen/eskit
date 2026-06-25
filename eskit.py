@@ -35,6 +35,7 @@ CURRENT_HOST = ".current_host"
 
 ## EXCEPTIONS
 
+
 class ESKitError(Exception):
     def __init__(self, msg):
         self.msg = msg
@@ -1221,6 +1222,35 @@ def cmd_init(args):
     init_eskit(args.demo, args.elastic)
 
 
+def cmd_list_archive(args):
+
+    host_name = args.host
+    if host_name is None:
+        host_name = get_current_host()
+
+    check_host(host_name)
+
+    config = None
+    if "config" in args:
+        config = load_config(args.config)
+
+    data = list_archives(host_name)
+
+    views = args.view
+    fields = args.fields
+    flat = args.flat
+    target_fields = build_field_list(config, views, fields)
+    out = []
+
+    if len(target_fields) > 0:
+        for job in data:
+            out.append(apply_view(job, target_fields, flat))
+    else:
+        out = data
+
+    print(json.dumps(out, indent=2))
+
+
 def cmd_pull_archive(args):
     config = None
     if "config" in args:
@@ -2314,7 +2344,7 @@ def build_parser():
     status.set_defaults(function=cmd_status)
 
     archive_common_parser = argparse.ArgumentParser(add_help=False)
-    archive_common_parser.add_argument("--name", help="Name of the archive")
+    archive_common_parser.add_argument("name", help="Name of the archive")
 
     archive_common_operation_parser = argparse.ArgumentParser(add_help=False)
     archive_common_operation_parser.add_argument(
@@ -2335,6 +2365,12 @@ def build_parser():
     )
 
     archive_sub = archive.add_subparsers(required=True)
+
+    archive_list_parser = archive_sub.add_parser(
+        "list",
+        parents=[common_parser, viewer_command_parser],
+    )
+    archive_list_parser.set_defaults(function=cmd_list_archive)
 
     archive_pull_parser = archive_sub.add_parser(
         "pull",
@@ -2385,7 +2421,6 @@ def build_parser():
 def main():
 
     args = build_parser().parse_args()
-    config = None
 
     global job_manager
     job_manager = ESKitJobManager(CACHE_ROOT)
