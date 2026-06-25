@@ -565,7 +565,7 @@ class ESClient:
             username = self.config["user"].get("name")
             password = self.config["user"].get("password")
         cmd = "curl "
-        cmd += "-w '\\n%{{http_code}}' "
+        cmd += "-w '\\n%{http_code}' "
 
         if username and password:
             cmd += f" -u {username}:{password}"
