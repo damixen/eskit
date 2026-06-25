@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from dataclasses import dataclass, asdict
 
+
 @dataclass
 class ESKitJob:
     id: str
@@ -21,7 +22,7 @@ class ESKitJob:
 
     def get_output_id(self):
         return self.id
-    
+
     @classmethod
     def from_dict(cls, data: dict):
         return cls(
@@ -37,9 +38,9 @@ class ESKitJob:
             error=data.get("error"),
             cache_path=data.get("cache_path"),
             log_path=data.get("log_path"),
-            pid=data.get("pid")
+            pid=data.get("pid"),
         )
-    
+
     def to_dict(self) -> dict:
         data = {
             "id": self.id,
@@ -52,7 +53,7 @@ class ESKitJob:
             "payload": self.payload,
             "log_path": self.log_path,
             "cache_path": self.cache_path,
-            "pid": self.pid
+            "pid": self.pid,
         }
 
         if self.result is not None:

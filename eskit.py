@@ -18,6 +18,7 @@ from job import ESKitJob
 from archive import ESKitArchive, ESKitArchiveState
 from executers import RsyncExecutor, LocalExecutor, ElasticsearchExecutor
 from job_manager import ESKitJobManager
+
 job_manager = None
 
 
@@ -38,15 +39,18 @@ CURRENT_HOST = ".current_host"
 import subprocess
 import os
 
+
 class ESKitError(Exception):
     def __init__(self, msg):
         self.msg = msg
         super().__init__(msg)
 
+
 class CurlError(ESKitError):
     def __init__(self, msg):
         self.msg = msg
         super().__init__(msg)
+
 
 class ElasticsearchError(ESKitError):
     def __init__(self, status, response):
@@ -91,6 +95,7 @@ def print_host(host):
 
 def print_dry_run():
     print(f"\n*Dry Run*\n")
+
 
 def print_preview():
     print(f"\n*Preview*\n")
@@ -191,6 +196,7 @@ def cache_date(path):
 def job_dir(host):
     return CACHE_ROOT / host / "cache" / "jobs"
 
+
 def archive_dir(host):
     return CACHE_ROOT / host / "cache" / "arvhices"
 
@@ -206,8 +212,10 @@ def ensure_cache(host):
 def ensure_job_dir(host):
     job_dir(host).mkdir(parents=True, exist_ok=True)
 
+
 def ensure_archive_dir(host):
     archive_dir(host).mkdir(parents=True, exist_ok=True)
+
 
 def ensure_host(host):
     if host is None:
@@ -215,6 +223,7 @@ def ensure_host(host):
 
     check_host(host)
     return host
+
 
 def write_cache(host, name, data):
     ensure_cache(host)
@@ -255,6 +264,7 @@ def list_jobs(host):
     jobs.sort(key=lambda x: x["created_at"], reverse=True)
     return jobs
 
+
 def write_archive_all(config, host):
     host_config = get_host(config, host)
     archives = host_config.get("archives")
@@ -264,7 +274,7 @@ def write_archive_all(config, host):
 
     for archive in archives:
         pull_archive_stat(config, host, archive)
-    
+
     # clean stale cache
     cached_archives = list_archives(host)
 
@@ -273,9 +283,11 @@ def write_archive_all(config, host):
         if not exists:
             delete_archive(host, ESKitArchiveState.from_dict(cache))
 
+
 def delete_archive(host, archive: ESKitArchiveState):
     ensure_archive_dir(host)
     Path(archive_dir(host) / f"{archive.name}.json").unlink(missing_ok=True)
+
 
 def write_archive(host, archive: ESKitArchiveState):
     ensure_archive_dir(host)
@@ -300,6 +312,7 @@ def list_archives(host):
 
     archives.sort(key=lambda x: x["created_at"], reverse=True)
     return archives
+
 
 def is_agent_available():
     try:
@@ -430,6 +443,7 @@ def build_projection(data, field_paths):
 
     return out
 
+
 class AsynchronousProcess:
     def __init__(self, host_cfg):
         self.host_cfg = host_cfg
@@ -441,12 +455,14 @@ class AsynchronousProcess:
 
     def run(self, cmd):
 
-        
-        result = subprocess.Popen(shlex.split(cmd, posix=True), stdout=subprocess.DEVNULL,
-    stderr=subprocess.DEVNULL)
+        result = subprocess.Popen(
+            shlex.split(cmd, posix=True),
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
 
         return result
-    
+
     def check(self, pid):
         if pid < 0:
             return False
@@ -479,24 +495,27 @@ class AsynchronousProcess:
     def close(self):
         pass
 
+
 class SynchronousProcess:
     def __init__(self, shell=False):
         self.name = "SynchronousProcess"
-        self.shell=shell
+        self.shell = shell
         pass
 
     def connect(self):
         pass
 
     def run(self, cmd):
-        
+
         if self.shell:
             result = subprocess.run(cmd, capture_output=True, text=True, shell=True)
         else:
-            result = subprocess.run(shlex.split(cmd, posix=True), capture_output=True, text=True)
         #result = subprocess.run(['curl', '-X', 'GET', 'http://localhost:9200/_snapshot'], capture_output=True, text=True)
+            result = subprocess.run(
+                shlex.split(cmd, posix=True), capture_output=True, text=True
+            )
         return result.stdout
-    
+
     def close(self):
         pass
 
@@ -581,7 +600,6 @@ class ESClient:
         if body is not None:
             payload = json.dumps(body).replace("'", "'\"'\"'")
             cmd += f" -H 'Content-Type: application/json' -d '{payload}'"
-            # print("elastic_config", self.config)
 
         safe_cmd = cmd
         if password:
@@ -593,7 +611,6 @@ class ESClient:
         #cmd = "env | grep -i proxy"
         
         result = self.transport.run(cmd)
-        #print(f"result:{result}")
         body, status = result.rsplit("\n", 1)
         status = int(status)
 
@@ -602,7 +619,7 @@ class ESClient:
 
         if body:
             body = json.loads(body)
-        
+
         if status >= 400:
             raise ElasticsearchError(status, body)
 
@@ -648,8 +665,8 @@ def connect_es(config, host_name):
     host_cfg = get_host(config, host_name)
 
     is_localhost = host_cfg.get("localhost") or False
-    
-    transport = None;
+
+    transport = None
 
     if is_localhost:
         transport = SynchronousProcess()
@@ -707,7 +724,7 @@ def cmd_list_job(args):
 
     local = args.local
 
-    #data = list_jobs(host_name, )
+    # data = list_jobs(host_name, )
     data = job_manager.list_dicts(host_name, local)
     data.sort(key=lambda x: datetime.fromisoformat(x["updated_at"]), reverse=True)
 
@@ -745,7 +762,7 @@ def cmd_read_job(args):
     target_fields = build_field_list(config, views, fields)
     out = {}
 
-    #data = read_job(host_name, job_search_id)
+    # data = read_job(host_name, job_search_id)
     data = job_manager.load_dict(host_name, job_search_id)
 
     if len(target_fields) > 0:
@@ -1233,6 +1250,7 @@ def cmd_get_task(args):
 def cmd_init(args):
     init_eskit(args.demo, args.elastic)
 
+
 def cmd_pull_archive(args):
     config = None
     if "config" in args:
@@ -1244,7 +1262,17 @@ def cmd_pull_archive(args):
         host_name = get_current_host()
     check_host(host_name)
 
-    pull_archive(config, host_name, args.name, args.contents, args.dry_run, False, False, args.preview)
+    pull_archive(
+        config,
+        host_name,
+        args.name,
+        args.contents,
+        args.dry_run,
+        False,
+        False,
+        args.preview,
+    )
+
 
 def cmd_sync_archive(args):
     config = None
@@ -1257,7 +1285,17 @@ def cmd_sync_archive(args):
         host_name = get_current_host()
     check_host(host_name)
 
-    pull_archive(config, host_name, args.name, args.contents, args.dry_run, False, True, args.preview)
+    pull_archive(
+        config,
+        host_name,
+        args.name,
+        args.contents,
+        args.dry_run,
+        False,
+        True,
+        args.preview,
+    )
+
 
 def cmd_push_archive(args):
     config = None
@@ -1270,7 +1308,16 @@ def cmd_push_archive(args):
         host_name = get_current_host()
     check_host(host_name)
 
-    push_archive(config, host_name, args.name, args.dst, args.contents, args.dry_run, args.preview)
+    push_archive(
+        config,
+        host_name,
+        args.name,
+        args.dst,
+        args.contents,
+        args.dry_run,
+        args.preview,
+    )
+
 
 def cmd_show_archive(args):
     host_name = args.host
@@ -1290,7 +1337,7 @@ def cmd_show_archive(args):
     target_fields = build_field_list(config, views, fields)
     out = {}
 
-    #data = read_job(host_name, job_search_id)
+    # data = read_job(host_name, job_search_id)
     data = read_archive(host_name, archive_name)
 
     if len(target_fields) > 0:
@@ -1299,6 +1346,7 @@ def cmd_show_archive(args):
         out = data
 
     print(json.dumps(out, indent=2))
+
 
 def init_eskit(is_demo, is_elastic):
 
@@ -1320,11 +1368,10 @@ def init_eskit(is_demo, is_elastic):
     if is_demo:
         shutil.copytree(f"demo/{__cache_version__}", root_dir(), dirs_exist_ok=True)
         print(f"demo/{__cache_version__} copied to .eskit folder.")
-    
+
     if is_elastic:
         shutil.copy("docker/docker-compose.yml", ".")
         print(f"docker file copied to the working folder.")
-
 
 
 def show_recovery(config, host, index, views, fields, flat):
@@ -1712,9 +1759,11 @@ def show_index(config, host, index, views, fields, flat):
     finally:
         ssh.close()
 
+
 def parse_stat_line(line: str):
     parts = line.strip().split("|")
     return dict(kv.split("=", 1) for kv in parts)
+
 
 def get_file_stats(path, transport):
 
@@ -1734,49 +1783,52 @@ def get_file_stats(path, transport):
     stat["atime_ms"] = int(stat["atime_ms"]) * 1000
 
     cmd = f"du -sb {path}"
-    #print(f"cmd:{cmd}")
+    # print(f"cmd:{cmd}")
     file_size = transport.run(cmd)
-    #print(f"file_size:{file_size}")
+    # print(f"file_size:{file_size}")
     stat["size"] = file_size.split("\t")[0]
-    #print(stat)
-    
+    # print(stat)
+
     return stat
+
 
 def get_ssh_config_from_remote_target(config, remote_target):
     remote_host, sep, remote_path = remote_target.partition(":")
-    
+
     if not sep:
         return None
-    
-    #print(f"remote_host:{remote_host}")
+
+    # print(f"remote_host:{remote_host}")
     if remote_host:
         return get_host(config, remote_host).get("ssh")
-    
+
     return None
+
 
 # <eskit_host>:<dst> to <ssh_host>:<dst>
 def convert_remote_host(config, remote_target):
 
     remote_host, sep, remote_path = remote_target.partition(":")
-    
+
     if not sep:
         return remote_target
-    
+
     remote_host_config = get_host(config, remote_host)
-    #print(f"remote_host_config:{remote_host_config}")
-    
+    # print(f"remote_host_config:{remote_host_config}")
+
     ssh_config = remote_host_config.get("ssh")
     user = ssh_config.get("user")
-    
+
     return f"{user}@{remote_host_config["ip"]}:{remote_path}"
 
+
 def get_ssh_command(config, remote_target):
-    
+
     ssh_config = get_ssh_config_from_remote_target(config, remote_target)
     if not ssh_config:
         return None
-    
-    #print(f"ssh_config:{ssh_config}")
+
+    # print(f"ssh_config:{ssh_config}")
     ssh_cmd = ""
 
     password = ssh_config.get("password")
@@ -1789,9 +1841,10 @@ def get_ssh_command(config, remote_target):
     if identity:
         ssh_cmd += f" -i {identity}"
 
-    #print(f"ssh_cmd:{ssh_cmd}")
+    # print(f"ssh_cmd:{ssh_cmd}")
 
     return ssh_cmd
+
 
 def pull_archive_stat(config, host, archive_config):
 
@@ -1809,7 +1862,7 @@ def pull_archive_stat(config, host, archive_config):
         print(f"\nfailed to get file stats for remote_src:{e}")
         return
     transport.close()
-    #print(json.dumps(src_stats, indent=2))
+    # print(json.dumps(src_stats, indent=2))
 
     # dst - local
     transport = SynchronousProcess(shell=True)
@@ -1818,7 +1871,7 @@ def pull_archive_stat(config, host, archive_config):
     except RuntimeError as e:
         print(f"failed to get file stats for local_dst:{e}")
         return
-    #print(json.dumps(dst_stats, indent=2))
+    # print(json.dumps(dst_stats, indent=2))
 
     archive = ESKitArchiveState(
         name=archive_config["name"],
@@ -1828,10 +1881,11 @@ def pull_archive_stat(config, host, archive_config):
         updated_at_ms=int(datetime.now(timezone.utc).timestamp() * 1000),
         last_pull=datetime.now(timezone.utc).isoformat(),
         remote_src_stat=src_stats,
-        local_dst_stat=dst_stats
+        local_dst_stat=dst_stats,
     )
-    #print(f"archive:{archive}")
+    # print(f"archive:{archive}")
     write_archive(host, archive)
+
 
 def pull_archive(config, host, name, contents, dry_run, all, sync, preview):
 
@@ -1840,7 +1894,6 @@ def pull_archive(config, host, name, contents, dry_run, all, sync, preview):
     print_host(host)
 
     archives = host_config.get("archives") or {}
-    print(f"archives:{archives}")
 
     archive = None
     for a in archives:
@@ -1850,14 +1903,19 @@ def pull_archive(config, host, name, contents, dry_run, all, sync, preview):
     if not archive:
         print(f"archive:{name} is not found for host:{host}")
         return
-    
+
     archive_type = archive["type"]
     job = None
-    if (archive_type == 'snapshot'):
-        job = pull_snapshot(config, host, name, archive, contents,  dry_run, sync, preview)
+    if archive_type == "snapshot":
+        job = pull_snapshot(
+            config, host, name, archive, contents, dry_run, sync, preview
+        )
 
     if not dry_run:
-        print(f"job started:\nid:{job.id}\ncache:{job.cache_path}\nlog:{job.log_path}\npid:{job.pid}")
+        print(
+            f"job started:\nid:{job.id}\ncache:{job.cache_path}\nlog:{job.log_path}\npid:{job.pid}"
+        )
+
 
 def pull_snapshot(config, host, name, archive, contets, dry_run, sync, preview):
 
@@ -1865,36 +1923,28 @@ def pull_snapshot(config, host, name, archive, contets, dry_run, sync, preview):
     rsync_dst = archive["local_dst"]
 
     if contets:
-        rsync_src +='/'
-    
-    #print(rsync_src)
-    #print(rsync_dst)
+        rsync_src += "/"
 
     # append the current host to create the remote dst foramt
     remote_host = f"{host}:{rsync_src}"
     ssh_cmd = get_ssh_command(config, remote_host)
     remote_rsync_src = convert_remote_host(config, remote_host)
 
-    cmd = ['rsync', '-av', '--progress']
+    cmd = ["rsync", "-av", "--progress"]
 
     if preview:
         print_preview()
-        cmd.append('-n')
+        cmd.append("-n")
 
     if sync:
-        cmd.append('--delete')
+        cmd.append("--delete")
 
     if ssh_cmd:
-        cmd.append('-e')
+        cmd.append("-e")
         cmd.append(ssh_cmd)
     cmd.append(remote_rsync_src)
     cmd.append(rsync_dst)
-    #print(f"cmd:{cmd}")
-    '''
-     rsync -av --progress -e "sshpass -p 16183220tk! ssh -p 64295" zach@192.168.1.146:/home/zach/rsynctest .
-    '''
-    #cmd = ['rsync', '-av', '--progress', '-e', 'sshpass -p 16183220tk! ssh -p 64295', 'zach@192.168.1.146:/home/zach/rsynctest', '.']
-    
+
     job = ESKitJob(
         id=str(uuid.uuid4()),
         name="snapshots",
@@ -1903,7 +1953,7 @@ def pull_snapshot(config, host, name, archive, contets, dry_run, sync, preview):
         status="running",
         created_at=datetime.now(timezone.utc).isoformat(),
         updated_at=datetime.now(timezone.utc).isoformat(),
-        payload={"src": rsync_src, "dst": rsync_dst, "cmd":cmd},
+        payload={"src": rsync_src, "dst": rsync_dst, "cmd": cmd},
     )
     if dry_run:
         print_dry_run()
@@ -1911,10 +1961,10 @@ def pull_snapshot(config, host, name, archive, contets, dry_run, sync, preview):
     else:
         job = job_manager.submit(job, LocalExecutor())
 
-
     pull_archive_stat(config, host, archive)
 
     return job
+
 
 def push_archive(config, host, name, dst, contents, dry_run, preview):
 
@@ -1923,7 +1973,6 @@ def push_archive(config, host, name, dst, contents, dry_run, preview):
     print_host(host)
 
     archives = host_config.get("archives") or {}
-    #print(f"archives:{archives}")
 
     archive = None
     for a in archives:
@@ -1933,14 +1982,19 @@ def push_archive(config, host, name, dst, contents, dry_run, preview):
     if not archive:
         print(f"archive:{name} is not found for host:{host}")
         return
-    
+
     archive_type = archive["type"]
     job = None
-    if (archive_type == 'snapshot'):
-        job = push_snapshot(config, host, name, archive, dst, contents, dry_run, preview)
+    if archive_type == "snapshot":
+        job = push_snapshot(
+            config, host, name, archive, dst, contents, dry_run, preview
+        )
 
     if not dry_run:
-        print(f"job started:\nid:{job.id}\ncache:{job.cache_path}\nlog:{job.log_path}\npid:{job.pid}")
+        print(
+            f"job started:\nid:{job.id}\ncache:{job.cache_path}\nlog:{job.log_path}\npid:{job.pid}"
+        )
+
 
 def push_snapshot(config, host, name, archive, remote_dst, contents, dry_run, preview):
 
@@ -1951,31 +2005,31 @@ def push_snapshot(config, host, name, archive, remote_dst, contents, dry_run, pr
         rsync_src = rsync_src + "/"
 
     rsync_dst = remote_dst
-    
-    #print(rsync_src)
-    #print(rsync_dst)
 
     ssh_cmd = get_ssh_command(config, rsync_dst)
     rsync_dst = convert_remote_host(config, rsync_dst)
 
-    cmd = ['rsync', '-rv', '--progress', '--delete', '--no-owner', '--no-group', '--no-times']
+    cmd = [
+        "rsync",
+        "-rv",
+        "--progress",
+        "--delete",
+        "--no-owner",
+        "--no-group",
+        "--no-times",
+    ]
 
     if preview:
         print_preview()
-        cmd.append('-n')
+        cmd.append("-n")
 
     if ssh_cmd:
-        cmd.append('-e')
+        cmd.append("-e")
         cmd.append(ssh_cmd)
-    
+
     cmd.append(rsync_src)
     cmd.append(rsync_dst)
-    #print(f"cmd:{cmd}")
-    '''
-     rsync -rv --progress -e "sshpass -p 16183220tk! ssh -p 64295" zach@192.168.1.146:/home/zach/rsynctest .
-    '''
-    #cmd = ['rsync', '-av', '--progress', '-e', 'sshpass -p 16183220tk! ssh -p 64295', 'zach@192.168.1.146:/home/zach/rsynctest', '.']
-    
+
     job = ESKitJob(
         id=str(uuid.uuid4()),
         name="snapshots",
@@ -1984,7 +2038,7 @@ def push_snapshot(config, host, name, archive, remote_dst, contents, dry_run, pr
         status="running",
         created_at=datetime.now(timezone.utc).isoformat(),
         updated_at=datetime.now(timezone.utc).isoformat(),
-        payload={"src": rsync_src, "dst": rsync_dst, "cmd":cmd},
+        payload={"src": rsync_src, "dst": rsync_dst, "cmd": cmd},
     )
     if dry_run:
         print_dry_run()
@@ -1993,6 +2047,7 @@ def push_snapshot(config, host, name, archive, remote_dst, contents, dry_run, pr
         job = job_manager.submit(job, LocalExecutor())
 
     return job
+
 
 def cmd_root(args):
     if args.version:
@@ -2059,7 +2114,9 @@ def build_parser():
         "--demo", action="store_true", help="Initialize with demo data set"
     )
     init.add_argument(
-        "--elastic", action="store_true", help="Initialize with elasticserach docker file installed"
+        "--elastic",
+        action="store_true",
+        help="Initialize with elasticserach docker file installed",
     )
 
     # Host commands
@@ -2286,28 +2343,61 @@ def build_parser():
     archive_common_parser.add_argument("--name", help="Name of the archive")
 
     archive_common_operation_parser = argparse.ArgumentParser(add_help=False)
-    archive_common_operation_parser.add_argument("--contents", default=False, action="store_true", help="Copy the contents of the archive directory into the destination, equivalent to using a trailing / on the rsync source path.")
-    archive_common_operation_parser.add_argument("--preview", action="store_true", help="Execute internal commands such as rsync with dry-run mode.")
+    archive_common_operation_parser.add_argument(
+        "--contents",
+        default=False,
+        action="store_true",
+        help="Copy the contents of the archive directory into the destination, equivalent to using a trailing / on the rsync source path.",
+    )
+    archive_common_operation_parser.add_argument(
+        "--preview",
+        action="store_true",
+        help="Execute internal commands such as rsync with dry-run mode.",
+    )
 
     # Archive Command
-    archive = sub.add_parser("archive", parents=[common_parser], help="Archive commands.")
+    archive = sub.add_parser(
+        "archive", parents=[common_parser], help="Archive commands."
+    )
 
     archive_sub = archive.add_subparsers(required=True)
 
     archive_pull_parser = archive_sub.add_parser(
-        "pull", parents=[common_parser, mutating_parser, archive_common_parser, archive_common_operation_parser]
+        "pull",
+        parents=[
+            common_parser,
+            mutating_parser,
+            archive_common_parser,
+            archive_common_operation_parser,
+        ],
     )
     archive_pull_parser.set_defaults(function=cmd_pull_archive)
 
     archive_sync_parser = archive_sub.add_parser(
-        "sync", parents=[common_parser, mutating_parser, archive_common_parser, archive_common_operation_parser]
+        "sync",
+        parents=[
+            common_parser,
+            mutating_parser,
+            archive_common_parser,
+            archive_common_operation_parser,
+        ],
     )
     archive_sync_parser.set_defaults(function=cmd_sync_archive)
 
     archive_push_parser = archive_sub.add_parser(
-        "push", parents=[common_parser, mutating_parser, archive_common_parser, archive_common_operation_parser]
+        "push",
+        parents=[
+            common_parser,
+            mutating_parser,
+            archive_common_parser,
+            archive_common_operation_parser,
+        ],
     )
-    archive_push_parser.add_argument("--dst", required=True, help="Destination host. <eskit_host>:<path> can be used to target remote host. e.g. Host1:/home/user/data.")
+    archive_push_parser.add_argument(
+        "--dst",
+        required=True,
+        help="Destination host. <eskit_host>:<path> can be used to target remote host. e.g. Host1:/home/user/data.",
+    )
     archive_push_parser.set_defaults(function=cmd_push_archive)
 
     archive_show_parser = archive_sub.add_parser(
@@ -2323,7 +2413,7 @@ def main():
     args = build_parser().parse_args()
     config = None
 
-    global job_manager 
+    global job_manager
     job_manager = ESKitJobManager(CACHE_ROOT)
 
     args.function(args)
