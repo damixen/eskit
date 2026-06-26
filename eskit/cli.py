@@ -985,8 +985,8 @@ def cmd_get_task(args):
 
 
 def cmd_init(args):
-    init_eskit(args.demo)
-
+    from eskit.core.init import init
+    init(args.demo)
 
 def cmd_list_archive(args):
 
@@ -1111,29 +1111,6 @@ def cmd_show_archive(args):
         out = data
 
     print(json.dumps(out, indent=2))
-
-
-def init_eskit(is_demo):
-
-    if CACHE_ROOT.exists():
-        print(".eskit folder already exists.")
-        if is_demo:
-            print("If you want to reset, please remove the folder first.")
-        return
-
-    ensure_root()
-
-    # write config for startup
-    config = {"hosts": []}
-    with open(root_dir() / "config.json", "w", encoding="utf-8") as f:
-        json.dump(config, f, indent=2)
-
-    print(".eskit and .eskit/config.json created.")
-
-    if is_demo:
-        shutil.copytree(f"{DEMO_DIR}/{__cache_version__}", root_dir(), dirs_exist_ok=True)
-        print(f"demo/{__cache_version__} copied to .eskit folder.")
-
 
 def show_recovery(config, host, index, views, fields, flat):
     if host is None:
