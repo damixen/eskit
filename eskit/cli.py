@@ -3,22 +3,20 @@ import argparse
 import json
 from pathlib import Path
 import paramiko
-import getpass
 from dataclasses import dataclass, asdict
 from datetime import datetime, timezone
 import uuid
 import time
 import shutil
-import subprocess
-import shlex
-import errno
-import os
-import signal
 from eskit.jobs.job import ESKitJob
 from eskit.archive import ESKitArchive, ESKitArchiveState
 from eskit.jobs.executers import RsyncExecutor, LocalExecutor, ElasticsearchExecutor
 from eskit.jobs.job_manager import ESKitJobManager
+from eskit.transport.process import SynchronousProcess
+from eskit.transport.ssh import SSHConnection
+from eskit.clients.es_client import ESClient
 from .paths import DEMO_DIR
+from .error import ConfigError
 
 job_manager = None
 
@@ -34,58 +32,6 @@ HTTP_METHOD_POST = "POST"
 HTTP_METHOD_GET = "GET"
 CURRENT_HOST = ".current_host"
 
-## EXCEPTIONS
-
-
-class ESKitError(Exception):
-    def __init__(self, msg):
-        self.msg = msg
-        super().__init__(msg)
-
-
-class CurlError(ESKitError):
-    def __init__(self, msg):
-        self.msg = msg
-        super().__init__(msg)
-
-
-class ElasticsearchError(ESKitError):
-    def __init__(self, status, response):
-
-        self.status = status
-        self.response = response
-        error_type = None
-        reason = None
-
-        if isinstance(response, dict):
-            error = response.get("error", {})
-
-            if isinstance(error, dict):
-                error_type = error.get("type")
-                reason = error.get("reason")
-
-        msg = f"HTTP {status}"
-        if error_type:
-            msg += f" [{error_type}]"
-        if reason:
-            msg += f": {reason}"
-
-        super().__init__(msg)
-
-
-class CacheError(ESKitError):
-    pass
-
-
-class ConfigError(ESKitError):
-    pass
-
-
-class HostError(ESKitError):
-    pass
-
-
-##
 def print_host(host):
     print(f"\n=== ESKit HOST: {host} ===\n")
 
@@ -343,15 +289,6 @@ def get_reindex_mapping(config, host, name):
     return None
 
 
-def load_private_key(key_path, passphrase=None):
-    try:
-        return paramiko.Ed25519Key.from_private_key_file(key_path, password=passphrase)
-    except paramiko.PasswordRequiredException:
-        # fallback to prompt if not provided
-        passphrase = getpass.getpass(f"Passphrase for {key_path}: ")
-        return paramiko.Ed25519Key.from_private_key_file(key_path, password=passphrase)
-
-
 def get_path(data, path):
     current = data
     for part in path.split("."):
@@ -422,186 +359,7 @@ def build_projection(data, field_paths):
     return out
 
 
-class AsynchronousProcess:
-    def __init__(self, host_cfg):
-        self.host_cfg = host_cfg
-        self.client = None
-        self.name = "AsynchronousProcess"
-
-    def connect(self):
-        pass
-
-    def run(self, cmd):
-
-        result = subprocess.Popen(
-            shlex.split(cmd, posix=True),
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
-
-        return result
-
-    def check(self, pid):
-        if pid < 0:
-            return False
-        try:
-            # Signal 0 does nothing but checks if the PID exists
-            os.kill(pid, 0)
-        except OSError as e:
-            # ESRCH means no such process exists
-            if e.errno == errno.ESRCH:
-                return False
-            # EPERM means the process exists but you lack permission to signal it
-            elif e.errno == errno.EPERM:
-                return True
-            else:
-                # Other errors (should be rare)
-                return False
-        else:
-            return True
-
-    def kill(self, pid):
-        try:
-            # SIGKILL forces the process to close immediately
-            os.kill(pid, signal.SIGKILL)
-            print(f"Process {pid} killed.")
-        except ProcessLookupError:
-            print(f"PID {pid} does not exist.")
-        except PermissionError:
-            print(f"Insufficient permissions to kill PID {pid}.")
-
-    def close(self):
-        pass
-
-
-class SynchronousProcess:
-    def __init__(self, shell=False):
-        self.name = "SynchronousProcess"
-        self.shell = shell
-
-    def connect(self):
-        pass
-
-    def run(self, cmd):
-
-        if self.shell:
-            result = subprocess.run(cmd, capture_output=True, text=True, shell=True)
-        else:
-            result = subprocess.run(
-                shlex.split(cmd, posix=True), capture_output=True, text=True
-            )
-        return result.stdout
-
-    def close(self):
-        pass
-
-
-class SSHConnection:
-    def __init__(self, host_cfg):
-        self.host_cfg = host_cfg
-        self.client = None
-        self.name = "SSHConnection"
-
-    def connect(self):
-        ssh = self.host_cfg["ssh"]
-        self.client = paramiko.SSHClient()
-        self.client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-
-        kwargs = {
-            "hostname": self.host_cfg["ip"],
-            "port": ssh.get("port", 22),
-            "username": ssh["user"],
-        }
-
-        if ssh.get("password"):
-            kwargs["allow_agent"] = False
-            kwargs["password"] = ssh["password"]
-        if ssh.get("identity"):
-            key_filename = ssh["identity"]
-            kwargs["key_filename"] = key_filename
-            kwargs["look_for_keys"] = True
-            allow_agent = True
-            if "use_agent" in ssh and not ssh["use_agent"]:
-                allow_agent = False
-            elif not is_agent_available():
-                allow_agent = False
-
-            if not allow_agent:
-                passphrase = ssh.get("passphrase")
-                kwargs["pkey"] = (
-                    load_private_key(key_filename, passphrase) if key_filename else None
-                )
-            # Try to use agent by default unless disabled in the config
-        try:
-            self.client.connect(**kwargs)
-        except paramiko.SSHException as e:
-            print(f"SSH failure: {e}")
-
-    def run(self, cmd):
-        _, stdout, stderr = self.client.exec_command(cmd)
-        out = stdout.read().decode()
-        err = stderr.read().decode()
-        if err.strip():
-            raise RuntimeError(err)
-        return out
-
-    def close(self):
-        if self.client:
-            self.client.close()
-
-
-class ESClient:
-    def __init__(self, transport, config):
-        self.transport = transport
-        self.config = config
-
-    def request(self, method, path, body=None):
-        port = 9200
-        if self.config and "port" in self.config:
-            port = self.config["port"]
-
-        username = None
-        password = None
-        if self.config and "user" in self.config:
-            username = self.config["user"].get("name")
-            password = self.config["user"].get("password")
-        cmd = "curl "
-        cmd += "-w '\\n%{http_code}' "
-
-        if username and password:
-            cmd += f" -u {username}:{password}"
-
-        cmd += f" -s -X {method.upper()} 'http://localhost:{port}{path}'"
-
-        if body is not None:
-            payload = json.dumps(body).replace("'", "'\"'\"'")
-            cmd += f" -H 'Content-Type: application/json' -d '{payload}'"
-
-        safe_cmd = cmd
-        if password:
-            safe_cmd = safe_cmd.replace(password, "******")
-
-        print("Making Request to ES")
-        print(f"transport:{self.transport.name}")
-        print(f"cmd:{safe_cmd}\n")
-
-        result = self.transport.run(cmd)
-        body, status = result.rsplit("\n", 1)
-        status = int(status)
-
-        if status == 0:
-            raise CurlError(f"Curl command Failed with:{cmd}")
-
-        if body:
-            body = json.loads(body)
-
-        if status >= 400:
-            raise ElasticsearchError(status, body)
-
-        return body
-
-
-def pull_host(config, host_name, es, kind):
+def pull_host(config, host_name, es, kind=None):
 
     print(f"kind:{kind}")
 
@@ -611,7 +369,7 @@ def pull_host(config, host_name, es, kind):
     check_host(host_name)
     print_host(host_name)
 
-    all = len(kind) == 0
+    all = len(kind) == 0 or kind == None
 
     if "es" in kind or all:
         repos = es.request("GET", "/_snapshot")
