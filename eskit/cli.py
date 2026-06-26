@@ -14,10 +14,10 @@ import shlex
 import errno
 import os
 import signal
-from .job import ESKitJob
-from .archive import ESKitArchive, ESKitArchiveState
-from .executers import RsyncExecutor, LocalExecutor, ElasticsearchExecutor
-from .job_manager import ESKitJobManager
+from eskit.jobs.job import ESKitJob
+from eskit.archive import ESKitArchive, ESKitArchiveState
+from eskit.jobs.executers import RsyncExecutor, LocalExecutor, ElasticsearchExecutor
+from eskit.jobs.job_manager import ESKitJobManager
 from .paths import DEMO_DIR
 
 job_manager = None
