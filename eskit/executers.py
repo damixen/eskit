@@ -1,5 +1,5 @@
 import subprocess
-from job import ESKitJob
+from .job import ESKitJob
 
 class ESKitExecutor:
     def start(self, job):

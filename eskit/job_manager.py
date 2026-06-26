@@ -1,8 +1,8 @@
 from pathlib import Path
 import json
 
-from job import ESKitJob
-from executers import ESKitExecutor
+from .job import ESKitJob
+from .executers import ESKitExecutor
 from typing import List, Dict
 
 __job_manager = None
