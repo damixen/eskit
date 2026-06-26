@@ -5,6 +5,8 @@ DATA_DIR = PACKAGE_ROOT / "data"
 DEMO_DIR = DATA_DIR / "demo"
 CONFIG_TEMPLATE_DIR = DATA_DIR / "config_template"
 CACHE_ROOT = Path(".eskit")
+CURRENT_HOST_FILE = CACHE_ROOT / ".current_host"
+
 
 def cache_dir(host):
     return CACHE_ROOT / host / "cache"

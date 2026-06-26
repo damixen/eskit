@@ -15,6 +15,8 @@ from eskit.jobs.job_manager import ESKitJobManager
 from eskit.transport.process import SynchronousProcess
 from eskit.transport.ssh import SSHConnection
 from eskit.clients.es_client import ESClient
+from eskit.core.host import get_current_host_name
+
 from .paths import DEMO_DIR
 from .error import ConfigError
 
@@ -105,12 +107,6 @@ def get_current_host():
     with open(CACHE_ROOT / CURRENT_HOST, "r", encoding="utf-8") as f:
         for line in f:
             return line
-
-
-def set_current_host(host):
-    with open(CACHE_ROOT / CURRENT_HOST, "w", encoding="utf-8") as f:
-        f.write(host)
-    print(f"Host is set to:{host}")
 
 
 def cache_dir(host):
@@ -419,35 +415,18 @@ def connect_es(config, host_name):
 
 
 def cmd_host(args):
-
-    config = None
-    if "config" in args:
-        config = load_config(args.config)
-
-    host = args.host
-
-    hosts = config.get("hosts", [])
-    if host:
-        out = []
-        for h in hosts:
-            if h["name"] == host:
-                out.append(h)
-                break
-        hosts = out
-
-    if len(hosts) == 0:
-        print("Host not found.")
-        return
-
+    from eskit.core.host import get_hosts
+    hosts = get_hosts(args.host, args.config)
     print(json.dumps(hosts, indent=2))
 
 
 def cmd_host_set(args):
-    set_current_host(args.host)
+    from eskit.core.host import set_current_host_name
+    set_current_host_name(args.host)
 
 
 def cmd_host_get(args):
-    print(get_current_host())
+    print(get_current_host_name())
 
 
 def cmd_list_job(args):
