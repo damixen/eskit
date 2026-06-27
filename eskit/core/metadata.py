@@ -24,9 +24,9 @@ def pull(config_path, host_name, kind=None):
     config = load_config(config_path)
     host_config = get_host_config(config, host_name)
 
-    pull_all = len(kind) == 0 or kind is None
+    pull_all = kind is None or len(kind) == 0
 
-    if "es" in kind or pull_all:
+    if pull_all or "es" in kind:
         transport, es = connect_es(host_config)
         repos = es.request("GET", "/_snapshot")
         write_cache(host_name, "repos", repos)
@@ -45,7 +45,7 @@ def pull(config_path, host_name, kind=None):
         transport.close()
 
     # pull archive status
-    if "archive" in kind or pull_all:
+    if pull_all or "archive" in kind:
         print("pull archive metadata")
         pull_archive_metadata(host_config, host_name)
 

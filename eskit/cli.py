@@ -505,19 +505,17 @@ def cmd_status(args):
 
 def cmd_pull(args):
     from eskit.core.metadata import pull
+
     pull(args.config, args.host, args.kind)
-    
 
 
 def cmd_cat2(args):
     from eskit.core.metadata import cat
+
     cat(args.config, args.host, args.kind, args.view, args.fields, args.flat)
 
-def cmd_repo_show2(args):
 
-    config = None
-    if "config" in args:
-        config = load_config(args.config)
+def cmd_repo_show2(args):
 
     host_name = args.host
 
@@ -530,18 +528,12 @@ def cmd_repo_show2(args):
     fields = args.fields
     flat = args.flat
 
-    repo, sep, snap = name.partition("/")
-    if repo and snap:
-        cmd_snap_show(config, host_name, name, views, fields, flat)
-    else:
-        cmd_repo_show(config, host_name, repo, views, fields, flat)
+    from eskit.core.repo import show
+
+    show(args.config, host_name, name, views, fields, flat)
 
 
 def cmd_delete_repo(args):
-
-    config = None
-    if "config" in args:
-        config = load_config(args.config)
 
     host_name = args.host
 
@@ -554,14 +546,12 @@ def cmd_delete_repo(args):
     push = args.push
     force = args.force
 
-    delete_repo(config, host_name, name, dry_run, push, force)
+    from eskit.core.repo import delete
+
+    delete(args.config, host_name, name, dry_run, push, force)
 
 
 def cmd_create_repo(args):
-
-    config = None
-    if "config" in args:
-        config = load_config(args.config)
 
     host_name = args.host
 
@@ -575,71 +565,9 @@ def cmd_create_repo(args):
     repo_type = args.type
     location = args.location
 
-    create_repo(config, host_name, name, repo_type, location, dry_run, push)
+    from eskit.core.repo import create
 
-
-def cmd_repo_show(config, host_name, repo, views, fields, flat):
-
-    if host_name is None:
-        host_name = get_current_host()
-
-    check_host(host_name)
-
-    data = read_cache(host_name, "repos")
-    if not data:
-        return
-
-    out = {}
-
-    repo_data = data.get(repo, {})
-    if not repo_data:
-        print_host(host_name)
-        print(f"Repository:{repo} not found in cache.")
-        return
-
-    out = repo_data
-
-    snapshots = read_cache(host_name, "snapshots")
-
-    if not snapshots:
-        print(json.dumps(data.get(repo, {}), indent=2))
-        return
-    snapshots = snapshots.get(repo, {}).get("snapshots", {})
-    snap_list = []
-    for s in snapshots:
-        snap_list.append(s["snapshot"])
-
-    out["snapshots"] = snap_list
-
-    target_fields = build_field_list(config, views, fields)
-
-    if len(target_fields) > 0:
-        print(json.dumps(apply_view(out, target_fields, flat), indent=2))
-    else:
-        print(json.dumps(out, indent=2))
-
-
-def cmd_snap_show(config, host_name, spec, views, fields, flat):
-
-    if host_name is None:
-        host_name = get_current_host()
-
-    check_host(host_name)
-
-    target_fields = build_field_list(config, views, fields)
-
-    repo, snap = spec.split("/", 1)
-    data = read_cache(host_name, "snapshots")
-    if not data:
-        return
-    for s in data.get(repo, {}).get("snapshots", []):
-        if s.get("snapshot") == snap:
-            if len(target_fields) > 0:
-                print(json.dumps(apply_view(s, target_fields, flat), indent=2))
-            else:
-                print(json.dumps(s, indent=2))
-            return
-    print("Snapshot not found.")
+    create(args.config, host_name, name, repo_type, location, dry_run, push)
 
 
 def cmd_reindex_mapping(args):
@@ -982,65 +910,6 @@ def show_recovery(config, host, index, views, fields, flat):
                 out.append(r)
         out.sort(key=lambda x: x["index"])
         print(json.dumps(out, indent=2))
-    finally:
-        ssh.close()
-
-
-def create_repo(config, host, name, repo_type, location, dry_run, push):
-
-    if host is None:
-        host = get_current_host()
-
-    check_host(host)
-    check_push_protected(config, host, dry_run, push)
-    print_host(host)
-
-    if find_repo(host, name):
-        print(f"Repository:{name} found in cache. Please pull latest.")
-        return
-
-    body = {"type": repo_type, "settings": {"location": location, "compress": True}}
-    if dry_run:
-        print_dry_run()
-        print("PUT", f"/_snapshot/{name}")
-        print(json.dumps(body, indent=2))
-        return
-    ssh, es = connect_es(config, host)
-    try:
-        es.request("PUT", f"/_snapshot/{name}", body)
-        print(f"Repository:{name} created. Updating Cache...")
-        pull_host(config, host, es)
-    finally:
-        ssh.close()
-
-
-def delete_repo(config, host, name, dry_run, push, force):
-
-    if host is None:
-        host = get_current_host()
-
-    check_host(host)
-    check_push_protected(config, host, dry_run, push)
-    print_host(host)
-
-    if not find_repo(host, name):
-        print(f"Repository:{name} not found in cache. Please pull latest.")
-        return
-
-    if not dry_run and not force:
-        if not confirm_delete("repo", name):
-            print("Cancelled.")
-            return
-
-    if dry_run:
-        print_dry_run()
-        print("DELETE", f"/_snapshot/{name}")
-        return
-    ssh, es = connect_es(config, host)
-    try:
-        es.request("DELETE", f"/_snapshot/{name}")
-        print(f"Repository:{name} deleted. updating cache...")
-        pull_host(config, host, es)
     finally:
         ssh.close()
 
@@ -2018,7 +1887,7 @@ def main():
     args = build_parser().parse_args()
 
     global job_manager
-job_manager = ESKitJobManager(CACHE_ROOT)
+    job_manager = ESKitJobManager(CACHE_ROOT)
 
     args.function(args)
     return
