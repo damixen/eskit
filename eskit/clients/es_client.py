@@ -4,6 +4,7 @@ from eskit.core.host import get_current_host_name, check_host_name
 from eskit.utils.config import get_host_config
 from eskit.transport.process import SynchronousProcess
 from eskit.transport.ssh import SSHConnection
+from eskit.error import ElasticsearchError, CurlError
 
 
 def connect_es(host_coinfig):

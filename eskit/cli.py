@@ -579,53 +579,25 @@ def cmd_reindex_mapping(args):
 
 def cmd_create_snapshot(args):
 
-    config = None
-    if "config" in args:
-        config = load_config(args.config)
+    from eskit.core.snap import create
 
-    host_name = args.host
-
-    if host_name is None:
-        host_name = get_current_host()
-    check_host(host_name)
-
-    name = args.name
-    indices = args.index
-    dry_run = args.dry_run
-    push = args.push
-    include_global_state = args.include_global_state
-    ignore_unavailable = args.ignore_unavailable
-
-    create_snapshot(
-        config,
-        host_name,
-        name,
-        indices,
-        include_global_state,
-        ignore_unavailable,
-        dry_run,
-        push,
+    create(
+        args.config,
+        args.host,
+        args.name,
+        args.index,
+        args.include_global_state,
+        args.ignore_unavailable,
+        args.dry_run,
+        args.push,
     )
 
 
 def cmd_delete_snapshot(args):
 
-    config = None
-    if "config" in args:
-        config = load_config(args.config)
+    from eskit.core.snap import delete
 
-    host_name = args.host
-
-    if host_name is None:
-        host_name = get_current_host()
-    check_host(host_name)
-
-    name = args.name
-    dry_run = args.dry_run
-    push = args.push
-    force = args.force
-
-    delete_snapshot(config, host_name, name, dry_run, push, force)
+    delete(args.config, args.host, args.name, args.dry_run, args.push, args.force)
 
 
 def cmd_restore_snapshot(args):
@@ -910,106 +882,6 @@ def show_recovery(config, host, index, views, fields, flat):
                 out.append(r)
         out.sort(key=lambda x: x["index"])
         print(json.dumps(out, indent=2))
-    finally:
-        ssh.close()
-
-
-def create_snapshot(
-    config, host, spec, indices, include_global_state, ignore_unavailable, dry_run, push
-):
-
-    if host is None:
-        host = get_current_host()
-
-    check_host(host)
-    check_push_protected(config, host, dry_run, push)
-    print_host(host)
-
-    repo, delim, snap = spec.partition("/")
-    if not repo or not snap:
-        print(f"Snapshot:{spec} is not in valid format. <repo>/<snapshot>")
-        return
-
-    if find_snapshot(host, repo, snap):
-        print(f"Snapshot:{spec} found in chace. please pull latest.")
-        return
-
-    body = {}
-    if indices:
-        body["indices"] = indices
-    body["include_global_state"] = include_global_state
-    body["ignore_unavailable"] = ignore_unavailable
-    if dry_run:
-        print_dry_run()
-        print("PUT", f"/_snapshot/{repo}/{snap}")
-        print(json.dumps(body, indent=2))
-        return
-    ssh, es = connect_es(config, host)
-    try:
-        es.request("PUT", f"/_snapshot/{repo}/{snap}", body)
-        pull_host(config, host, es)
-    finally:
-        ssh.close()
-
-
-def delete_snapshot(config, host, spec, dry_run, push, force):
-
-    repo, delim, snap = spec.partition("/")
-    if host is None:
-        host = get_current_host()
-
-    check_host(host)
-    check_push_protected(config, host, dry_run, push)
-    print_host(host)
-
-    if not find_snapshot(host, repo, snap):
-        print(f"Snapshot:{spec} not found in chace. Please pull the latest.")
-        return
-
-    if not dry_run and not force:
-        if not confirm_delete("snapshot", spec):
-            print("Cancelled.")
-            return
-
-    if dry_run:
-        print_dry_run()
-        print("DELETE", f"/_snapshot/{repo}/{snap}")
-        return
-    ssh, es = connect_es(config, host)
-    try:
-        es.request("DELETE", f"/_snapshot/{repo}/{snap}")
-        print(f"Snapshot:{spec} created. Updating Cache.")
-        pull_host(config, host, es)
-    finally:
-        ssh.close()
-
-
-def restore_snapshot(config, host, spec, index, dry_run, push):
-    repo, delim, snap = spec.partition("/")
-    if host is None:
-        host = get_current_host()
-
-    check_host(host)
-    check_push_protected(config, host, dry_run, push)
-    print_host(host)
-
-    body = {}
-    if index:
-        body["indices"] = index
-    else:
-        body["indices"] = "*"
-    body["include_global_state"] = False
-
-    if dry_run:
-        print_dry_run()
-        print("POST", f"/_snapshot/{repo}/{snap}/_restore")
-        print(json.dumps(body, indent=2))
-        return
-    ssh, es = connect_es(config, host)
-    try:
-        es.request("POST", f"/_snapshot/{repo}/{snap}/_restore", body)
-        print(f"Snapshot:{spec} restored. Updating Cache.")
-        pull_host(config, host, es)
     finally:
         ssh.close()
 
