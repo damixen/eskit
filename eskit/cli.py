@@ -602,99 +602,42 @@ def cmd_delete_snapshot(args):
 
 def cmd_restore_snapshot(args):
 
-    config = None
-    if "config" in args:
-        config = load_config(args.config)
+    from eskit.core.snap import restore
 
-    host_name = args.host
-
-    if host_name is None:
-        host_name = get_current_host()
-    check_host(host_name)
-
-    name = args.name
-    dry_run = args.dry_run
-    push = args.push
-    index = args.index
-
-    restore_snapshot(config, host_name, name, index, dry_run, push)
+    restore(args.config, args.host, args.name, args.index, args.dry_run, args.push)
 
 
 def cmd_restore_status(args):
 
-    config = None
-    if "config" in args:
-        config = load_config(args.config)
+    from eskit.core.index import status
 
-    host_name = args.host
-
-    if host_name is None:
-        host_name = get_current_host()
-    check_host(host_name)
-
-    index = args.index
-
-    show_recovery(config, host_name, index, args.view, args.fields, args.flat)
+    status(args.config, args.host, args.index, args.view, args.fields, args.flat)
 
 
 def cmd_delete_index(args):
 
-    config = None
-    if "config" in args:
-        config = load_config(args.config)
+    from eskit.core.index import delete
 
-    host_name = args.host
-
-    if host_name is None:
-        host_name = get_current_host()
-    check_host(host_name)
-
-    index = args.index
-    dry_run = args.dry_run
-    push = args.push
-    force = args.force
-
-    delete_index(config, host_name, index, dry_run, push, force)
+    delete(args.config, args.host, args.index, args.dry_run, args.push, args.force)
 
 
 def cmd_create_index(args):
 
-    config = None
-    if "config" in args:
-        config = load_config(args.config)
+    from eskit.core.index import create
 
-    host_name = args.host
-
-    if host_name is None:
-        host_name = get_current_host()
-    check_host(host_name)
-
-    index = args.index
-    mapping = args.mapping
-    dry_run = args.dry_run
-    push = args.push
-
-    create_index(config, host_name, index, mapping, dry_run, push)
+    create(args.config, args.host, args.index, args.mapping, args.dry_run, args.push)
 
 
 def cmd_show_index(args):
-
-    config = None
-    if "config" in args:
-        config = load_config(args.config)
-
-    host_name = args.host
-
-    if host_name is None:
-        host_name = get_current_host()
-    check_host(host_name)
 
     index = args.index
     views = args.view
     fields = args.fields
     flat = args.flat
 
-    show_index(config, host_name, index, views, fields, flat)
+    from eskit.core.index import show
+
+    show(args.config, args.host, index, views, fields, flat)
 
 
 def cmd_reindex(args):
@@ -862,103 +805,6 @@ def cmd_show_archive(args):
 
     print(json.dumps(out, indent=2))
 
-
-def show_recovery(config, host, index, views, fields, flat):
-    if host is None:
-        host = get_current_host()
-
-    check_host(host)
-
-    target_fields = build_field_list(config, views, fields)
-
-    ssh, es = connect_es(config, host)
-    try:
-        out = []
-        data = es.request("GET", f"/_cat/recovery/{index}?format=json")
-        for r in data:
-            if len(target_fields) > 0:
-                out.append(apply_view(r, target_fields, flat))
-            else:
-                out.append(r)
-        out.sort(key=lambda x: x["index"])
-        print(json.dumps(out, indent=2))
-    finally:
-        ssh.close()
-
-
-def delete_index(config, host, index, dry_run, push, force):
-    if host is None:
-        host = get_current_host()
-
-    check_host(host)
-    check_push_protected(config, host, dry_run, push)
-    print_host(host)
-
-    if not find_index(host, index):
-        print(f"Index:{index} not found in cache. Please pull the latest.")
-        return
-
-    if not dry_run and not force:
-        if not confirm_delete("index", index):
-            print("Cancelled.")
-            return
-
-    url = f"/{index}"
-    if dry_run:
-        print_dry_run()
-        print(HTTP_METHOD_DELETE, url)
-        return
-    ssh, es = connect_es(config, host)
-    try:
-        res = es.request(HTTP_METHOD_DELETE, url)
-        print(res)
-        print(f"Index:{index} deleted. Updating Cache.")
-        pull_host(config, host, es)
-    except Exception as e:
-        print(e)
-    finally:
-        ssh.close()
-
-
-def create_index(config, host, index, mapping, dry_run, push):
-
-    if host is None:
-        host = get_current_host()
-
-    check_host(host)
-    check_push_protected(config, host, dry_run, push)
-    print_host(host)
-
-    if find_index(host, index):
-        print(
-            f"Index:{index} already exists in the cache. Please pull the latest or delete the index."
-        )
-        return
-
-    body = {}
-    if mapping:
-        m = get_reindex_mapping(config, host, mapping)
-        if m:
-            body["mappings"] = m
-
-    url = f"/{index}"
-    if dry_run:
-        print_dry_run()
-        print(HTTP_METHOD_PUT, url)
-        print(json.dumps(body, indent=2))
-        return
-    ssh, es = connect_es(config, host)
-    try:
-        res = es.request(HTTP_METHOD_PUT, url, body)
-        print(res)
-        print(f"Index:{index} created. Updating Cache.")
-        pull_host(config, host, es)
-    except Exception as e:
-        print(e)
-    finally:
-        ssh.close()
-
-
 def reindex(config, host, src, dst, mapping, dry_run, push):
 
     if host is None:
@@ -1052,38 +898,6 @@ def get_task(config, host, task_id):
     try:
         res = es.request(HTTP_METHOD_GET, url)
         print(json.dumps(res, indent=2))
-    except Exception as e:
-        print(e)
-    finally:
-        ssh.close()
-
-
-def show_index(config, host, index, views, fields, flat):
-    if host is None:
-        host = get_current_host()
-
-    check_host(host)
-    print_host(host)
-
-    if not find_index(host, index):
-        print(
-            f"Index:{index} not found in cache or does not exist. Please update cache and try again."
-        )
-        return
-
-    url = f"/{index}"
-
-    ssh, es = connect_es(config, host)
-    try:
-        res = es.request(HTTP_METHOD_GET, url)
-        index_data = res[index]
-        target_fields = build_field_list(config, views, fields)
-
-        if len(target_fields) > 0:
-            print(json.dumps(apply_view(index_data, target_fields, flat), indent=2))
-        else:
-            print(json.dumps(index_data, indent=2))
-
     except Exception as e:
         print(e)
     finally:

@@ -13,6 +13,16 @@ def get_view_configs(config, views):
     return out
 
 
+def get_reindex_mapping(config, name):
+    reindex_configs = config.get("reindex-configs")
+    if not reindex_configs:
+        return None
+    for c in reindex_configs:
+        if c["name"] == name:
+            return c["mappings"]
+    return None
+
+
 def load_config(path):
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
