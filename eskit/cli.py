@@ -510,77 +510,8 @@ def cmd_pull(args):
 
 
 def cmd_cat2(args):
-
-    # config, kind, host_name, views, fields, flat
-    config = None
-    if "config" in args:
-        config = load_config(args.config)
-
-    mapping = {"repo": "repos", "snap": "snapshots", "index": "indices"}
-    kind = mapping[args.kind]
-    views = args.view
-    fields = args.fields
-    flat = args.flat
-
-    host_name = args.host
-
-    if host_name is None:
-        host_name = get_current_host()
-
-    check_host(host_name)
-
-    target_fields = build_field_list(config, views, fields)
-    data = read_cache(host_name, kind)
-
-    if not data:
-        return
-
-    out = {}
-    if kind == "snapshots":
-        for repo, repo_data in data.items():
-            snapshots = repo_data.get("snapshots", {})
-            snap_list = []
-            for s in snapshots:
-                if len(target_fields) > 0:
-                    snap_list.append(apply_view(s, target_fields, flat))
-                else:
-                    snap_list.append(s)
-            out = snap_list
-    elif kind == "repos":
-        out = {}
-        for repo, repo_data in data.items():
-            out_repo = repo_data
-            if len(target_fields) > 0:
-                out_repo = apply_view(repo_data, target_fields, flat)
-
-            out[repo] = out_repo
-    elif kind == "indices":
-        out = data
-        if len(target_fields) > 0:
-            # add index by default
-            if "index" not in target_fields:
-                target_fields.insert(0, "index")
-            out = []
-            for i in data:
-                out.append(apply_view(i, target_fields, flat))
-        out.sort(key=lambda x: x["index"])
-    elif kind == "recovery":
-        out = data
-
-    print(json.dumps(out, indent=2))
-
-
-def cmd_cat(kind, host_name):
-
-    if host_name is None:
-        host_name = get_current_host()
-
-    check_host(host_name)
-
-    data = read_cache(host_name, kind)
-    if data is not None:
-        print(json.dumps(data, indent=2))
-
+    from eskit.core.metadata import cat
+    cat(args.config, args.host, args.kind, args.view, args.fields, args.flat)
 
 def cmd_repo_show2(args):
 
@@ -2087,7 +2018,7 @@ def main():
     args = build_parser().parse_args()
 
     global job_manager
-    job_manager = ESKitJobManager(CACHE_ROOT)
+job_manager = ESKitJobManager(CACHE_ROOT)
 
     args.function(args)
     return

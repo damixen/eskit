@@ -1,5 +1,17 @@
 import json
 
+from eskit.error import ConfigError
+
+
+def get_view_configs(config, views):
+    views_config = config.get("views", {})
+    out = []
+    for name in views:
+        if name not in views_config:
+            raise ConfigError(f"view not found: {name}")
+        out.extend(views_config[name])
+    return out
+
 
 def load_config(path):
     with open(path, "r", encoding="utf-8") as f:

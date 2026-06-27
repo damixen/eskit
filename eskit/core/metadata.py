@@ -1,11 +1,13 @@
+import json
 from eskit.utils.config import load_config, get_host_config
 from eskit.core.host import get_current_host_name, check_host_name, print_host
 from eskit.clients.es_client import connect_es
-from eskit.cache.store import write_cache
+from eskit.cache.store import write_cache, read_cache
 from eskit.transport.ssh import SSHConnection
 from eskit.transport.process import SynchronousProcess
 from eskit.archive.model import ESKitArchiveState
 from eskit.utils.archive import list_archives, delete_archive, write_archive
+from eskit.utils.view import build_field_list, build_projection, apply_view
 from datetime import datetime, timezone
 
 
@@ -144,3 +146,56 @@ def pull_archive_stat(host_config, host_name, archive_config):
     )
     # print(f"archive:{archive}")
     write_archive(host_name, archive)
+
+
+def cat(config_path, host_name, kind, views, fields, flat):
+    # config, kind, host_name, views, fields, flat
+    config = load_config(config_path)
+
+    mapping = {"repo": "repos", "snap": "snapshots", "index": "indices"}
+    kind = mapping[kind]
+
+    if host_name is None:
+        host_name = get_current_host_name()
+
+    check_host_name(host_name)
+
+    target_fields = build_field_list(config, views, fields)
+    data = read_cache(host_name, kind)
+
+    if not data:
+        return
+
+    out = {}
+    if kind == "snapshots":
+        for repo, repo_data in data.items():
+            snapshots = repo_data.get("snapshots", {})
+            snap_list = []
+            for s in snapshots:
+                if len(target_fields) > 0:
+                    snap_list.append(apply_view(s, target_fields, flat))
+                else:
+                    snap_list.append(s)
+            out = snap_list
+    elif kind == "repos":
+        out = {}
+        for repo, repo_data in data.items():
+            out_repo = repo_data
+            if len(target_fields) > 0:
+                out_repo = apply_view(repo_data, target_fields, flat)
+
+            out[repo] = out_repo
+    elif kind == "indices":
+        out = data
+        if len(target_fields) > 0:
+            # add index by default
+            if "index" not in target_fields:
+                target_fields.insert(0, "index")
+            out = []
+            for i in data:
+                out.append(apply_view(i, target_fields, flat))
+        out.sort(key=lambda x: x["index"])
+    elif kind == "recovery":
+        out = data
+
+    print(json.dumps(out, indent=2))
