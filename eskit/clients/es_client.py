@@ -1,5 +1,27 @@
 import json
 
+from eskit.core.host import get_current_host_name, check_host_name
+from eskit.utils.config import get_host_config
+from eskit.transport.process import SynchronousProcess
+from eskit.transport.ssh import SSHConnection
+
+
+def connect_es(host_coinfig):
+
+    is_localhost = host_coinfig.get("localhost") or False
+
+    transport = None
+
+    if is_localhost:
+        transport = SynchronousProcess()
+    else:
+        transport = SSHConnection(host_coinfig)
+        transport.connect()
+    elastic_config = {}
+    if "elastic" in host_coinfig:
+        elastic_config = host_coinfig["elastic"]
+    return transport, ESClient(transport, elastic_config)
+
 
 class ESClient:
     def __init__(self, transport, config):

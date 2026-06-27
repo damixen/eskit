@@ -9,7 +9,7 @@ import uuid
 import time
 import shutil
 from eskit.jobs.job import ESKitJob
-from eskit.archive import ESKitArchive, ESKitArchiveState
+from eskit.archive.model import ESKitArchive, ESKitArchiveState
 from eskit.jobs.executers import RsyncExecutor, LocalExecutor, ElasticsearchExecutor
 from eskit.jobs.job_manager import ESKitJobManager
 from eskit.transport.process import SynchronousProcess
@@ -504,23 +504,9 @@ def cmd_status(args):
 
 
 def cmd_pull(args):
-
-    config = None
-    if "config" in args:
-        config = load_config(args.config)
-
-    host_name = args.host
-
-    if host_name is None:
-        host_name = get_current_host()
-
-    check_host(host_name)
-
-    transport, es = connect_es(config, host_name)
-    try:
-        pull_host(config, host_name, es, args.kind)
-    finally:
-        transport.close()
+    from eskit.core.metadata import pull
+    pull(args.config, args.host, args.kind)
+    
 
 
 def cmd_cat2(args):

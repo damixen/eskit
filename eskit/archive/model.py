@@ -2,18 +2,6 @@
 from dataclasses import dataclass, asdict
 from typing import List, Dict
 
-'''
-"archives":[
-                {"type":"snapshot","name":"snapshots","src":"/home/user/zach/snapshots", "dst":"/home/user/ted/archive/host1",
-                    "repos":[
-                        {"name":"daily", "location":"/snapshots/daily"},
-                        {"name":"test-repo", "location":"/snapshots/test-repo"}
-                    ]
-                },
-                {"type":"log","name":"logs","src":"/home/user/zach/logs", "dst":"/home/user/ted/archive/host1"}
-            ]
-'''
-
 @dataclass
 class ESKitArchive:
     name: str

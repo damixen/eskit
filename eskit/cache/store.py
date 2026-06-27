@@ -1,7 +1,43 @@
 import json
 from datetime import datetime
 from eskit.utils.paths import cache_dir
+from eskit.archive.model import ESKitArchiveState
 
+def write_archive_all(config, host):
+    host_config = get_host(config, host)
+    archives = host_config.get("archives")
+
+    if not archives:
+        return
+
+    for archive in archives:
+        pull_archive_stat(config, host, archive)
+
+    # clean stale cache
+    cached_archives = list_archives(host)
+
+    for cache in cached_archives:
+        exists = any(d.get("name") == cache["name"] for d in archives)
+        if not exists:
+            delete_archive(host, ESKitArchiveState.from_dict(cache))
+
+
+def delete_archive(host, archive: ESKitArchiveState):
+    ensure_archive_dir(host)
+    Path(archive_dir(host) / f"{archive.name}.json").unlink(missing_ok=True)
+
+
+def write_archive(host, archive: ESKitArchiveState):
+    ensure_archive_dir(host)
+    with open(archive_dir(host) / f"{archive.name}.json", "w") as f:
+        json.dump(asdict(archive), f, indent=2)
+
+
+def read_archive(host, archive_id):
+    path = archive_dir(host) / f"{archive_id}.json"
+    if not path.exists():
+        return None
+    return json.load(open(path))
 
 def ensure_cache(host):
     cache_dir(host).mkdir(parents=True, exist_ok=True)
