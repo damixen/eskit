@@ -107,6 +107,23 @@ def get_file_stats(path, transport):
 
     return stat
 
+def write_archive_all(config, host):
+    host_config = get_host_config(config, host)
+    archives = host_config.get("archives")
+
+    if not archives:
+        return
+
+    for archive in archives:
+        pull_archive_stat(config, host, archive)
+
+    # clean stale cache
+    cached_archives = list_archives(host)
+
+    for cache in cached_archives:
+        exists = any(d.get("name") == cache["name"] for d in archives)
+        if not exists:
+            delete_archive(host, ESKitArchiveState.from_dict(cache))
 
 def pull_archive_stat(host_config, host_name, archive_config):
 

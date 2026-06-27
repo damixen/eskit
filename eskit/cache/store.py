@@ -1,36 +1,8 @@
 import json
 from datetime import datetime
-from eskit.utils.paths import cache_dir
-from eskit.archive.model import ESKitArchiveState
-
-def write_archive_all(config, host):
-    host_config = get_host(config, host)
-    archives = host_config.get("archives")
-
-    if not archives:
-        return
-
-    for archive in archives:
-        pull_archive_stat(config, host, archive)
-
-    # clean stale cache
-    cached_archives = list_archives(host)
-
-    for cache in cached_archives:
-        exists = any(d.get("name") == cache["name"] for d in archives)
-        if not exists:
-            delete_archive(host, ESKitArchiveState.from_dict(cache))
-
-
-def delete_archive(host, archive: ESKitArchiveState):
-    ensure_archive_dir(host)
-    Path(archive_dir(host) / f"{archive.name}.json").unlink(missing_ok=True)
-
-
-def write_archive(host, archive: ESKitArchiveState):
-    ensure_archive_dir(host)
-    with open(archive_dir(host) / f"{archive.name}.json", "w") as f:
-        json.dump(asdict(archive), f, indent=2)
+from dataclasses import dataclass, asdict
+from eskit.utils.paths import cache_dir, archive_dir, ensure_job_dir, job_dir
+from eskit.jobs.job import ESKitJob
 
 
 def read_archive(host, archive_id):
@@ -38,6 +10,7 @@ def read_archive(host, archive_id):
     if not path.exists():
         return None
     return json.load(open(path))
+
 
 def ensure_cache(host):
     cache_dir(host).mkdir(parents=True, exist_ok=True)
@@ -64,3 +37,9 @@ def read_cache(host, name):
         return None
     with open(p, "r", encoding="utf-8") as f:
         return json.load(f)
+
+
+def write_job(host, job: ESKitJob):
+    ensure_job_dir(host)
+    with open(job_dir(host) / f"{job.get_output_id()}.json", "w") as f:
+        json.dump(asdict(job), f, indent=2)

@@ -276,16 +276,6 @@ def find_snapshot(host, repo, snapshot):
     return False
 
 
-def get_reindex_mapping(config, host, name):
-    reindex_configs = config.get("reindex-configs")
-    if not reindex_configs:
-        return None
-    for c in reindex_configs:
-        if c["name"] == name:
-            return c["mappings"]
-    return None
-
-
 def get_path(data, path):
     current = data
     for part in path.split("."):
@@ -642,23 +632,17 @@ def cmd_show_index(args):
 
 def cmd_reindex(args):
 
-    config = None
-    if "config" in args:
-        config = load_config(args.config)
+    from eskit.core.index import reindex
 
-    host_name = args.host
-
-    if host_name is None:
-        host_name = get_current_host()
-    check_host(host_name)
-
-    src = args.src
-    dst = args.dst
-    mapping = args.mapping
-    dry_run = args.dry_run
-    push = args.push
-
-    reindex(config, host_name, src, dst, mapping, dry_run, push)
+    reindex(
+        args.config,
+        args.host,
+        args.src,
+        args.dst,
+        args.mapping,
+        args.dry_run,
+        args.push,
+    )
 
 
 def cmd_get_task(args):
@@ -804,84 +788,6 @@ def cmd_show_archive(args):
         out = data
 
     print(json.dumps(out, indent=2))
-
-def reindex(config, host, src, dst, mapping, dry_run, push):
-
-    if host is None:
-        host = get_current_host()
-
-    check_host(host)
-    check_push_protected(config, host, dry_run, push)
-    print_host(host)
-
-    body = {}
-    m = None
-    if mapping:
-        m = get_reindex_mapping(config, host, mapping)
-        if m:
-            body["mappings"] = m
-        else:
-            print(f"Mapping:{mapping} does not exist in the config.")
-            return
-
-    dst_exists = find_index(host, dst)
-    if m and dst_exists:
-        print(
-            "Mapping specified, but index already exists in cache. Please pull latest or delete the index."
-        )
-        return
-
-    if not dst_exists:
-        print(f"Creating a new index:{dst}.")
-        create_index(config, host, dst, mapping, dry_run, push)
-
-    job = ESKitJob(
-        id=str(uuid.uuid4()),
-        name=dst,
-        type="reindex",
-        host=host,
-        status="running",
-        created_at=datetime.now(timezone.utc).isoformat(),
-        updated_at=datetime.now(timezone.utc).isoformat(),
-        payload={"src": src, "dst": dst},
-    )
-
-    body = {}
-    body["source"] = {"index": src}
-    body["dest"] = {"index": dst}
-
-    # default: don't wait
-    url = f"/_reindex?wait_for_completion=false"
-    if dry_run:
-        print_dry_run()
-        print(HTTP_METHOD_POST, url)
-        print(json.dumps(body, indent=2))
-        return
-
-    write_job(host, job)
-    ssh, es = connect_es(config, host)
-    try:
-        res = es.request(HTTP_METHOD_POST, url, body)
-        # print(json.dumps(res, indent=2))
-        # print("check status with task-get command with the id")
-
-        job.status = "running"
-        job.result = {"task_id": res.get("task")}
-        job.updated_at = datetime.now(timezone.utc).isoformat()
-
-        write_job(host, job)
-
-        print(
-            f"[{host}] reindex job started search id/output name: {job.get_output_id()}"
-        )
-
-    except Exception as e:
-        job.status = "failed"
-        job.error = str(e)
-        write_job(host, job)
-        print(e)
-    finally:
-        ssh.close()
 
 
 def get_task(config, host, task_id):
