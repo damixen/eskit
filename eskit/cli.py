@@ -34,6 +34,7 @@ HTTP_METHOD_POST = "POST"
 HTTP_METHOD_GET = "GET"
 CURRENT_HOST = ".current_host"
 
+
 def print_host(host):
     print(f"\n=== ESKit HOST: {host} ===\n")
 
@@ -416,12 +417,14 @@ def connect_es(config, host_name):
 
 def cmd_host(args):
     from eskit.core.host import get_hosts
+
     hosts = get_hosts(args.host, args.config)
     print(json.dumps(hosts, indent=2))
 
 
 def cmd_host_set(args):
     from eskit.core.host import set_current_host_name
+
     set_current_host_name(args.host)
 
 
@@ -493,62 +496,11 @@ def cmd_read_job(args):
 
 def cmd_status(args):
 
-    host_name = args.host
-    if host_name is None:
-        host_name = get_current_host()
+    from eskit.core.status import get_status
 
-    check_host(host_name)
+    status = get_status(args.host, args.config)
 
-    config = None
-    if "config" in args:
-        config = load_config(args.config)
-
-    check_host(host_name)
-
-    status = {}
-    status["host"] = {
-        "name": host_name,
-        "push-protected": is_push_protected(config, host_name),
-    }
-
-    cluster_version = read_cache(host_name, "version")
-    status["cluster"] = {}
-    if cluster_version:
-        status["cluster"] = {
-            "name": cluster_version["name"],
-            "cluster_name": cluster_version["cluster_name"],
-            "version": {
-                "number": cluster_version["version"]["number"],
-                "build_flavor": cluster_version["version"]["build_flavor"],
-            },
-        }
-
-    status["caches"] = {}
-
-    cache_root = cache_dir(host_name)
-
-    for name in ["indices", "repos", "snapshots", "version"]:
-        path = cache_root / f"{name}.json"
-        date = cache_date(path)
-        status["caches"][name] = {}
-        if date is None:
-            status["caches"][name]["last-updated"] = ""
-        else:
-            status["caches"][name]["last-updated"] = date
     print(json.dumps(status, indent=2))
-
-    """ TODO
-    jobs = list_jobs(host_name)
-
-    running = sum(1 for j in jobs if j["status"] == "running")
-    failed = sum(1 for j in jobs if j["status"] == "failed")
-    success = sum(1 for j in jobs if j["status"] == "success")
-
-    print("\nJobs:")
-    print(f"  running: {running}")
-    print(f"  success: {success}")
-    print(f"  failed:  {failed}")
-    """
 
 
 def cmd_pull(args):
@@ -965,7 +917,9 @@ def cmd_get_task(args):
 
 def cmd_init(args):
     from eskit.core.init import init
+
     init(args.demo)
+
 
 def cmd_list_archive(args):
 
@@ -1090,6 +1044,7 @@ def cmd_show_archive(args):
         out = data
 
     print(json.dumps(out, indent=2))
+
 
 def show_recovery(config, host, index, views, fields, flat):
     if host is None:
@@ -1834,7 +1789,7 @@ def build_parser():
     init.add_argument(
         "--demo", action="store_true", help="Initialize with demo data set"
     )
-    
+
     # Host commands
     host_parser = sub.add_parser("host", help="Host related commands.")
     host_parser_sub = host_parser.add_subparsers(required=True)
@@ -1859,7 +1814,10 @@ def build_parser():
         help="Pulls resource data from the current host.",
     )
     pull.add_argument(
-        "kind", choices=["es", "archive"], nargs="*", help="Kind of cache to pull. es - Elasticsearch Cache, archive - Archive Cache."
+        "kind",
+        choices=["es", "archive"],
+        nargs="*",
+        help="Kind of cache to pull. es - Elasticsearch Cache, archive - Archive Cache.",
     )
     pull.set_defaults(function=cmd_pull)
 
