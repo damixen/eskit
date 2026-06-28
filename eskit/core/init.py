@@ -2,7 +2,8 @@ import json
 import shutil
 
 from eskit.utils.paths import CACHE_ROOT, ensure_root, root_dir, DEMO_DIR
-from eskit.core.version import __cache_version__
+from eskit.version import __cache_version__
+
 
 def init(is_demo):
 
@@ -22,5 +23,7 @@ def init(is_demo):
     print(".eskit and .eskit/config.json created.")
 
     if is_demo:
-        shutil.copytree(f"{DEMO_DIR}/{__cache_version__}", root_dir(), dirs_exist_ok=True)
+        shutil.copytree(
+            f"{DEMO_DIR}/{__cache_version__}", root_dir(), dirs_exist_ok=True
+        )
         print(f"demo/{__cache_version__} copied to .eskit folder.")

@@ -2,51 +2,17 @@
 import argparse
 import json
 from pathlib import Path
-from datetime import datetime
-from eskit.jobs.job_manager import ESKitJobManager
-from eskit.transport.process import SynchronousProcess
-from eskit.transport.ssh import SSHConnection
-from eskit.clients.es_client import ESClient
 from eskit.core.host import get_current_host_name
-from .error import ConfigError
-
-job_manager = None
-
-
-__version__ = "0.1.0"
-__cache_version__ = "v1"
+from eskit.version import __version__
 
 DEFAULT_CONFIG = ".eskit/config.json"
 CACHE_ROOT = Path(".eskit")
-HTTP_METHOD_DELETE = "DELETE"
-HTTP_METHOD_PUT = "PUT"
-HTTP_METHOD_POST = "POST"
-HTTP_METHOD_GET = "GET"
 CURRENT_HOST = ".current_host"
-
-
-def print_host(host):
-    print(f"\n=== ESKit HOST: {host} ===\n")
 
 
 def load_config(path):
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
-
-
-def get_host(config, name):
-    for h in config.get("hosts", []):
-        if h["name"] == name:
-            return h
-    raise SystemExit(f"Host not found: {name}")
-
-
-def check_host(host):
-    if host is None:
-        raise SystemExit(
-            "Host not found. Please specify the host or set the host by the host set command."
-        )
-    return
 
 
 def get_current_host():
@@ -56,88 +22,6 @@ def get_current_host():
     with open(CACHE_ROOT / CURRENT_HOST, "r", encoding="utf-8") as f:
         for line in f:
             return line
-
-
-def get_path(data, path):
-    current = data
-    for part in path.split("."):
-        if not isinstance(current, dict):
-            return None
-        part = part.replace("$", ".")
-        if part not in current:
-            return None
-        current = current[part]
-    return current
-
-
-def set_path(data, path, value):
-    parts = path.split(".")
-    current = data
-    for part in parts[:-1]:
-        part = part.replace("$", ".")
-        if part not in current:
-            current[part] = {}
-        current = current[part]
-    current[parts[-1].replace("$", ".")] = value
-
-
-def apply_view(data, fields, flat):
-    out = {}
-
-    for field in fields:
-        value = get_path(data, field)
-        if flat:
-            out[field] = value
-        elif value is not None:
-            set_path(out, field, value)
-
-    return out
-
-
-def get_view(config, views):
-    views_config = config.get("views", {})
-    out = []
-    for name in views:
-        if name not in views_config:
-            raise ConfigError(f"view not found: {name}")
-        out.extend(views_config[name])
-    return out
-
-
-def build_field_list(config, views, fields):
-    result = []
-
-    for view in views:
-        result.extend(config["views"].get(view, []))
-
-    if fields:
-        result.extend(fields.split(","))
-
-    return list(dict.fromkeys(result))
-
-
-def connect_es(config, host_name):
-
-    if host_name is None:
-        host_name = get_current_host()
-
-    check_host(host_name)
-
-    host_cfg = get_host(config, host_name)
-
-    is_localhost = host_cfg.get("localhost") or False
-
-    transport = None
-
-    if is_localhost:
-        transport = SynchronousProcess()
-    else:
-        transport = SSHConnection(host_cfg)
-        transport.connect()
-    elastic_config = {}
-    if "elastic" in host_cfg:
-        elastic_config = host_cfg["elastic"]
-    return transport, ESClient(transport, elastic_config)
 
 
 def cmd_host(args):
@@ -158,63 +42,16 @@ def cmd_host_get(args):
 
 
 def cmd_list_job(args):
-    host_name = args.host
-    if host_name is None:
-        host_name = get_current_host()
+    from eskit.core.job import list
 
-    check_host(host_name)
-
-    config = None
-    if "config" in args:
-        config = load_config(args.config)
-
-    local = args.local
-
-    data = job_manager.list_dicts(host_name, local)
-    data.sort(key=lambda x: datetime.fromisoformat(x["updated_at"]), reverse=True)
-
-    views = args.view
-    fields = args.fields
-    flat = args.flat
-    target_fields = build_field_list(config, views, fields)
-    out = []
-
-    if len(target_fields) > 0:
-        for job in data:
-            out.append(apply_view(job, target_fields, flat))
-    else:
-        out = data
-
-    print(json.dumps(out, indent=2))
+    list(args.config, args.host, args.local, args.view, args.fields, args.flat)
 
 
 def cmd_read_job(args):
 
-    host_name = args.host
-    if host_name is None:
-        host_name = get_current_host()
+    from eskit.core.job import show
 
-    check_host(host_name)
-
-    config = None
-    if "config" in args:
-        config = load_config(args.config)
-
-    views = args.view
-    fields = args.fields
-    flat = args.flat
-    job_search_id = args.job_search_id
-    target_fields = build_field_list(config, views, fields)
-    out = {}
-
-    data = job_manager.load_dict(host_name, job_search_id)
-
-    if len(target_fields) > 0:
-        out = apply_view(data, target_fields, flat)
-    else:
-        out = data
-
-    print(json.dumps(out, indent=2))
+    show(args.config, args.host, args.job_search_id, args.view, args.fields, args.flat)
 
     return
 
@@ -243,11 +80,6 @@ def cmd_cat2(args):
 def cmd_repo_show2(args):
 
     host_name = args.host
-
-    if host_name is None:
-        host_name = get_current_host()
-    check_host(host_name)
-
     name = args.name
     views = args.view
     fields = args.fields
@@ -261,11 +93,6 @@ def cmd_repo_show2(args):
 def cmd_delete_repo(args):
 
     host_name = args.host
-
-    if host_name is None:
-        host_name = get_current_host()
-    check_host(host_name)
-
     name = args.name
     dry_run = args.dry_run
     push = args.push
@@ -279,11 +106,6 @@ def cmd_delete_repo(args):
 def cmd_create_repo(args):
 
     host_name = args.host
-
-    if host_name is None:
-        host_name = get_current_host()
-    check_host(host_name)
-
     name = args.name
     dry_run = args.dry_run
     push = args.push
@@ -381,17 +203,9 @@ def cmd_reindex(args):
 
 
 def cmd_get_task(args):
-    config = None
-    if "config" in args:
-        config = load_config(args.config)
+    from eskit.core.task import get
 
-    host_name = args.host
-    if host_name is None:
-        host_name = get_current_host()
-    check_host(host_name)
-
-    task_id = args.task_id
-    get_task(config, host_name, task_id)
+    get(args.config, args.host, args.task_id)
 
 
 def cmd_init(args):
@@ -455,26 +269,6 @@ def cmd_show_archive(args):
     from eskit.core.archive import show
 
     show(args.config, args.host, args.name, args.view, args.fields, args.flat)
-
-
-def get_task(config, host, task_id):
-
-    if host is None:
-        host = get_current_host()
-
-    check_host(host)
-    print_host(host)
-
-    url = f"/_tasks/{task_id}"
-
-    ssh, es = connect_es(config, host)
-    try:
-        res = es.request(HTTP_METHOD_GET, url)
-        print(json.dumps(res, indent=2))
-    except Exception as e:
-        print(e)
-    finally:
-        ssh.close()
 
 
 def cmd_root(args):
@@ -851,9 +645,6 @@ def build_parser():
 def main():
 
     args = build_parser().parse_args()
-
-    global job_manager
-    job_manager = ESKitJobManager(CACHE_ROOT)
 
     from eskit.jobs.job_manager import init
 

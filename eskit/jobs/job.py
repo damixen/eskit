@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 
 
 @dataclass
