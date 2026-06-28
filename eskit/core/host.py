@@ -1,5 +1,5 @@
 from eskit.utils.config import load_config, get_host_config
-from eskit.utils.paths import CACHE_ROOT, CURRENT_HOST_FILE
+from eskit.utils.paths import CURRENT_HOST_FILE
 
 
 def print_dry_run():

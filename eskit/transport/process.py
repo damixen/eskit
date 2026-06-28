@@ -4,6 +4,7 @@ import os
 import errno
 import signal
 
+
 class AsynchronousProcess:
     def __init__(self, host_cfg):
         self.host_cfg = host_cfg

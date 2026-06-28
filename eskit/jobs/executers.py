@@ -1,6 +1,7 @@
 import subprocess
 from .job import ESKitJob
 
+
 class ESKitExecutor:
     def start(self, job):
         raise NotImplementedError
@@ -27,12 +28,11 @@ class LocalExecutor(ESKitExecutor):
 
         return proc
 
+    def refresh(self, job):
+        raise NotImplementedError
 
-class RsyncExecutor(LocalExecutor):
-
-    def start(self, job: ESKitJob):
-        # NOT_IMPLEMENTED
-        super().start(job)
+    def cancel(self, job):
+        raise NotImplementedError
 
 
 class ElasticsearchExecutor(ESKitExecutor):

@@ -1,13 +1,15 @@
 import paramiko
 import getpass
 
+
 def is_agent_available():
     try:
         agent = paramiko.Agent()
         return len(agent.get_keys()) > 0
     except Exception:
         return False
-    
+
+
 def load_private_key(key_path, passphrase=None):
     try:
         return paramiko.Ed25519Key.from_private_key_file(key_path, password=passphrase)

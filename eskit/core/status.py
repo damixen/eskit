@@ -1,5 +1,3 @@
-import json
-
 from eskit.core.host import get_current_host_name, check_host_name
 from eskit.utils.config import load_config, is_push_protected
 from eskit.utils.paths import cache_dir

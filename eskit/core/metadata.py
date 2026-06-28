@@ -1,4 +1,5 @@
 import json
+from datetime import datetime, timezone
 from eskit.utils.config import load_config, get_host_config
 from eskit.core.host import get_current_host_name, check_host_name, print_host
 from eskit.clients.es_client import connect_es
@@ -7,8 +8,7 @@ from eskit.transport.ssh import SSHConnection
 from eskit.transport.process import SynchronousProcess
 from eskit.archive.model import ESKitArchiveState
 from eskit.utils.archive import list_archives, delete_archive, write_archive
-from eskit.utils.view import build_field_list, build_projection, apply_view
-from datetime import datetime, timezone
+from eskit.utils.view import build_field_list, apply_view
 
 
 def pull(config_path, host_name, kind=None):
