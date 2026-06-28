@@ -2,22 +2,12 @@
 import argparse
 import json
 from pathlib import Path
-import paramiko
-from dataclasses import dataclass, asdict
-from datetime import datetime, timezone
-import uuid
-import time
-import shutil
-from eskit.jobs.job import ESKitJob
-from eskit.archive.model import ESKitArchive, ESKitArchiveState
-from eskit.jobs.executers import RsyncExecutor, LocalExecutor, ElasticsearchExecutor
+from datetime import datetime
 from eskit.jobs.job_manager import ESKitJobManager
 from eskit.transport.process import SynchronousProcess
 from eskit.transport.ssh import SSHConnection
 from eskit.clients.es_client import ESClient
 from eskit.core.host import get_current_host_name
-
-from .paths import DEMO_DIR
 from .error import ConfigError
 
 job_manager = None
@@ -39,14 +29,6 @@ def print_host(host):
     print(f"\n=== ESKit HOST: {host} ===\n")
 
 
-def print_dry_run():
-    print("\n*Dry Run*\n")
-
-
-def print_preview():
-    print("\n*Preview*\n")
-
-
 def load_config(path):
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
@@ -54,13 +36,6 @@ def load_config(path):
 
 def get_host(config, name):
     for h in config.get("hosts", []):
-        if h["name"] == name:
-            return h
-    raise SystemExit(f"Host not found: {name}")
-
-
-def get_rsync_config(config, name):
-    for h in config.get("rsync-configs", []):
         if h["name"] == name:
             return h
     raise SystemExit(f"Host not found: {name}")
@@ -74,33 +49,6 @@ def check_host(host):
     return
 
 
-def check_push_protected(config, host, dry_run, push):
-    host_config = get_host(config, host)
-    if (
-        "push-protected" in host_config
-        and host_config["push-protected"]
-        and not dry_run
-        and not push
-    ):
-        print_host(host)
-        raise SystemExit(
-            f"Host:{host} is push protected. Please use --push to make a change or --dry-run to check command."
-        )
-    return
-
-
-def is_push_protected(config, host):
-    host_config = get_host(config, host)
-    return "push-protected" in host_config and host_config["push-protected"]
-
-
-def confirm_delete(kind, name):
-    print(f"About to delete {kind}: {name}\n")
-    x = input("Confirm delete by typing:")
-    print("\n")
-    return x == name
-
-
 def get_current_host():
     if not (CACHE_ROOT / CURRENT_HOST).exists():
         return
@@ -108,172 +56,6 @@ def get_current_host():
     with open(CACHE_ROOT / CURRENT_HOST, "r", encoding="utf-8") as f:
         for line in f:
             return line
-
-
-def cache_dir(host):
-    return CACHE_ROOT / host / "cache"
-
-
-def root_dir():
-    return CACHE_ROOT
-
-
-def cache_age(path):
-    if not path.exists():
-        return None
-    age_sec = time.time() - path.stat().st_mtime
-    return age_sec
-
-
-def cache_date(path):
-    if not path.exists():
-        return None
-    return datetime.fromtimestamp(path.stat().st_mtime).strftime(
-        "%A, %B %d, %Y at %I:%M %p"
-    )
-
-
-def job_dir(host):
-    return CACHE_ROOT / host / "cache" / "jobs"
-
-
-def archive_dir(host):
-    return CACHE_ROOT / host / "cache" / "arvhices"
-
-
-def ensure_root():
-    CACHE_ROOT.mkdir(parents=True, exist_ok=True)
-
-
-def ensure_cache(host):
-    cache_dir(host).mkdir(parents=True, exist_ok=True)
-
-
-def ensure_job_dir(host):
-    job_dir(host).mkdir(parents=True, exist_ok=True)
-
-
-def ensure_archive_dir(host):
-    archive_dir(host).mkdir(parents=True, exist_ok=True)
-
-
-def ensure_host(host):
-    if host is None:
-        host = get_current_host()
-
-    check_host(host)
-    return host
-
-
-def write_cache(host, name, data):
-    ensure_cache(host)
-    with open(cache_dir(host) / f"{name}.json", "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2)
-
-
-def read_cache(host, name):
-    p = cache_dir(host) / f"{name}.json"
-    if not p.exists():
-        print(f"Cached:{name} information not found. Run: eskit pull {host}")
-        return None
-    with open(p, "r", encoding="utf-8") as f:
-        return json.load(f)
-
-
-def write_job(host, job: ESKitJob):
-    ensure_job_dir(host)
-    with open(job_dir(host) / f"{job.get_output_id()}.json", "w") as f:
-        json.dump(asdict(job), f, indent=2)
-
-
-def write_archive_all(config, host):
-    host_config = get_host(config, host)
-    archives = host_config.get("archives")
-
-    if not archives:
-        return
-
-    for archive in archives:
-        pull_archive_stat(config, host, archive)
-
-    # clean stale cache
-    cached_archives = list_archives(host)
-
-    for cache in cached_archives:
-        exists = any(d.get("name") == cache["name"] for d in archives)
-        if not exists:
-            delete_archive(host, ESKitArchiveState.from_dict(cache))
-
-
-def delete_archive(host, archive: ESKitArchiveState):
-    ensure_archive_dir(host)
-    Path(archive_dir(host) / f"{archive.name}.json").unlink(missing_ok=True)
-
-
-def write_archive(host, archive: ESKitArchiveState):
-    ensure_archive_dir(host)
-    with open(archive_dir(host) / f"{archive.name}.json", "w") as f:
-        json.dump(asdict(archive), f, indent=2)
-
-
-def read_archive(host, archive_id):
-    path = archive_dir(host) / f"{archive_id}.json"
-    if not path.exists():
-        return None
-    return json.load(open(path))
-
-
-def list_archives(host):
-    if not archive_dir(host).exists():
-        return []
-
-    archives = []
-    for f in archive_dir(host).glob("*.json"):
-        archives.append(json.load(open(f)))
-
-    archives.sort(key=lambda x: x["created_at"], reverse=True)
-    return archives
-
-
-def is_agent_available():
-    try:
-        agent = paramiko.Agent()
-        return len(agent.get_keys()) > 0
-    except Exception:
-        return False
-
-
-def find_index(host, index):
-    index_cache = read_cache(host, "indices")
-    if not index_cache:
-        return False
-
-    for i in index_cache:
-        if index == i["index"]:
-            return True
-
-    return False
-
-
-def find_repo(host, repo):
-    repos_cache = read_cache(host, "repos")
-    for repo_name, repo_data in repos_cache.items():
-        if repo == repo_name:
-            return True
-
-    return False
-
-
-def find_snapshot(host, repo, snapshot):
-    snapshots_cache = read_cache(host, "snapshots")
-    if not repo in snapshots_cache:
-        return False
-    snap_list = snapshots_cache[repo]["snapshots"]
-    for s in snap_list:
-        if snapshot == s["snapshot"]:
-            return True
-
-    return False
 
 
 def get_path(data, path):
@@ -332,53 +114,6 @@ def build_field_list(config, views, fields):
         result.extend(fields.split(","))
 
     return list(dict.fromkeys(result))
-
-
-def build_projection(data, field_paths):
-    out = {}
-
-    for path in field_paths:
-        value = get_path(data, path)
-
-        if value is not None:
-            out[path] = value
-
-    return out
-
-
-def pull_host(config, host_name, es, kind=None):
-
-    print(f"kind:{kind}")
-
-    if host_name is None:
-        host_name = get_current_host()
-
-    check_host(host_name)
-    print_host(host_name)
-
-    all = len(kind) == 0 or kind == None
-
-    if "es" in kind or all:
-        repos = es.request("GET", "/_snapshot")
-        write_cache(host_name, "repos", repos)
-
-        snapshots = {}
-        if isinstance(repos, dict):
-            for repo in repos.keys():
-                snapshots[repo] = es.request("GET", f"/_snapshot/{repo}/_all")
-        write_cache(host_name, "snapshots", snapshots)
-
-        indices = es.request("GET", "/_cat/indices?format=json")
-        write_cache(host_name, "indices", indices)
-
-        version = es.request("GET", "/")
-        write_cache(host_name, "version", version)
-
-    # pull archive status
-    if "archive" in kind or all:
-        write_archive_all(config, host_name)
-
-    print("\nCache updated.\n")
 
 
 def connect_es(config, host_name):
@@ -667,47 +402,17 @@ def cmd_init(args):
 
 def cmd_list_archive(args):
 
-    host_name = args.host
-    if host_name is None:
-        host_name = get_current_host()
+    from eskit.core.archive import list
 
-    check_host(host_name)
-
-    config = None
-    if "config" in args:
-        config = load_config(args.config)
-
-    data = list_archives(host_name)
-
-    views = args.view
-    fields = args.fields
-    flat = args.flat
-    target_fields = build_field_list(config, views, fields)
-    out = []
-
-    if len(target_fields) > 0:
-        for job in data:
-            out.append(apply_view(job, target_fields, flat))
-    else:
-        out = data
-
-    print(json.dumps(out, indent=2))
+    list(args.config, args.host, args.view, args.fields, args.flat)
 
 
 def cmd_pull_archive(args):
-    config = None
-    if "config" in args:
-        config = load_config(args.config)
+    from eskit.core.archive import pull
 
-    host_name = args.host
-
-    if host_name is None:
-        host_name = get_current_host()
-    check_host(host_name)
-
-    pull_archive(
-        config,
-        host_name,
+    pull(
+        args.config,
+        args.host,
         args.name,
         args.contents,
         args.dry_run,
@@ -718,19 +423,11 @@ def cmd_pull_archive(args):
 
 
 def cmd_sync_archive(args):
-    config = None
-    if "config" in args:
-        config = load_config(args.config)
+    from eskit.core.archive import pull
 
-    host_name = args.host
-
-    if host_name is None:
-        host_name = get_current_host()
-    check_host(host_name)
-
-    pull_archive(
-        config,
-        host_name,
+    pull(
+        args.config,
+        args.host,
         args.name,
         args.contents,
         args.dry_run,
@@ -741,19 +438,11 @@ def cmd_sync_archive(args):
 
 
 def cmd_push_archive(args):
-    config = None
-    if "config" in args:
-        config = load_config(args.config)
+    from eskit.core.archive import push
 
-    host_name = args.host
-
-    if host_name is None:
-        host_name = get_current_host()
-    check_host(host_name)
-
-    push_archive(
-        config,
-        host_name,
+    push(
+        args.config,
+        args.host,
         args.name,
         args.dst,
         args.contents,
@@ -763,31 +452,9 @@ def cmd_push_archive(args):
 
 
 def cmd_show_archive(args):
-    host_name = args.host
-    if host_name is None:
-        host_name = get_current_host()
+    from eskit.core.archive import show
 
-    check_host(host_name)
-
-    config = None
-    if "config" in args:
-        config = load_config(args.config)
-
-    views = args.view
-    fields = args.fields
-    flat = args.flat
-    archive_name = args.name
-    target_fields = build_field_list(config, views, fields)
-    out = {}
-
-    data = read_archive(host_name, archive_name)
-
-    if len(target_fields) > 0:
-        out = apply_view(data, target_fields, flat)
-    else:
-        out = data
-
-    print(json.dumps(out, indent=2))
+    show(args.config, args.host, args.name, args.view, args.fields, args.flat)
 
 
 def get_task(config, host, task_id):
@@ -808,299 +475,6 @@ def get_task(config, host, task_id):
         print(e)
     finally:
         ssh.close()
-
-
-def parse_stat_line(line: str):
-    parts = line.strip().split("|")
-    return dict(kv.split("=", 1) for kv in parts)
-
-
-def get_file_stats(path, transport):
-
-    stas_format = "name=%n|mode=%a|owner=%U|group=%G|mtime_ms=%Y|atime_ms=%X|ctime_ms=%W|mtime_iso=%y|atime_iso=%x|ctime_iso=%w"
-
-    cmd = f"TZ=UTC stat -c '{stas_format}' {path}"
-
-    print("Getting File Stat")
-    print(f"transport:{transport.name}")
-    print(f"cmd:{cmd}\n")
-
-    out = transport.run(cmd)
-
-    if not out:
-        print(f"path:{path} does not exist or failed to get stat")
-        return {}
-
-    stat = parse_stat_line(out)
-    stat["mtime_ms"] = int(stat["mtime_ms"]) * 1000
-    stat["ctime_ms"] = int(stat["ctime_ms"]) * 1000
-    stat["atime_ms"] = int(stat["atime_ms"]) * 1000
-
-    cmd = f"du -sb {path}"
-    # print(f"cmd:{cmd}")
-    file_size = transport.run(cmd)
-    # print(f"file_size:{file_size}")
-    stat["size"] = file_size.split("\t")[0]
-    # print(stat)
-
-    return stat
-
-
-def get_ssh_config_from_remote_target(config, remote_target):
-    remote_host, sep, remote_path = remote_target.partition(":")
-
-    if not sep:
-        return None
-
-    # print(f"remote_host:{remote_host}")
-    if remote_host:
-        return get_host(config, remote_host).get("ssh")
-
-    return None
-
-
-# <eskit_host>:<dst> to <ssh_host>:<dst>
-def convert_remote_host(config, remote_target):
-
-    remote_host, sep, remote_path = remote_target.partition(":")
-
-    if not sep:
-        return remote_target
-
-    remote_host_config = get_host(config, remote_host)
-    # print(f"remote_host_config:{remote_host_config}")
-
-    ssh_config = remote_host_config.get("ssh")
-    user = ssh_config.get("user")
-
-    return f"{user}@{remote_host_config["ip"]}:{remote_path}"
-
-
-def get_ssh_command(config, remote_target):
-
-    ssh_config = get_ssh_config_from_remote_target(config, remote_target)
-    if not ssh_config:
-        return None
-
-    # print(f"ssh_config:{ssh_config}")
-    ssh_cmd = ""
-
-    password = ssh_config.get("password")
-    if password and ssh_config.get("use_sshpass"):
-        ssh_cmd = f"sshpass -p {password} "
-
-    ssh_cmd += f"ssh -p {ssh_config.get("port")}"
-
-    identity = ssh_config.get("identity")
-    if identity:
-        ssh_cmd += f" -i {identity}"
-
-    # print(f"ssh_cmd:{ssh_cmd}")
-
-    return ssh_cmd
-
-
-def pull_archive_stat(config, host, archive_config):
-
-    host_config = get_host(config, host)
-    rsync_src = archive_config["remote_src"]
-    rsync_dst = archive_config["local_dst"]
-
-    # update cache/stats
-    # src - remote
-    transport = SSHConnection(host_config)
-    transport.connect()
-    try:
-        src_stats = get_file_stats(rsync_src, transport)
-    except RuntimeError as e:
-        print(f"\nfailed to get file stats for remote_src:{e}")
-        return
-    transport.close()
-    # print(json.dumps(src_stats, indent=2))
-
-    # dst - local
-    transport = SynchronousProcess(shell=True)
-    try:
-        dst_stats = get_file_stats(rsync_dst, transport)
-    except RuntimeError as e:
-        print(f"failed to get file stats for local_dst:{e}")
-        return
-    # print(json.dumps(dst_stats, indent=2))
-
-    archive = ESKitArchiveState(
-        name=archive_config["name"],
-        created_at=datetime.now(timezone.utc).isoformat(),
-        updated_at=datetime.now(timezone.utc).isoformat(),
-        created_at_ms=int(datetime.now(timezone.utc).timestamp() * 1000),
-        updated_at_ms=int(datetime.now(timezone.utc).timestamp() * 1000),
-        last_pull=datetime.now(timezone.utc).isoformat(),
-        remote_src_stat=src_stats,
-        local_dst_stat=dst_stats,
-    )
-    # print(f"archive:{archive}")
-    write_archive(host, archive)
-
-
-def pull_archive(config, host, name, contents, dry_run, all, sync, preview):
-
-    host_config = get_host(config, host)
-
-    print_host(host)
-
-    archives = host_config.get("archives") or {}
-
-    archive = None
-    for a in archives:
-        if a["name"] == name:
-            archive = a
-
-    if not archive:
-        print(f"archive:{name} is not found for host:{host}")
-        return
-
-    archive_type = archive["type"]
-    job = None
-    if archive_type == "snapshot":
-        job = pull_snapshot(
-            config, host, name, archive, contents, dry_run, sync, preview
-        )
-
-    if not dry_run:
-        print(
-            f"job started:\nid:{job.id}\ncache:{job.cache_path}\nlog:{job.log_path}\npid:{job.pid}"
-        )
-
-
-def pull_snapshot(config, host, name, archive, contets, dry_run, sync, preview):
-
-    rsync_src = archive["remote_src"]
-    rsync_dst = archive["local_dst"]
-
-    if contets:
-        rsync_src += "/"
-
-    # append the current host to create the remote dst foramt
-    remote_host = f"{host}:{rsync_src}"
-    ssh_cmd = get_ssh_command(config, remote_host)
-    remote_rsync_src = convert_remote_host(config, remote_host)
-
-    cmd = ["rsync", "-av", "--progress"]
-
-    if preview:
-        print_preview()
-        cmd.append("-n")
-
-    if sync:
-        cmd.append("--delete")
-
-    if ssh_cmd:
-        cmd.append("-e")
-        cmd.append(ssh_cmd)
-    cmd.append(remote_rsync_src)
-    cmd.append(rsync_dst)
-
-    job = ESKitJob(
-        id=str(uuid.uuid4()),
-        name="snapshots",
-        type="rsync",
-        host=host,
-        status="running",
-        created_at=datetime.now(timezone.utc).isoformat(),
-        updated_at=datetime.now(timezone.utc).isoformat(),
-        payload={"src": rsync_src, "dst": rsync_dst, "cmd": cmd},
-    )
-    if dry_run:
-        print_dry_run()
-        print(f"dry-run job:{json.dumps(job.to_dict(),indent=2)}")
-    else:
-        job = job_manager.submit(job, LocalExecutor())
-
-    pull_archive_stat(config, host, archive)
-
-    return job
-
-
-def push_archive(config, host, name, dst, contents, dry_run, preview):
-
-    host_config = get_host(config, host)
-
-    print_host(host)
-
-    archives = host_config.get("archives") or {}
-
-    archive = None
-    for a in archives:
-        if a["name"] == name:
-            archive = a
-
-    if not archive:
-        print(f"archive:{name} is not found for host:{host}")
-        return
-
-    archive_type = archive["type"]
-    job = None
-    if archive_type == "snapshot":
-        job = push_snapshot(
-            config, host, name, archive, dst, contents, dry_run, preview
-        )
-
-    if not dry_run:
-        print(
-            f"job started:\nid:{job.id}\ncache:{job.cache_path}\nlog:{job.log_path}\npid:{job.pid}"
-        )
-
-
-def push_snapshot(config, host, name, archive, remote_dst, contents, dry_run, preview):
-
-    # archive's local dst become source for push
-    rsync_src = archive["local_dst"]
-
-    if contents:
-        rsync_src = rsync_src + "/"
-
-    rsync_dst = remote_dst
-
-    ssh_cmd = get_ssh_command(config, rsync_dst)
-    rsync_dst = convert_remote_host(config, rsync_dst)
-
-    cmd = [
-        "rsync",
-        "-rv",
-        "--progress",
-        "--delete",
-        "--no-owner",
-        "--no-group",
-        "--no-times",
-    ]
-
-    if preview:
-        print_preview()
-        cmd.append("-n")
-
-    if ssh_cmd:
-        cmd.append("-e")
-        cmd.append(ssh_cmd)
-
-    cmd.append(rsync_src)
-    cmd.append(rsync_dst)
-
-    job = ESKitJob(
-        id=str(uuid.uuid4()),
-        name="snapshots",
-        type="rsync",
-        host=host,
-        status="running",
-        created_at=datetime.now(timezone.utc).isoformat(),
-        updated_at=datetime.now(timezone.utc).isoformat(),
-        payload={"src": rsync_src, "dst": rsync_dst, "cmd": cmd},
-    )
-    if dry_run:
-        print_dry_run()
-        print(f"dry-run job:{json.dumps(job.to_dict(),indent=2)}")
-    else:
-        job = job_manager.submit(job, LocalExecutor())
-
-    return job
 
 
 def cmd_root(args):
@@ -1480,6 +854,10 @@ def main():
 
     global job_manager
     job_manager = ESKitJobManager(CACHE_ROOT)
+
+    from eskit.jobs.job_manager import init
+
+    init(CACHE_ROOT)
 
     args.function(args)
     return
