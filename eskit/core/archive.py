@@ -17,7 +17,7 @@ from eskit.jobs.executers import LocalExecutor
 from eskit.jobs.job_manager import get
 
 
-def list(config_path, host_name, views, fields, flat):
+def show_list(config_path, host_name, views, fields, flat):
 
     if host_name is None:
         host_name = get_current_host_name()

@@ -8,7 +8,7 @@ from eskit.core.host import get_current_host_name, check_host_name
 from eskit.jobs.job_manager import get
 
 
-def list(config_path, host_name, local, views, fields, flat):
+def show_list(config_path, host_name, local, views, fields, flat):
 
     if host_name is None:
         host_name = get_current_host_name()

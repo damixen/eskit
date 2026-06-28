@@ -42,9 +42,9 @@ def cmd_host_get(args):
 
 
 def cmd_list_job(args):
-    from eskit.core.job import list
+    from eskit.core.job import show_list
 
-    list(args.config, args.host, args.local, args.view, args.fields, args.flat)
+    show_list(args.config, args.host, args.local, args.view, args.fields, args.flat)
 
 
 def cmd_read_job(args):
@@ -216,9 +216,9 @@ def cmd_init(args):
 
 def cmd_list_archive(args):
 
-    from eskit.core.archive import list
+    from eskit.core.archive import show_list
 
-    list(args.config, args.host, args.view, args.fields, args.flat)
+    show_list(args.config, args.host, args.view, args.fields, args.flat)
 
 
 def cmd_pull_archive(args):
