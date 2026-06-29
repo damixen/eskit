@@ -2,9 +2,7 @@
 .eskit
 /docker-compose.yml
 .venc
-snapshots*
-rsynctest*
-development
+
 
 
 # Byte-compiled / optimized / DLL files

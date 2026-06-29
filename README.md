@@ -5,10 +5,9 @@ ESKit is a lightweight command-line toolkit for managing Elasticsearch repositor
 It is designed for operators who regularly work with snapshot-based backup and restore workflows and want a simple, cache-driven interface instead of repeatedly typing Elasticsearch API requests.
 
 > ⚠️ **Status: Work in Progress (WIP)**\
-> Snapshot, repository, and index workflows are stable and actively
-> used.\
-> Rsync-based repository synchronization and advanced job tracking are
-> still in development.
+> Snapshot, repository, index, and rsync-based repository archiving workflows are stable and actively
+> used in personal environments.\
+> Advanced job tracking is still in development.
 
 ---
 
@@ -71,6 +70,15 @@ ESKit provides a consistent CLI workflow:
 - Store job metadata locally
 - Track Elasticsearch task IDs
 
+### Archive Management
+- Synchronize data with rsync
+    - Treats data on the ESKit host as a managed archive
+    - Create an archive with remote host data
+    - Transfer archive data to another local or remote location
+- Support operations
+    - Incremental update by keeping local data
+    - Synchronized update or mirroring with source data
+
 ### Cache System
 
 ESKit maintains a local cache for:
@@ -79,14 +87,21 @@ ESKit maintains a local cache for:
 - Snapshots
 - Indices
 - Cluster Version
+- Archives
 ```text
 .eskit/
+├── jobs (archive-related jobs)
+|     └── <job_id>.json
 └── <host>/
     └── cache/
         ├── indices.json
         ├── repos.json
         ├── snapshots.json
-        └── version.json
+        ├── version.json
+        ├── jobs
+        |     └── <job_id>.json
+        └── archives
+              └── <archive_name>.json
 ```
 This allows fast inspection without repeatedly querying Elasticsearch.
 
@@ -110,7 +125,7 @@ ESKit communicates with Elasticsearch through SSH.
 ```mermaid
 flowchart
     subgraph canvas["ESKit Example"]
-        eskit["ESKit"]
+        ESKitHost
         subgraph vm[VM e.g. Detection Hub]
             host_vm["Host"]
             elasticsearch_vm["Elasticsearch"]
@@ -121,19 +136,29 @@ flowchart
         end
     end
 
+    subgraph ESKitHost["ESKit Host"]
+        direction TB
+        eskit["ESKit"]
+        archives["Archives"]
+        elasticsearch_local["(Optional) Elasticsearch"]
+    end
+
     eskit -->|ssh|host_vm
+    eskit -->|rsync sync/mirror|host_vm
     host_vm -->|curl localhost:9200| elasticsearch_vm
 
     eskit -->|ssh|host_remote
+    host_remote -->|rsync pull|eskit
     host_remote -->|curl localhost:9200| elasticsearch_remote
-
-    host_vm-->|rsync|host_remote
 
    
 ```
 
 - No Elasticsearch Python client is required.
 - Elasticsearch is accessed locally on each host via curl localhost:9200 over SSH, so ESKit does not require a TLS-enabled client connection to the cluster.
+- ESKit host can synchronize data from the remote host for archiving and transferring it to another host.
+- Centralizes archive synchronization on the ESKit host, eliminating the need to configure direct data transfer between non-ESKit hosts.
+- For snapshot archives, an optional local Elasticsearch cluster can be deployed on the ESKit host to inspect and manage archived snapshot repositories.
 ---
 
 ## SSH Login
@@ -152,6 +177,8 @@ For password authentication, it currently does not support environment variables
 - Password authentication is supported primarily for lab and development environments.
 - Production deployments should use SSH keys or SSH-Agent where possible.
 - Do not commit `.eskit/config.json` to source control.
+- Archive operations that use password authentication
+may require `sshpass` to be installed on the ESKit host.
 
 ---
 
@@ -161,6 +188,7 @@ For password authentication, it currently does not support environment variables
 
 -   Python 3.9+
 -   paramiko
+- `rsync` (required for archive features; available on Linux, macOS, WSL, and environments such as MinGW/MSYS2 or Cygwin on Windows)
 
 ### Setup
 
@@ -171,33 +199,71 @@ git clone <repo-url>
 cd eskit
 ```
 
-Install dependencies:
+### User Set-up (Recommended)
 
+Install pipx:
+
+Linux/Ubuntu/WSL
 ```bash
-pip install paramiko
+sudo apt install pipx
+pipx ensurepath
 ```
+
+macOS
+```bash
+brew install pipx
+pipx ensurepath
+```
+
+Run Pipx
+```bash
+pipx install .
+eskit --help
+```
+
+### Development Set-up
+
+Create VEnv: 
+
+Linux/macOS/WSL
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+```
+
+Windows:
+```powershell
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+```
+
+Pip install:
+```bash
+pip install -e .
+eskit --help
+```
+
+---
 
 Running:
 
 ```bash
-python eskit.py --help
+eskit --help
 ```
 ```bash
-python eskit.py init --demo
+eskit init --demo
 ```
-
----
 
 ## Quick Demo
 ```bash
 git clone ...
 cd eskit
 
-pip install paramiko
+pipx install .
 
-python eskit.py init --demo
-python eskit.py status
-python eskit.py cat repo
+eskit init --demo
+eskit status
+eskit cat repo
 ```
 
 ### What you can do with the demo
@@ -206,6 +272,31 @@ In the demo, you can explore how eskit works out of the box:
 - You can try to use the --dry-run option on commands that would modify data on the host side. The option will give you a preview of the Elasticsearch API request.
 
 Also, you could extend the configuration to your host and try.
+
+## Uninstall
+
+### pipx Installation
+
+```bash
+pipx uninstall eskit
+```
+
+### Development Installation (virtual environment)
+
+Deactivate and remove the virtual environment:
+
+```bash
+deactivate
+rm -rf .venv
+```
+
+If installed into an active virtual environment:
+
+```bash
+pip uninstall eskit
+```
+
+> Removing ESKit does not automatically remove local workspaces (e.g. `.eskit/` cache directories or archives) created by `eskit init`. Remove them manually if no longer needed.
 
 ---
 
@@ -393,6 +484,98 @@ eskit task get <task-id>
 
 ---
 
+## Archive Workflow
+
+Archive Config:
+```json
+{
+"host": "RemoteHost",
+...
+"archives":[
+  {"type": "snapshot", "name": "snapshots", "remote_src":"/home/zach/snapshots", "local_dst": "snapshots",
+  }
+            ]
+...
+}
+```
+- Remote host is resolved automatically.
+
+Synchronize data with a remote host incrementally:
+
+```bash
+eskit archive pull <archive-name>
+```
+- Data Source: Remote Host
+- Operation Type: Mutating(local host archive)
+- Use --contents option to synchronize only the contents to avoid creating the top-level folder.
+
+Synchronize data with a remote host by mirroring:
+
+```bash
+eskit archive sync <archive-name>
+```
+- Data Source: Remote Host
+- Operation Type: Mutating(local host archive) | Destructive(local host archive)
+- Use --contents option to synchronize only the contents to avoid creating the top-level folder.
+
+Transfer data to another host or within the local host:
+```bash
+eskit archive push <archive-name> --dst <target location>
+```
+- Data Source: Local Archive
+- Operation Type: Mutating(target location) | Destructive(target location)
+- Use --contents option to synchronize only the contents to avoid creating the top-level folder.
+- This operation performs mirroring, which could delete the target location's data depending on the archive updates on the local host.
+- Target location format:
+For a Remote Host:
+```bash
+<ESKit Host Name>:<path>
+e.g. VM-Host:/home/mike/snapshot
+```
+For a local location:
+```bash
+<path>
+e.g. /home/mike/snapshot
+```
+ESKit resolved the hostname based on the host configuration.
+
+List archive cache:
+```bash
+eskit archive list
+```
+- Data Source: Cache
+- Operation Type: View
+
+Show specific archive in cache:
+```bash
+eskit archive show <archive-name>
+```
+- Data Source: Cache
+- Operation Type: View
+
+---
+
+## Local Host Workflow
+
+An optional local Elasticsearch cluster can be deployed on the ESKit host to inspect and restore snapshot archives.
+
+A sample docker-compose.yml is located at:
+```bash
+<root_dir>/docker
+```
+
+The local host config can be defined as:
+```json
+{
+  "name": "LocalHost",
+  "localhost": true
+}
+```
+ESKit treats the local host as another configured host and executes Elasticsearch commands directly on the local machine instead of through SSH.
+
+Please note that ESKit does not manage the Elasticsearch cluster itself, so make sure to set up the repo config in the Dockerfile and specify the physical location of the repo to be managed or updated, depending on your environment. 
+
+---
 
 ## Output Views
 
@@ -441,7 +624,7 @@ Also, the config file in the demo or template shows some sample view configurati
 #### Example:
 Before applying the view:
 ```bash
-python eskit.py cat index
+eskit cat index
 ```
 ```json
 [
@@ -475,7 +658,7 @@ After applying the view:
 ```
 * Please note that if the fields contain the period "." in the name, please replace it with "$".
 ```bash
-python eskit.py cat index --view cat-index-basic
+eskit cat index --view cat-index-basic
 ```
 ```json
 [
@@ -573,45 +756,47 @@ This is how I use the eskit to perform my repository/snapshot workflow for my ot
 
 ##### 1. Double-check which host I am working on.
 ```
-python eskit.py host get
-python eskit.py host set <host>
+eskit host get
+eskit host set <host>
 ```
 ##### 2. Check the status of the host that I would like to operate on.
 ```bash
-python eskit.py status
+eskit status
 ```
 ##### 3. Pull the latest information.
 ```bash
-python eskit.py pull
+eskit pull
 ```
 ##### 4. Check available indices
 ```bash
-python eskit.py cat index
+eskit cat index
 ```
 ##### 5. Create a snapshot
 ```bash
-python eskit.py snap create --index *2026.05.31* daily_repo/2026.05.31
+eskit snap create --index *2026.05.31* daily_repo/2026.05.31
 ```
 - Wildcard is supported.
 - The mutating operation will automatically update the cache after successful execution.
 
 ##### 6. Verify the created snapshot with the intended indices and state, etc.
 ```bash
-python eskit.py repo show daily_repo/2026.05.31 --view snapshot-basic
+eskit repo show daily_repo/2026.05.31 --view snapshot-basic
 or
-python eskit.py cat snap --view snapshot-basic # returns list of snapshots
+eskit cat snap --view snapshot-basic # returns list of snapshots
 ```
 - You may need to wait until the **state** becomes **SUCCESS** by pulling data again.
 - Optionally, you can use "view" to control what information is returned.
 
 ##### 7. Synchronize the snapshot from the host to my other host for restoration.
-I use rsync for this operation, but currently, eskit does not support it.
-So I manually run the command on the host.
+
+Newly created command can be used to perform the syncronization from the ESKit host and a remote host instead of using rysnc command directly.
+
 ```bash
-sudo rsync -av --progress -e "ssh -p 22 -i .ssh/id_ed25519" demo@<ip>:/home/demo/data/elk/snapshot /home/demo/data/elk
+eskit archive pull snapshots --contents
 ```
-> ⚠️ **Rsync Note**\
-> After a successful rsync operation, you may need to delete the repository on the destination host side in order to reflect the update. That's the behavior I observed so far. Although the repository is deleted, snapshots remain.
+
+> ⚠️ **Archive/Rsync Note**\
+> After a successful archive/rsync operation, you may need to delete the repository on the destination host side to reflect the update. That's the behavior I observed so far. Although the repository is deleted, snapshots remain.
 > ```bash
 > eskit repo delete <repo>
 > eskit repo create <repo> --location abc
@@ -620,15 +805,15 @@ sudo rsync -av --progress -e "ssh -p 22 -i .ssh/id_ed25519" demo@<ip>:/home/demo
 ##### 8. Restore the snapshot for my other host.
 * Make sure to change the host if you are operating on a single folder for multiple hosts.
 ```bash
-python eskit.py host set <host>
+eskit host set <host>
 ```
 ```bash
-python eskit.py snap restore daily_repo/2026.05.31
+eskit snap restore daily_repo/2026.05.31
 ```
 
 ##### 9. Check the index status for restore completion.
 ```bash
-python eskit.py index status logs-2026.05.31
+eskit index status logs-2026.05.31
 ```
 It will display data such as "bytes_percent" and "stage" to verify the restoration status.
 
@@ -637,20 +822,20 @@ Typical workflow ends here, but I ran one more step to reindex the restored inde
 ##### 10. Run the reindex command
 For my specific use case, I will change the index's timestamp format.
 ```bash
-python eskit.py reindex -m timestamp-mapping logs-2026.05.31 logs-2026.05.31-ts-format-fix
+eskit reindex -m timestamp-mapping logs-2026.05.31 logs-2026.05.31-ts-format-fix
 ```
 Since reindexing can take time, it's requested without waiting for the job to complete. The command will create a cache file for a job/task and output a job ID that can be used to retrieve the job information in the cache. e.g. host/cache/jobs/job_id.json.
 
 - Currently, eskit doesn't support updating job status since it's created, so you would need to use a command to get the status.
 
 ```bash
-python eskit.py task get iJB85gfpT2uErgzlMvmJbA:2176368  
+eskit task get iJB85gfpT2uErgzlMvmJbA:2176368  
 ```
-You can check "status.total" and "status.created" to see progress, and "completed".
+You can check "status.total", "status.created", and "completed" to see progress.
 
 ##### 11. Once completed and verified, I will delete the original index.
 ```bash
-python eskit.py index delete logs-2026.05.31
+eskit index delete logs-2026.05.31
 ```
 
 ## Limitations
@@ -661,7 +846,6 @@ python eskit.py index delete logs-2026.05.31
 ## Future Updates and Improvements
 - Automatic snapshot compatibility validation.
 - Continuous task monitoring/polling.
-- Complete Rsync workflow.
 - Streaming logs for long-running operations.
 - Shell interactive mode.
 
@@ -683,8 +867,8 @@ The goal is not to replace Kibana or official Elasticsearch tooling, but to prov
 
 Planned or under consideration:
 
-- Local Elasticsearch mode (no SSH required)
-- Snapshot archive hub (ESKit as backup aggregator)
+- Centralized Logging and Logging level feature
+- Enhanced error checking and operation pre-flight checker
 - Optional desktop UI for management workflows
 
 ## License

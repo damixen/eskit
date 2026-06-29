@@ -1,0 +1,92 @@
+{
+  "test_repo": {
+    "snapshots": [
+      {
+        "snapshot": "test_snapshot",
+        "uuid": "La2JwHZURhmf0h7-iF2D8Q",
+        "repository": "test_repo",
+        "version_id": 9039003,
+        "version": "9.2.3",
+        "indices": [
+          "log-2026.05.13",
+          "log-2026.05.12"
+        ],
+        "data_streams": [],
+        "include_global_state": false,
+        "state": "SUCCESS",
+        "start_time": "2026-05-31T18:47:55.672Z",
+        "start_time_in_millis": 1780253275672,
+        "end_time": "2026-05-31T18:48:22.916Z",
+        "end_time_in_millis": 1780253302916,
+        "duration_in_millis": 27244,
+        "failures": [],
+        "shards": {
+          "total": 2,
+          "failed": 0,
+          "successful": 2
+        },
+        "feature_states": []
+      }
+    ],
+    "total": 1,
+    "remaining": 0
+  },
+  "daily_repo": {
+    "snapshots": [
+      {
+        "snapshot": "2026.05.31",
+        "uuid": "oGuAZ9yrQQOfHHD9L6HVKw",
+        "repository": "daily_repo",
+        "version_id": 9039003,
+        "version": "9.2.3",
+        "indices": [
+          "log-2026.05.31",
+          "metric-2026.05.31"
+        ],
+        "data_streams": [],
+        "include_global_state": false,
+        "state": "SUCCESS",
+        "start_time": "2026-06-03T00:20:39.512Z",
+        "start_time_in_millis": 1780446039512,
+        "end_time": "2026-06-03T00:20:52.732Z",
+        "end_time_in_millis": 1780446052732,
+        "duration_in_millis": 13220,
+        "failures": [],
+        "shards": {
+          "total": 2,
+          "failed": 0,
+          "successful": 2
+        },
+        "feature_states": []
+      },
+      {
+        "snapshot": "2026.06.01",
+        "uuid": "JngVEYTBRpmoDFdF1XLo7A",
+        "repository": "daily_repo",
+        "version_id": 9039003,
+        "version": "9.2.3",
+        "indices": [
+          "log-2026.06.01",
+          "metric-2026.06.01"
+        ],
+        "data_streams": [],
+        "include_global_state": false,
+        "state": "SUCCESS",
+        "start_time": "2026-06-03T00:24:37.223Z",
+        "start_time_in_millis": 1780446277223,
+        "end_time": "2026-06-03T00:24:48.837Z",
+        "end_time_in_millis": 1780446288837,
+        "duration_in_millis": 11614,
+        "failures": [],
+        "shards": {
+          "total": 2,
+          "failed": 0,
+          "successful": 2
+        },
+        "feature_states": []
+      }
+    ],
+    "total": 17,
+    "remaining": 0
+  }
+}
