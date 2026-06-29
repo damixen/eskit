@@ -611,6 +611,18 @@ eskit archive show <archive-name>
 - Data Source: Cache
 - Operation Type: View
 
+### Elasticsearch Compatibility Overview
+
+| Artifact              | Older → Newer Version                            | Newer → Older Version   |
+| --------------------- | ------------------------------------------------ | ----------------------- |
+| Live data directory   | Usually supported                                | Generally not supported |
+| Snapshot repository   | Often supported within documented version limits | Generally not supported |
+| Lucene index segments | Typically readable by newer versions             | Frequently unsupported  |
+
+> **Note:** Elasticsearch upgrades should generally be treated as one-way operations. Once a newer version writes data, metadata, or snapshots, older versions may no longer be able to read or restore them.
+
+> Version information is available in the host version, snapshot, and index cache which can be used to determine compatibility for different Elasticsearch cluster. 
+
 ---
 
 ## Local Host Workflow

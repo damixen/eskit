@@ -36,6 +36,15 @@ def pull(config_path, host_name, kind=None):
         write_cache(host_name, "snapshots", snapshots)
 
         indices = es.request("GET", "/_cat/indices?format=json")
+
+        # get index version
+        index_settings = es.request("GET", "/_all/_settings?filter_path=*.settings.index.version.created")
+        print(f"index_settings:{json.dumps(index_settings, indent=2)}")
+        for index in indices:
+            index_name = index.get("index")
+            if index_name in index_settings:
+                index["version"] = index_settings[index_name]["settings"]["index"]["version"]
+
         write_cache(host_name, "indices", indices)
 
         version = es.request("GET", "/")
