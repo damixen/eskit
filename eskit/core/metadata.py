@@ -13,8 +13,6 @@ from eskit.utils.view import build_field_list, apply_view
 
 def pull(config_path, host_name, kind=None):
 
-    print(f"kind:{kind}")
-
     if host_name is None:
         host_name = get_current_host_name()
 

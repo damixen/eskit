@@ -180,6 +180,64 @@ For password authentication, it currently does not support environment variables
 - Archive operations that use password authentication
 may require `sshpass` to be installed on the ESKit host.
 
+### SSH Authentication (Recommended)
+
+ESKit supports SSH key authentication through `ssh-agent`. Using `ssh-agent` avoids storing SSH passwords in configuration files and allows passphrase-protected keys to be unlocked once per session.
+
+#### Start `ssh-agent`
+
+Linux/macOS/WSL:
+
+```bash
+eval "$(ssh-agent -s)"
+```
+
+Example output:
+
+```text
+Agent pid 12345
+```
+
+#### Add an SSH Key
+
+Default keys:
+
+```bash
+ssh-add ~/.ssh/id_ed25519
+```
+
+or
+
+```bash
+ssh-add ~/.ssh/id_rsa
+```
+
+Custom key:
+
+```bash
+ssh-add ~/.ssh/my_private_key
+```
+
+If the key is passphrase protected, you will be prompted to enter the passphrase once:
+
+```text
+Enter passphrase for /home/user/.ssh/id_ed25519:
+```
+
+#### Verify Loaded Keys
+
+```bash
+ssh-add -l
+```
+
+Example output:
+
+```text
+256 SHA256:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx user@host (ED25519)
+```
+
+Once a key is loaded into `ssh-agent`, ESKit and Paramiko can automatically use it for SSH connections without requiring passwords or repeated passphrase prompts.
+
 ---
 
 ## Installation
