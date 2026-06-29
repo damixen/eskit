@@ -26,6 +26,7 @@ def read_archive(host, archive_id):
 
 def list_archives(host):
     if not archive_dir(host).exists():
+        print(f"archive_dir:{archive_dir(host)} does not exist.")
         return []
 
     archives = []

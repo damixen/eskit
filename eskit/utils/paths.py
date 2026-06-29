@@ -18,7 +18,7 @@ def job_dir(host):
     return CACHE_ROOT / host / "cache" / "jobs"
 
 def archive_dir(host):
-    return CACHE_ROOT / host / "cache" / "arvhices"
+    return CACHE_ROOT / host / "cache" / "archives"
 
 
 def ensure_root():

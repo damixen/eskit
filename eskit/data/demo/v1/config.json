@@ -13,7 +13,13 @@
                     "name": "elastic",
                     "password": "example-password"
                 } 
-            }
+            },
+            "archives": [
+                {"type":"snapshot","name":"snapshots","remote_src":"/home/zach/snapshot", "local_dst":"snapshots"
+                },
+                {"type":"snapshot","name":"test","remote_src":"/home/zach/rsynctest", "local_dst":"./rsynctest"
+                }
+            ]
         },
         {
             "name": "DemoHost2",
@@ -26,13 +32,7 @@
             "elastic":{
                 "port":9999
             },
-            "push-protected":true,
-            "archives": [
-                {"type":"snapshot","name":"snapshots","remote_src":"/home/zach/snapshot", "local_dst":"snapshots"
-                },
-                {"type":"snapshot","name":"test","remote_src":"/home/zach/rsynctest", "local_dst":"./rsynctest"
-                }
-            ]
+            "push-protected":true
         }
     ],
     "reindex-configs": [

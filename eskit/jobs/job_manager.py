@@ -23,10 +23,11 @@ class ESKitJobManager:
     def __init__(self, cache_dir: Path):
         self.cache_dir = cache_dir
         self.jobs_dir = cache_dir / "jobs"
-        self.jobs_dir.mkdir(parents=True, exist_ok=True)
 
     def submit(self, job: ESKitJob, executor: ESKitExecutor):
         """Start a job using the appropriate executor."""
+
+        self.jobs_dir.mkdir(parents=True, exist_ok=True)
 
         cache_path = f"{self.jobs_dir}/{job.id}.json"
         job.cache_path = cache_path
