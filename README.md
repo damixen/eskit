@@ -623,6 +623,26 @@ eskit archive show <archive-name>
 
 > Version information is available in the host version, snapshot, and index cache which can be used to determine compatibility for different Elasticsearch cluster. 
 
+### Elasticsearch Index Version IDs
+
+ESKit caches the raw `index.version.created` value reported by Elasticsearch. This value is an internal Elasticsearch version identifier and may not directly correspond to the semantic version string.
+
+Example:
+
+```json
+{
+  "version": {
+    "created": 9023001
+  }
+}
+```
+
+For the official mapping between version identifiers and Elasticsearch releases, refer to:
+
+https://github.com/elastic/elasticsearch/blob/main/server/src/main/resources/org/elasticsearch/index/IndexVersions.csv
+
+ESKit currently stores the raw version identifier as the source of truth and does not perform version resolution or compatibility analysis.
+
 ---
 
 ## Local Host Workflow
