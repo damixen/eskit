@@ -6,6 +6,7 @@ from eskit.utils.config import load_config
 from eskit.utils.view import build_field_list, apply_view
 from eskit.core.host import get_current_host_name, check_host_name
 from eskit.jobs.job_manager import get
+from eskit.exit_code import ExitCode
 
 
 def show_list(config_path, host_name, local, views, fields, flat):
@@ -31,6 +32,8 @@ def show_list(config_path, host_name, local, views, fields, flat):
 
     print(json.dumps(out, indent=2))
 
+    return ExitCode.SUCCESS
+
 
 def show(config_path, host_name, job_search_id, views, fields, flat):
 
@@ -52,3 +55,5 @@ def show(config_path, host_name, job_search_id, views, fields, flat):
         out = data
 
     print(json.dumps(out, indent=2))
+
+    return ExitCode.SUCCESS

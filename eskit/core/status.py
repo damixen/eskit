@@ -1,11 +1,14 @@
+import logging
+
 from eskit.core.host import get_current_host_name, check_host_name
 from eskit.utils.config import load_config, is_push_protected
 from eskit.utils.paths import cache_dir
 from eskit.cache.store import read_cache, cache_date
 
+logger = logging.getLogger(__name__)
 
 def get_status(host_name, config_path):
-    print("get status")
+    logger.info("get status")
     if host_name is None:
         host_name = get_current_host_name()
 

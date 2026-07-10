@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 import argparse
 import json
+import logging
 from pathlib import Path
+from venv import logger
 from eskit.core.host import get_current_host_name
 from eskit.version import __version__
+from eskit.log import configure_logging
+from eskit.exit_code import ExitCode
 
 DEFAULT_CONFIG = ".eskit/config.json"
 CACHE_ROOT = Path(".eskit")
@@ -30,30 +34,51 @@ def cmd_host(args):
     hosts = get_hosts(args.host, args.config)
     print(json.dumps(hosts, indent=2))
 
+    return ExitCode.SUCCESS
+
 
 def cmd_host_set(args):
     from eskit.core.host import set_current_host_name
 
-    set_current_host_name(args.host)
+    if set_current_host_name(args.host):
+        if args.json:
+            print(json.dumps({"name": args.host}, indent=2))
+        else:
+            print(f"Current host set to: {args.host}")
+        return ExitCode.SUCCESS
+    else:
+        logger.error("Failed to set host to:%s", args.host)
+        return ExitCode.FAILURE
 
 
 def cmd_host_get(args):
-    print(get_current_host_name())
+    host_name = get_current_host_name()
+    if host_name:
+        if args.json:
+            print(json.dumps({"name": host_name}, indent=2))
+        else:
+            print(f"Current host: {host_name}")
+        return ExitCode.SUCCESS
+    else:
+        logger.error("No current host set.")
+    return ExitCode.FAILURE
 
 
 def cmd_list_job(args):
     from eskit.core.job import show_list
 
-    show_list(args.config, args.host, args.local, args.view, args.fields, args.flat)
+    return show_list(
+        args.config, args.host, args.local, args.view, args.fields, args.flat
+    )
 
 
 def cmd_read_job(args):
 
     from eskit.core.job import show
 
-    show(args.config, args.host, args.job_search_id, args.view, args.fields, args.flat)
-
-    return
+    return show(
+        args.config, args.host, args.job_search_id, args.view, args.fields, args.flat
+    )
 
 
 def cmd_status(args):
@@ -61,20 +86,23 @@ def cmd_status(args):
     from eskit.core.status import get_status
 
     status = get_status(args.host, args.config)
-
-    print(json.dumps(status, indent=2))
+    if args.json:
+        print(json.dumps(status, indent=2))
+    else:
+        # TODO: add table view
+        print(json.dumps(status, indent=2))
 
 
 def cmd_pull(args):
     from eskit.core.metadata import pull
 
-    pull(args.config, args.host, args.kind)
+    return pull(args.config, args.host, args.kind)
 
 
 def cmd_cat2(args):
     from eskit.core.metadata import cat
 
-    cat(args.config, args.host, args.kind, args.view, args.fields, args.flat)
+    return cat(args.config, args.host, args.kind, args.view, args.fields, args.flat)
 
 
 def cmd_repo_show2(args):
@@ -87,7 +115,7 @@ def cmd_repo_show2(args):
 
     from eskit.core.repo import show
 
-    show(args.config, host_name, name, views, fields, flat)
+    return show(args.config, host_name, name, views, fields, flat)
 
 
 def cmd_delete_repo(args):
@@ -100,7 +128,7 @@ def cmd_delete_repo(args):
 
     from eskit.core.repo import delete
 
-    delete(args.config, host_name, name, dry_run, push, force)
+    return delete(args.config, host_name, name, dry_run, push, force)
 
 
 def cmd_create_repo(args):
@@ -144,35 +172,43 @@ def cmd_delete_snapshot(args):
 
     from eskit.core.snap import delete
 
-    delete(args.config, args.host, args.name, args.dry_run, args.push, args.force)
+    return delete(
+        args.config, args.host, args.name, args.dry_run, args.push, args.force
+    )
 
 
 def cmd_restore_snapshot(args):
 
     from eskit.core.snap import restore
 
-    restore(args.config, args.host, args.name, args.index, args.dry_run, args.push)
+    return restore(
+        args.config, args.host, args.name, args.index, args.dry_run, args.push
+    )
 
 
 def cmd_restore_status(args):
 
     from eskit.core.index import status
 
-    status(args.config, args.host, args.index, args.view, args.fields, args.flat)
+    return status(args.config, args.host, args.index, args.view, args.fields, args.flat)
 
 
 def cmd_delete_index(args):
 
     from eskit.core.index import delete
 
-    delete(args.config, args.host, args.index, args.dry_run, args.push, args.force)
+    return delete(
+        args.config, args.host, args.index, args.dry_run, args.push, args.force
+    )
 
 
 def cmd_create_index(args):
 
     from eskit.core.index import create
 
-    create(args.config, args.host, args.index, args.mapping, args.dry_run, args.push)
+    return create(
+        args.config, args.host, args.index, args.mapping, args.dry_run, args.push
+    )
 
 
 def cmd_show_index(args):
@@ -184,14 +220,14 @@ def cmd_show_index(args):
 
     from eskit.core.index import show
 
-    show(args.config, args.host, index, views, fields, flat)
+    return show(args.config, args.host, index, views, fields, flat)
 
 
 def cmd_reindex(args):
 
     from eskit.core.index import reindex
 
-    reindex(
+    return reindex(
         args.config,
         args.host,
         args.src,
@@ -205,26 +241,35 @@ def cmd_reindex(args):
 def cmd_get_task(args):
     from eskit.core.task import get
 
-    get(args.config, args.host, args.task_id)
+    task = get(args.config, args.host, args.task_id)
+
+    if task:
+        if args.json:
+            print(json.dumps(task, indent=2))
+        else:
+            print(json.dumps(task, indent=2))
+    else:
+        logger.error("Task not found.")
+        return ExitCode.FAILURE
 
 
 def cmd_init(args):
     from eskit.core.init import init
 
-    init(args.demo)
+    return init(args.demo)
 
 
 def cmd_list_archive(args):
 
     from eskit.core.archive import show_list
 
-    show_list(args.config, args.host, args.view, args.fields, args.flat)
+    return show_list(args.config, args.host, args.view, args.fields, args.flat)
 
 
 def cmd_pull_archive(args):
     from eskit.core.archive import pull
 
-    pull(
+    return pull(
         args.config,
         args.host,
         args.name,
@@ -239,7 +284,7 @@ def cmd_pull_archive(args):
 def cmd_sync_archive(args):
     from eskit.core.archive import pull
 
-    pull(
+    return pull(
         args.config,
         args.host,
         args.name,
@@ -254,7 +299,7 @@ def cmd_sync_archive(args):
 def cmd_push_archive(args):
     from eskit.core.archive import push
 
-    push(
+    return push(
         args.config,
         args.host,
         args.name,
@@ -268,7 +313,7 @@ def cmd_push_archive(args):
 def cmd_show_archive(args):
     from eskit.core.archive import show
 
-    show(args.config, args.host, args.name, args.view, args.fields, args.flat)
+    return show(args.config, args.host, args.name, args.view, args.fields, args.flat)
 
 
 def cmd_root(args):
@@ -298,6 +343,17 @@ def build_parser():
     common_parser.add_argument(
         "--host",
         help="Specify which host to operate. Optional if found in .current_host file.",
+    )
+
+    output_parser = argparse.ArgumentParser(add_help=False)
+    output_parser.add_argument(
+        "-v", "--verbose", action="store_true", help="Enable verbose logging"
+    )
+    output_parser.add_argument(
+        "-d", "--debug", action="store_true", help="Enable debug logging"
+    )
+    output_parser.add_argument(
+        "-j", "--json", action="store_true", help="Output in JSON format"
     )
 
     # Mutating Operation common
@@ -341,22 +397,28 @@ def build_parser():
     host_parser_sub = host_parser.add_subparsers(required=True)
 
     host_show_parser = host_parser_sub.add_parser(
-        "show", parents=[common_parser], help="Show available hosts in the config"
+        "show",
+        parents=[common_parser, output_parser],
+        help="Show available hosts in the config",
     )
     host_show_parser.set_defaults(function=cmd_host)
 
-    host_set_parser = host_parser_sub.add_parser("set", help="Set as current host")
+    host_set_parser = host_parser_sub.add_parser(
+        "set", parents=[output_parser], help="Set as current host"
+    )
     host_set_parser.add_argument("host")
     host_set_parser.set_defaults(function=cmd_host_set)
 
-    host_get_parser = host_parser_sub.add_parser("get", help="Get current host")
+    host_get_parser = host_parser_sub.add_parser(
+        "get", parents=[output_parser], help="Get current host"
+    )
     host_get_parser.set_defaults(function=cmd_host_get)
     #
 
     # Pull
     pull = sub.add_parser(
         "pull",
-        parents=[common_parser],
+        parents=[common_parser, output_parser],
         help="Pulls resource data from the current host.",
     )
     pull.add_argument(
@@ -370,7 +432,7 @@ def build_parser():
     # Cat
     cat = sub.add_parser(
         "cat",
-        parents=[common_parser, viewer_command_parser],
+        parents=[common_parser, viewer_command_parser, output_parser],
         help="Show cached information.",
     )
     cat.add_argument("kind", choices=["repo", "snap", "index"])
@@ -382,17 +444,26 @@ def build_parser():
         "name", help="Name of repo or snapshot. <repo> or <repo>/<snapshot>"
     )
 
-    repo = sub.add_parser("repo", parents=[common_parser], help="Repository commands.")
+    repo = sub.add_parser(
+        "repo", parents=[common_parser, output_parser], help="Repository commands."
+    )
 
     repo_sub = repo.add_subparsers(required=True)
 
     repo_show_parser = repo_sub.add_parser(
-        "show", parents=[common_parser, common_repo_parser, viewer_command_parser]
+        "show",
+        parents=[
+            common_parser,
+            common_repo_parser,
+            viewer_command_parser,
+            output_parser,
+        ],
     )
     repo_show_parser.set_defaults(function=cmd_repo_show2)
 
     repo_create = repo_sub.add_parser(
-        "create", parents=[common_parser, common_repo_parser, mutating_parser]
+        "create",
+        parents=[common_parser, common_repo_parser, mutating_parser, output_parser],
     )
     repo_create.add_argument("--type", default="fs")
     repo_create.add_argument("--location", required=True)
@@ -410,7 +481,9 @@ def build_parser():
     repo_delete.set_defaults(function=cmd_delete_repo)
 
     # Snapshot Sub Commands
-    snap = sub.add_parser("snap", parents=[common_parser], help="Snapshot commands")
+    snap = sub.add_parser(
+        "snap", parents=[common_parser, output_parser], help="Snapshot commands"
+    )
     snap_sub = snap.add_subparsers(required=True)
 
     # common snap parser
@@ -439,6 +512,7 @@ def build_parser():
             common_snap_parser,
             common_snap_index_parser,
             mutating_parser,
+            output_parser,
         ],
     )
     snap_create.set_defaults(function=cmd_create_snapshot)
@@ -450,6 +524,7 @@ def build_parser():
             common_snap_parser,
             mutating_parser,
             destructive_command_parser,
+            output_parser,
         ],
     )
     snap_delete.set_defaults(function=cmd_delete_snapshot)
@@ -461,6 +536,7 @@ def build_parser():
             common_snap_parser,
             common_snap_index_parser,
             mutating_parser,
+            output_parser,
         ],
     )
     snap_restore.set_defaults(function=cmd_restore_snapshot)
@@ -484,6 +560,7 @@ def build_parser():
             common_index_parser,
             mutating_parser,
             destructive_command_parser,
+            output_parser,
         ],
     )
     index_delete.set_defaults(function=cmd_delete_index)
@@ -495,24 +572,37 @@ def build_parser():
             common_index_parser,
             index_mapper_parser,
             mutating_parser,
+            output_parser,
         ],
     )
     index_create.set_defaults(function=cmd_create_index)
 
     index_show = index_sub.add_parser(
-        "show", parents=[common_parser, common_index_parser, viewer_command_parser]
+        "show",
+        parents=[
+            common_parser,
+            common_index_parser,
+            viewer_command_parser,
+            output_parser,
+        ],
     )
     index_show.set_defaults(function=cmd_show_index)
 
     index_status = index_sub.add_parser(
-        "status", parents=[common_parser, common_index_parser, viewer_command_parser]
+        "status",
+        parents=[
+            common_parser,
+            common_index_parser,
+            viewer_command_parser,
+            output_parser,
+        ],
     )
     index_status.set_defaults(function=cmd_restore_status)
 
     # Reindex Commands
     reindex = sub.add_parser(
         "reindex",
-        parents=[common_parser, index_mapper_parser, mutating_parser],
+        parents=[common_parser, index_mapper_parser, mutating_parser, output_parser],
         help="Reindex command.",
     )
     reindex.add_argument(
@@ -523,7 +613,9 @@ def build_parser():
     reindex.set_defaults(function=cmd_reindex)
 
     reindex_mapping = sub.add_parser(
-        "mapping", help="Shows mappings in the config", parents=[common_parser]
+        "mapping",
+        help="Shows mappings in the config",
+        parents=[common_parser, output_parser],
     )
     reindex_mapping.set_defaults(function=cmd_reindex_mapping)
 
@@ -531,20 +623,18 @@ def build_parser():
     task_sub = task.add_subparsers(required=True)
 
     task_get = task_sub.add_parser(
-        "get", help="Get task status on elasticsearch", parents=[common_parser]
+        "get",
+        help="Get task status on elasticsearch",
+        parents=[common_parser, output_parser],
     )
     task_get.add_argument("task_id", help="elasticsearch task id")
     task_get.set_defaults(function=cmd_get_task)
-
-    # TODO: rsync is not currently operational
-    rsync = sub.add_parser("rsync", parents=[common_parser])
-    rsync.add_argument("config_name")
 
     job = sub.add_parser("job")
 
     job_sub = job.add_subparsers(required=True)
     job_list = job_sub.add_parser(
-        "list", parents=[common_parser, viewer_command_parser]
+        "list", parents=[common_parser, viewer_command_parser, output_parser]
     )
     job_list.add_argument(
         "--local",
@@ -555,7 +645,7 @@ def build_parser():
     job_list.set_defaults(function=cmd_list_job)
 
     job_show = job_sub.add_parser(
-        "show", parents=[common_parser, viewer_command_parser]
+        "show", parents=[common_parser, viewer_command_parser, output_parser]
     )
     job_show.add_argument(
         "job_search_id", help="Job search id / job output file name in the jobs cache"
@@ -563,7 +653,9 @@ def build_parser():
     job_show.set_defaults(function=cmd_read_job)
 
     status = sub.add_parser(
-        "status", parents=[common_parser], help="Show current ESKit status."
+        "status",
+        parents=[common_parser, output_parser],
+        help="Show current ESKit status.",
     )
     status.set_defaults(function=cmd_status)
 
@@ -585,14 +677,14 @@ def build_parser():
 
     # Archive Command
     archive = sub.add_parser(
-        "archive", parents=[common_parser], help="Archive commands."
+        "archive", parents=[common_parser, output_parser], help="Archive commands."
     )
 
     archive_sub = archive.add_subparsers(required=True)
 
     archive_list_parser = archive_sub.add_parser(
         "list",
-        parents=[common_parser, viewer_command_parser],
+        parents=[common_parser, viewer_command_parser, output_parser],
     )
     archive_list_parser.set_defaults(function=cmd_list_archive)
 
@@ -603,6 +695,7 @@ def build_parser():
             mutating_parser,
             archive_common_parser,
             archive_common_operation_parser,
+            output_parser,
         ],
     )
     archive_pull_parser.set_defaults(function=cmd_pull_archive)
@@ -614,6 +707,7 @@ def build_parser():
             mutating_parser,
             archive_common_parser,
             archive_common_operation_parser,
+            output_parser,
         ],
     )
     archive_sync_parser.set_defaults(function=cmd_sync_archive)
@@ -625,6 +719,7 @@ def build_parser():
             mutating_parser,
             archive_common_parser,
             archive_common_operation_parser,
+            output_parser,
         ],
     )
     archive_push_parser.add_argument(
@@ -635,7 +730,13 @@ def build_parser():
     archive_push_parser.set_defaults(function=cmd_push_archive)
 
     archive_show_parser = archive_sub.add_parser(
-        "show", parents=[common_parser, viewer_command_parser, archive_common_parser]
+        "show",
+        parents=[
+            common_parser,
+            viewer_command_parser,
+            archive_common_parser,
+            output_parser,
+        ],
     )
     archive_show_parser.set_defaults(function=cmd_show_archive)
 
@@ -650,5 +751,6 @@ def main():
 
     init(CACHE_ROOT)
 
-    args.function(args)
-    return
+    configure_logging(args.verbose, args.debug)
+
+    return args.function(args)

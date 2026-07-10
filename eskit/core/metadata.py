@@ -1,4 +1,5 @@
 import json
+import logging
 from datetime import datetime, timezone
 from eskit.utils.config import load_config, get_host_config
 from eskit.core.host import get_current_host_name, check_host_name, print_host
@@ -9,6 +10,9 @@ from eskit.transport.process import SynchronousProcess
 from eskit.archive.model import ESKitArchiveState
 from eskit.utils.archive import list_archives, delete_archive, write_archive
 from eskit.utils.view import build_field_list, apply_view
+from eskit.exit_code import ExitCode
+
+logger = logging.getLogger(__name__)
 
 
 def pull(config_path, host_name, kind=None):
@@ -38,12 +42,16 @@ def pull(config_path, host_name, kind=None):
         indices = es.request("GET", "/_cat/indices?format=json")
 
         # get index version
-        index_settings = es.request("GET", "/_all/_settings?filter_path=*.settings.index.version.created")
-        print(f"index_settings:{json.dumps(index_settings, indent=2)}")
+        index_settings = es.request(
+            "GET", "/_all/_settings?filter_path=*.settings.index.version.created"
+        )
+        # print(f"index_settings:{json.dumps(index_settings, indent=2)}")
         for index in indices:
             index_name = index.get("index")
             if index_name in index_settings:
-                index["version"] = index_settings[index_name]["settings"]["index"]["version"]
+                index["version"] = index_settings[index_name]["settings"]["index"][
+                    "version"
+                ]
 
         write_cache(host_name, "indices", indices)
 
@@ -53,10 +61,12 @@ def pull(config_path, host_name, kind=None):
 
     # pull archive status
     if pull_all or "archive" in kind:
-        print("pull archive metadata")
+        logger.info("pull archive metadata")
         pull_archive_metadata(host_config, host_name)
 
     print("\nCache updated.\n")
+
+    return ExitCode.SUCCESS
 
 
 def pull_archive_metadata(host_config, host_name):
@@ -64,8 +74,8 @@ def pull_archive_metadata(host_config, host_name):
     archives = host_config.get("archives")
 
     if not archives:
-        print("no archives to pull metadata")
-        return
+        logger.warning("no archives to pull metadata")
+        return ExitCode.SUCCESS
 
     for archive in archives:
         pull_archive_stat(host_config, host_name, archive)
@@ -77,6 +87,8 @@ def pull_archive_metadata(host_config, host_name):
         exists = any(d.get("name") == cache["name"] for d in archives)
         if not exists:
             delete_archive(host_name, ESKitArchiveState.from_dict(cache))
+
+    return ExitCode.SUCCESS
 
 
 def parse_stat_line(line: str):
@@ -90,14 +102,14 @@ def get_file_stats(path, transport):
 
     cmd = f"TZ=UTC stat -c '{stas_format}' {path}"
 
-    print("Getting File Stat")
-    print(f"transport:{transport.name}")
-    print(f"cmd:{cmd}\n")
+    logger.info("Getting File Stat")
+    logger.debug("transport:%s", transport.name)
+    logger.debug("cmd:%s\n", cmd)
 
     out = transport.run(cmd)
 
     if not out:
-        print(f"path:{path} does not exist or failed to get stat")
+        logger.warning("path:%s does not exist or failed to get stat", path)
         return {}
 
     stat = parse_stat_line(out)
@@ -120,7 +132,8 @@ def write_archive_all(config, host):
     archives = host_config.get("archives")
 
     if not archives:
-        return
+        logger.warning("no archives to pull metadata")
+        return ExitCode.SUCCESS
 
     for archive in archives:
         pull_archive_stat(config, host, archive)
@@ -131,7 +144,10 @@ def write_archive_all(config, host):
     for cache in cached_archives:
         exists = any(d.get("name") == cache["name"] for d in archives)
         if not exists:
+            logger.info("deleting stale archive cache:%s", cache["name"])
             delete_archive(host, ESKitArchiveState.from_dict(cache))
+
+    return ExitCode.SUCCESS
 
 
 def pull_archive_stat(host_config, host_name, archive_config):
@@ -146,8 +162,8 @@ def pull_archive_stat(host_config, host_name, archive_config):
     try:
         src_stats = get_file_stats(rsync_src, transport)
     except RuntimeError as e:
-        print(f"\nfailed to get file stats for remote_src:{e}")
-        return
+        logger.error("failed to get file stats for remote_src:%s", e)
+        return ExitCode.FAILURE
     transport.close()
     # print(json.dumps(src_stats, indent=2))
 
@@ -156,8 +172,8 @@ def pull_archive_stat(host_config, host_name, archive_config):
     try:
         dst_stats = get_file_stats(rsync_dst, transport)
     except RuntimeError as e:
-        print(f"failed to get file stats for local_dst:{e}")
-        return
+        logger.error("failed to get file stats for local_dst:%s", e)
+        return ExitCode.FAILURE
     # print(json.dumps(dst_stats, indent=2))
 
     archive = ESKitArchiveState(
@@ -172,6 +188,8 @@ def pull_archive_stat(host_config, host_name, archive_config):
     )
     # print(f"archive:{archive}")
     write_archive(host_name, archive)
+
+    return ExitCode.SUCCESS
 
 
 def cat(config_path, host_name, kind, views, fields, flat):
@@ -225,3 +243,5 @@ def cat(config_path, host_name, kind, views, fields, flat):
         out = data
 
     print(json.dumps(out, indent=2))
+
+    return ExitCode.SUCCESS

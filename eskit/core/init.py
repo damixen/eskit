@@ -1,17 +1,20 @@
 import json
 import shutil
+import logging
 
 from eskit.utils.paths import CACHE_ROOT, ensure_root, root_dir, DEMO_DIR
 from eskit.version import __cache_version__
+from eskit.exit_code import ExitCode
 
+logger = logging.getLogger(__name__)
 
 def init(is_demo):
 
     if CACHE_ROOT.exists():
-        print(".eskit folder already exists.")
+        logger.error(".eskit folder already exists.")
         if is_demo:
-            print("If you want to reset, please remove the folder first.")
-        return
+            logger.error("If you want to reset, please remove the folder first.")
+        return ExitCode.FAILURE
 
     ensure_root()
 
@@ -27,3 +30,5 @@ def init(is_demo):
             f"{DEMO_DIR}/{__cache_version__}", root_dir(), dirs_exist_ok=True
         )
         print(f"demo/{__cache_version__} copied to .eskit folder.")
+
+    return ExitCode.SUCCESS

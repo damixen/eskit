@@ -1,6 +1,8 @@
 import paramiko
 import getpass
+import logging
 
+logger = logging.getLogger(__name__)
 
 def is_agent_available():
     try:
@@ -58,7 +60,7 @@ class SSHConnection:
         try:
             self.client.connect(**kwargs)
         except paramiko.SSHException as e:
-            print(f"SSH failure: {e}")
+            logger.error(f"SSH failure: {e}")
 
     def run(self, cmd):
         _, stdout, stderr = self.client.exec_command(cmd)

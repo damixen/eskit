@@ -1,4 +1,5 @@
 import json
+import logging
 from eskit.utils.config import load_config, get_host_config
 from eskit.core.host import (
     get_current_host_name,
@@ -10,7 +11,9 @@ from eskit.core.host import (
 from eskit.cache.store import read_cache
 from eskit.clients.es_client import connect_es
 from eskit.utils.input import confirm_delete
+from eskit.exit_code import ExitCode
 
+logger = logging.getLogger(__name__)
 
 def create(
     config_path,
@@ -33,12 +36,12 @@ def create(
 
     repo, delim, snap = spec.partition("/")
     if not repo or not snap:
-        print(f"Snapshot:{spec} is not in valid format. <repo>/<snapshot>")
-        return
+        logger.error("Snapshot:%s is not in valid format. <repo>/<snapshot>", spec)
+        return ExitCode.FAILURE
 
     if find_snapshot(host_name, repo, snap):
-        print(f"Snapshot:{spec} found in chace. please pull latest.")
-        return
+        logger.error("Snapshot:%s found in cache. Please pull latest.", spec)
+        return ExitCode.FAILURE
 
     body = {}
     if indices:
@@ -49,7 +52,7 @@ def create(
         print_dry_run()
         print("PUT", f"/_snapshot/{repo}/{snap}")
         print(json.dumps(body, indent=2))
-        return
+        return ExitCode.SUCCESS
 
     host_config = get_host_config(config, host_name)
     ssh, es = connect_es(host_config)
@@ -60,6 +63,8 @@ def create(
         pull(config_path, host_name)
     finally:
         ssh.close()
+
+    return ExitCode.SUCCESS
 
 
 def delete(config_path, host_name, spec, dry_run, push, force):
@@ -73,28 +78,30 @@ def delete(config_path, host_name, spec, dry_run, push, force):
     print_host(host_name)
 
     if not find_snapshot(host_name, repo, snap):
-        print(f"Snapshot:{spec} not found in chace. Please pull the latest.")
-        return
+        logger.error("Snapshot:%s not found in cache. Please pull the latest.", spec)
+        return ExitCode.FAILURE
 
     if not dry_run and not force:
         if not confirm_delete("snapshot", spec):
             print("Cancelled.")
-            return
+            return ExitCode.CANCELED
 
     if dry_run:
         print_dry_run()
         print("DELETE", f"/_snapshot/{repo}/{snap}")
-        return
+        return ExitCode.SUCCESS
     host_config = get_host_config(config, host_name)
     ssh, es = connect_es(host_config)
     try:
         es.request("DELETE", f"/_snapshot/{repo}/{snap}")
-        print(f"Snapshot:{spec} created. Updating Cache.")
+        print(f"Snapshot:{spec} deleted. Updating Cache.")
         from eskit.core.metadata import pull
 
         pull(config_path, host_name)
     finally:
         ssh.close()
+
+    return ExitCode.SUCCESS
 
 
 def restore(config_path, host_name, spec, index, dry_run, push):
@@ -120,17 +127,19 @@ def restore(config_path, host_name, spec, index, dry_run, push):
         print_dry_run()
         print("POST", f"/_snapshot/{repo}/{snap}/_restore")
         print(json.dumps(body, indent=2))
-        return
+        return ExitCode.SUCCESS
     host_config = get_host_config(config, host_name)
     ssh, es = connect_es(host_config)
     try:
         es.request("POST", f"/_snapshot/{repo}/{snap}/_restore", body)
-        print(f"Snapshot:{spec} restored. Updating Cache.")
+        print(f"Snapshot:{spec} restore requested. Updating Cache...")
         from eskit.core.metadata import pull
 
         pull(config_path, host_name)
     finally:
         ssh.close()
+
+    return ExitCode.SUCCESS
 
 
 # Internal

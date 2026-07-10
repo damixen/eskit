@@ -1,9 +1,13 @@
-from pathlib import Path
 import json
+import logging
 
 from .job import ESKitJob
 from .executers import ESKitExecutor
 from typing import List, Dict
+from pathlib import Path
+
+logger = logging.getLogger(__name__)
+
 
 __job_manager = None
 
@@ -80,8 +84,8 @@ class ESKitJobManager:
             path = local_cache_path
 
         if not path:
-            print(f"job:{job_id} is not found.")
-            return
+            logger.error("job:%s is not found.", job_id)
+            return None
 
         with open(path) as fp:
             data = json.load(fp)
@@ -93,14 +97,14 @@ class ESKitJobManager:
         jobs_dir = self.jobs_dir
         if host:
             jobs_dir = self.cache_dir / host / "cache" / "jobs"
-        print(f"jobs_dir:{jobs_dir}")
+        logger.info("jobs_dir:%s", jobs_dir)
 
         for file in sorted(jobs_dir.glob("*.json")):
             with open(file) as fp:
                 try:
                     jobs.append(ESKitJob.from_dict(json.load(fp)))
                 except Exception as e:
-                    print(e)
+                    logger.error("Error loading job from %s: %s", file, e)
 
         if local:
             for file in sorted(self.jobs_dir.glob("*.json")):

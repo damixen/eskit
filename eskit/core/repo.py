@@ -1,4 +1,5 @@
 import json
+import logging
 from eskit.utils.config import load_config, get_host_config
 from eskit.utils.view import build_field_list, apply_view
 from eskit.utils.input import confirm_delete
@@ -11,6 +12,9 @@ from eskit.core.host import (
 )
 from eskit.cache.store import read_cache
 from eskit.clients.es_client import connect_es
+from eskit.exit_code import ExitCode
+
+logger = logging.getLogger(__name__)
 
 
 def show(config_path, host_name, name, views, fields, flat):
@@ -23,9 +27,9 @@ def show(config_path, host_name, name, views, fields, flat):
 
     repo, sep, snap = name.partition("/")
     if repo and snap:
-        show_snap(config, host_name, name, views, fields, flat)
+        return show_snap(config, host_name, name, views, fields, flat)
     else:
-        show_repo(config, host_name, repo, views, fields, flat)
+        return show_repo(config, host_name, repo, views, fields, flat)
 
 
 def create(config_path, host_name, name, repo_type, location, dry_run, push):
@@ -39,15 +43,15 @@ def create(config_path, host_name, name, repo_type, location, dry_run, push):
     print_host(host_name)
 
     if find_repo(host_name, name):
-        print(f"Repository:{name} found in cache. Please pull latest.")
-        return
+        logger.error("Repository:%s found in cache. Please pull latest.", name)
+        return ExitCode.FAILURE
 
     body = {"type": repo_type, "settings": {"location": location, "compress": True}}
     if dry_run:
         print_dry_run()
         print("PUT", f"/_snapshot/{name}")
         print(json.dumps(body, indent=2))
-        return
+        return ExitCode.SUCCESS
     host_config = get_host_config(config, host_name)
     ssh, es = connect_es(host_config)
     try:
@@ -58,6 +62,8 @@ def create(config_path, host_name, name, repo_type, location, dry_run, push):
         pull(config_path, host_name)
     finally:
         ssh.close()
+
+    return ExitCode.SUCCESS
 
 
 def delete(config_path, host_name, name, dry_run, push, force):
@@ -70,18 +76,18 @@ def delete(config_path, host_name, name, dry_run, push, force):
     print_host(host_name)
 
     if not find_repo(host_name, name):
-        print(f"Repository:{name} not found in cache. Please pull latest.")
-        return
+        logger.error("Repository:%s not found in cache. Please pull latest.", name)
+        return ExitCode.FAILURE
 
     if not dry_run and not force:
         if not confirm_delete("repo", name):
-            print("Cancelled.")
+            logger.warning("Cancelled.")
             return
 
     if dry_run:
         print_dry_run()
         print("DELETE", f"/_snapshot/{name}")
-        return
+        return ExitCode.SUCCESS
     host_config = get_host_config(config, host_name)
     ssh, es = connect_es(host_config)
     try:
@@ -92,6 +98,8 @@ def delete(config_path, host_name, name, dry_run, push, force):
         pull(config_path, host_name)
     finally:
         ssh.close()
+
+    return ExitCode.SUCCESS
 
 
 # Internal
@@ -108,23 +116,24 @@ def show_repo(config, host_name, repo, views, fields, flat):
 
     data = read_cache(host_name, "repos")
     if not data:
-        return
+        logger.error("No repository data found.")
+        return ExitCode.FAILURE
 
     out = {}
 
     repo_data = data.get(repo, {})
     if not repo_data:
         print_host(host_name)
-        print(f"Repository:{repo} not found in cache.")
-        return
+        logger.error("Repository:%s not found in cache.", repo)
+        return ExitCode.FAILURE
 
     out = repo_data
 
     snapshots = read_cache(host_name, "snapshots")
 
     if not snapshots:
-        print(json.dumps(data.get(repo, {}), indent=2))
-        return
+        print(json.dumps(out, indent=2))
+        return 0
     snapshots = snapshots.get(repo, {}).get("snapshots", {})
     snap_list = []
     for s in snapshots:
@@ -138,6 +147,8 @@ def show_repo(config, host_name, repo, views, fields, flat):
         print(json.dumps(apply_view(out, target_fields, flat), indent=2))
     else:
         print(json.dumps(out, indent=2))
+
+    return ExitCode.SUCCESS
 
 
 def show_snap(config, host_name, path, views, fields, flat):
@@ -154,5 +165,6 @@ def show_snap(config, host_name, path, views, fields, flat):
                 print(json.dumps(apply_view(s, target_fields, flat), indent=2))
             else:
                 print(json.dumps(s, indent=2))
-            return
-    print("Snapshot not found.")
+            return ExitCode.SUCCESS
+    logger.error("Snapshot not found.")
+    return ExitCode.FAILURE

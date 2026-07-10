@@ -20,8 +20,10 @@ def get(config_path, host_name, task_id):
     ssh, es = connect_es(host_config)
     try:
         res = es.request(HTTP_METHOD_GET, url)
-        print(json.dumps(res, indent=2))
+        return res
     except Exception as e:
         print(e)
     finally:
         ssh.close()
+    
+    return None

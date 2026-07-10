@@ -1,9 +1,11 @@
 import json
+import logging
 from datetime import datetime
 from dataclasses import dataclass, asdict
 from eskit.utils.paths import cache_dir, archive_dir, ensure_job_dir, job_dir
 from eskit.jobs.job import ESKitJob
 
+logger = logging.getLogger(__name__)
 
 def read_archive(host, archive_id):
     path = archive_dir(host) / f"{archive_id}.json"
@@ -33,7 +35,7 @@ def write_cache(host, name, data):
 def read_cache(host, name):
     p = cache_dir(host) / f"{name}.json"
     if not p.exists():
-        print(f"Cached:{name} information not found. Run: eskit pull {host}")
+        logger.info("Cached:%s information not found. Run: eskit pull %s", name, host)
         return None
     with open(p, "r", encoding="utf-8") as f:
         return json.load(f)

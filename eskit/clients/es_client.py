@@ -1,11 +1,12 @@
 import json
-
+import logging
 from eskit.core.host import get_current_host_name, check_host_name
 from eskit.utils.config import get_host_config
 from eskit.transport.process import SynchronousProcess
 from eskit.transport.ssh import SSHConnection
 from eskit.error import ElasticsearchError, CurlError
 
+logger = logging.getLogger(__name__)
 
 def connect_es(host_coinfig):
 
@@ -55,9 +56,9 @@ class ESClient:
         if password:
             safe_cmd = safe_cmd.replace(password, "******")
 
-        print("Making Request to ES")
-        print(f"transport:{self.transport.name}")
-        print(f"cmd:{safe_cmd}\n")
+        logger.info("Making Request to ES")
+        logger.info("transport:%s", self.transport.name)
+        logger.debug("cmd:%s\n", safe_cmd)
 
         result = self.transport.run(cmd)
         body, status = result.rsplit("\n", 1)

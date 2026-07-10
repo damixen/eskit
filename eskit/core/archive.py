@@ -1,5 +1,7 @@
 import json
 import uuid
+import logging
+import json
 from datetime import datetime, timezone
 from eskit.utils.config import load_config, get_host_config
 from eskit.utils.view import build_field_list, apply_view
@@ -15,6 +17,8 @@ from eskit.core.metadata import pull_archive_stat
 from eskit.jobs.job import ESKitJob
 from eskit.jobs.executers import LocalExecutor
 from eskit.jobs.job_manager import get
+
+logger = logging.getLogger(__name__)
 
 
 def show_list(config_path, host_name, views, fields, flat):
@@ -59,7 +63,7 @@ def pull(config_path, host_name, name, contents, dry_run, all, sync, preview):
             archive = a
 
     if not archive:
-        print(f"archive:{name} is not found for host:{host_name}")
+        logger.warning("archive:%s is not found for host:%s", name, host_name)
         return
 
     archive_type = archive["type"]
@@ -94,7 +98,7 @@ def push(config_path, host_name, name, dst, contents, dry_run, preview):
             archive = a
 
     if not archive:
-        print(f"archive:{name} is not found for host:{host_name}")
+        logger.error("archive:%s is not found for host:%s", name, host_name)
         return
 
     archive_type = archive["type"]

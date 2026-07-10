@@ -3,7 +3,9 @@ import shlex
 import os
 import errno
 import signal
+import logging
 
+logger = logging.getLogger(__name__)
 
 class AsynchronousProcess:
     def __init__(self, host_cfg):
@@ -47,11 +49,11 @@ class AsynchronousProcess:
         try:
             # SIGKILL forces the process to close immediately
             os.kill(pid, signal.SIGKILL)
-            print(f"Process {pid} killed.")
+            print("Process %s killed.", pid)
         except ProcessLookupError:
-            print(f"PID {pid} does not exist.")
+            logger.error("PID %s does not exist.", pid)
         except PermissionError:
-            print(f"Insufficient permissions to kill PID {pid}.")
+            logger.error("Insufficient permissions to kill PID %s.", pid)
 
     def close(self):
         pass

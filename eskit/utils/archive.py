@@ -1,10 +1,13 @@
 import json
+import logging
+
 from pathlib import Path
 from dataclasses import dataclass, asdict
 
 from eskit.utils.paths import archive_dir, ensure_archive_dir
 from eskit.archive.model import ESKitArchiveState
 
+logger = logging.getLogger(__name__)
 
 def delete_archive(host, archive: ESKitArchiveState):
     ensure_archive_dir(host)
@@ -26,7 +29,7 @@ def read_archive(host, archive_id):
 
 def list_archives(host):
     if not archive_dir(host).exists():
-        print(f"archive_dir:{archive_dir(host)} does not exist.")
+        logger.warning("archive_dir:%s does not exist.", archive_dir(host))
         return []
 
     archives = []
