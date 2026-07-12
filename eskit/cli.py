@@ -8,10 +8,25 @@ from eskit.core.host import get_current_host_name
 from eskit.version import __version__
 from eskit.log import configure_logging
 from eskit.exit_code import ExitCode
+from eskit.result import ResultCode
 
 DEFAULT_CONFIG = ".eskit/config.json"
 CACHE_ROOT = Path(".eskit")
 CURRENT_HOST = ".current_host"
+
+logger = logging.getLogger("eskit")
+
+
+def print_dry_run():
+    print("\n*Dry Run*\n")
+
+
+def print_preview():
+    print("\n*Preview*\n")
+
+
+def print_host(host):
+    print(f"\n=== ESKit HOST: {host} ===\n")
 
 
 def load_config(path):
@@ -29,26 +44,42 @@ def get_current_host():
 
 
 def cmd_host(args):
-    from eskit.core.host import get_hosts
+    from eskit.core.host import get_host
 
-    hosts = get_hosts(args.host, args.config)
-    print(json.dumps(hosts, indent=2))
+    result = get_host(args.host, args.config)
+    if result.success:
+        print(json.dumps(result.value, indent=2))
+        return ExitCode.SUCCESS
 
-    return ExitCode.SUCCESS
+    if result.code == ResultCode.NOT_FOUND:
+        logger.error(
+            "Resource:%s Name:%s not found.",
+            result.value["resource"].capitalize(),
+            result.value["name"],
+        )
+
+    elif result.code == ResultCode.INVALID_ARGUMENT:
+        logger.error("Invalid host name:%s", result.value["resource"].capitalize())
+
+    else:
+        logger.error("Failed to get host:%s", result.message)
+    return ExitCode.FAILURE
 
 
 def cmd_host_set(args):
     from eskit.core.host import set_current_host_name
 
-    if set_current_host_name(args.host):
+    result = set_current_host_name(args.host)
+
+    if result.success:
         if args.json:
-            print(json.dumps({"name": args.host}, indent=2))
+            print(json.dumps(result.value, indent=2))
         else:
-            print(f"Current host set to: {args.host}")
+            print(f"Current host set to: {result.value["host"]}")
         return ExitCode.SUCCESS
-    else:
-        logger.error("Failed to set host to:%s", args.host)
-        return ExitCode.FAILURE
+
+    logger.error("Failed to set host:%s", result.message)
+    return ExitCode.FAILURE
 
 
 def cmd_host_get(args):
@@ -59,50 +90,96 @@ def cmd_host_get(args):
         else:
             print(f"Current host: {host_name}")
         return ExitCode.SUCCESS
-    else:
-        logger.error("No current host set.")
+
+    logger.error("No current host set.")
     return ExitCode.FAILURE
 
 
 def cmd_list_job(args):
-    from eskit.core.job import show_list
+    from eskit.core.job import get_list
 
-    return show_list(
+    result = get_list(
         args.config, args.host, args.local, args.view, args.fields, args.flat
     )
+
+    if result.success:
+        print(json.dumps(result.value, indent=2))
+        return ExitCode.SUCCESS
+
+    logger.error("Failed to list jobs.")
+    return ExitCode.FAILURE
 
 
 def cmd_read_job(args):
 
-    from eskit.core.job import show
+    from eskit.core.job import get
 
-    return show(
+    result = get(
         args.config, args.host, args.job_search_id, args.view, args.fields, args.flat
     )
+
+    if result.success:
+        print(json.dumps(result.value, indent=2))
+        return ExitCode.SUCCESS
+
+    if result.code == ResultCode.NOT_FOUND:
+        logger.error(
+            "Resource: %s name: %s not found.",
+            result.value["resource"],
+            result.value["name"],
+        )
+    else:
+        logger.error("Failed to list jobs.")
+
+    return ExitCode.FAILURE
 
 
 def cmd_status(args):
 
     from eskit.core.status import get_status
 
-    status = get_status(args.host, args.config)
-    if args.json:
-        print(json.dumps(status, indent=2))
-    else:
-        # TODO: add table view
-        print(json.dumps(status, indent=2))
+    result = get_status(args.host, args.config)
+    if result.success:
+        if args.json:
+            print(json.dumps(result.value, indent=2))
+        else:
+            # TODO: add table view
+            print(json.dumps(result.value, indent=2))
+
+    return ExitCode.FAILURE
 
 
 def cmd_pull(args):
-    from eskit.core.metadata import pull
+    from eskit.core.metadata import pull_metadata
 
-    return pull(args.config, args.host, args.kind)
+    result = pull_metadata(args.config, args.host, args.kind)
+
+    if result.success:
+        print("Pulled metadata successfully.")
+        return ExitCode.SUCCESS
+
+    logger.error("Failed to pull metadata.")
+    return ExitCode.FAILURE
 
 
 def cmd_cat2(args):
-    from eskit.core.metadata import cat
+    from eskit.core.metadata import get_metadata
 
-    return cat(args.config, args.host, args.kind, args.view, args.fields, args.flat)
+    result = get_metadata(
+        args.config, args.host, args.kind, args.view, args.fields, args.flat
+    )
+
+    if result.success:
+        print(json.dumps(result.value, indent=2))
+        return ExitCode.SUCCESS
+
+    logger.error(
+        "Failed to get resource:%s for host:%s.",
+        result.value["resource"],
+        result.value["name"],
+    )
+
+    return ExitCode.FAILURE
 
 
 def cmd_repo_show2(args):
@@ -113,9 +190,20 @@ def cmd_repo_show2(args):
     fields = args.fields
     flat = args.flat
 
-    from eskit.core.repo import show
+    from eskit.core.repo import get
 
-    return show(args.config, host_name, name, views, fields, flat)
+    result = get(args.config, host_name, name, views, fields, flat)
+
+    if result.success:
+        print(json.dumps(result.value, indent=2))
+        return ExitCode.SUCCESS
+
+    logger.error(
+        "Resource:%s name:%s not found.",
+        result.value["resource"],
+        result.value["name"],
+    )
+    return ExitCode.FAILURE
 
 
 def cmd_delete_repo(args):
@@ -128,7 +216,36 @@ def cmd_delete_repo(args):
 
     from eskit.core.repo import delete
 
-    return delete(args.config, host_name, name, dry_run, push, force)
+    result = delete(args.config, host_name, name, dry_run, push, force)
+
+    if result.success:
+        if not dry_run or result.value["executed"]:
+            print("Ropository deleted successfully.")
+        else:
+            print_dry_run()
+            if host_name is None:
+                host_name = get_current_host_name()
+            print_host(host_name)
+            print(json.dumps(result.value, indent=2))
+        return ExitCode.SUCCESS
+
+    if result.code == ResultCode.CANCELED:
+        print("Canceled.")
+        return ExitCode.CANCELED
+
+    if result.code == ResultCode.NOT_FOUND:
+        logger.error(
+            "Resource:%s name:%s not found.",
+            result.value["resource"],
+            result.value["name"],
+        )
+    else:
+        logger.error(
+            "Failed to create resource:%s name:%s",
+            result.value["resource"],
+            result.value["name"],
+        )
+    return ExitCode.FAILURE
 
 
 def cmd_create_repo(args):
@@ -142,7 +259,31 @@ def cmd_create_repo(args):
 
     from eskit.core.repo import create
 
-    create(args.config, host_name, name, repo_type, location, dry_run, push)
+    result = create(args.config, host_name, name, repo_type, location, dry_run, push)
+    if result.success:
+        if not dry_run or result.value["executed"]:
+            print("Ropository created successfully.")
+        else:
+            print_dry_run()
+            if host_name is None:
+                host_name = get_current_host_name()
+            print_host(host_name)
+            print(json.dumps(result.value, indent=2))
+        return ExitCode.SUCCESS
+
+    if result.code == ResultCode.ALREADY_EXISTS:
+        logger.error(
+            "Resource:%s name:%s already exists.",
+            result.value["resource"],
+            result.value["name"],
+        )
+    else:
+        logger.error(
+            "Failed to create resource:%s name:%s",
+            result.value["resource"],
+            result.value["name"],
+        )
+    return ExitCode.FAILURE
 
 
 def cmd_reindex_mapping(args):
@@ -156,7 +297,7 @@ def cmd_create_snapshot(args):
 
     from eskit.core.snap import create
 
-    create(
+    result = create(
         args.config,
         args.host,
         args.name,
@@ -166,24 +307,95 @@ def cmd_create_snapshot(args):
         args.dry_run,
         args.push,
     )
+    host_name = args.host
+    dry_run = args.dry_run
+    if result.success:
+        if not dry_run or result.value["executed"]:
+            print("Snapshot creation started successfully.")
+            print(
+                "Please check status of the snapshot by updating the cache with eskit pull."
+            )
+        else:
+            print_dry_run()
+            if host_name is None:
+                host_name = get_current_host_name()
+            print_host(host_name)
+            print(json.dumps(result.value, indent=2))
+        return ExitCode.SUCCESS
+
+    if result.code == ResultCode.INVALID_ARGUMENT:
+        logger.error("Invalid argument:%s", result.value["name"])
+    elif result.code == ResultCode.ALREADY_EXISTS:
+        logger.error(
+            "Resource:%s name:%s already exists.",
+            result.value["resource"],
+            result.value["name"],
+        )
+
+    return ExitCode.FAILURE
 
 
 def cmd_delete_snapshot(args):
 
     from eskit.core.snap import delete
 
-    return delete(
+    result = delete(
         args.config, args.host, args.name, args.dry_run, args.push, args.force
     )
+    host_name = args.host
+    dry_run = args.dry_run
+    if result.success:
+        if not dry_run or result.value["executed"]:
+            print("Snapshot deleted.")
+        else:
+            print_dry_run()
+            if host_name is None:
+                host_name = get_current_host_name()
+            print_host(host_name)
+            print(json.dumps(result.value, indent=2))
+        return ExitCode.SUCCESS
+
+    if result.code == ResultCode.CANCELED:
+        print("Canceled.")
+        return ExitCode.CANCELED
+
+    if result.code == ResultCode.NOT_FOUND:
+        print(
+            "Resource:%s name:%s not found.",
+            result.value["resource"],
+            result.value["name"],
+        )
+    else:
+        print("Failed to delete snapshot.")
+
+    return ExitCode.FAILURE
 
 
 def cmd_restore_snapshot(args):
 
     from eskit.core.snap import restore
 
-    return restore(
+    result = restore(
         args.config, args.host, args.name, args.index, args.dry_run, args.push
     )
+    host_name = args.host
+    dry_run = args.dry_run
+    if result.success:
+        if not dry_run or result.value["executed"]:
+            print("Restore started.")
+            print(
+                "Please check the status of restore index by updating the cache with eskit pull."
+            )
+        else:
+            print_dry_run()
+            if host_name is None:
+                host_name = get_current_host_name()
+            print_host(host_name)
+            print(json.dumps(result.value, indent=2))
+        return ExitCode.SUCCESS
+
+    logger.error("Failed to restore snapshot.")
+    return ExitCode.FAILURE
 
 
 def cmd_restore_status(args):
@@ -197,18 +409,66 @@ def cmd_delete_index(args):
 
     from eskit.core.index import delete
 
-    return delete(
+    result = delete(
         args.config, args.host, args.index, args.dry_run, args.push, args.force
     )
+
+    host_name = args.host
+    dry_run = args.dry_run
+    if result.success:
+        if not dry_run or result.value["executed"]:
+            print("Index deleted.")
+        else:
+            print_dry_run()
+            if host_name is None:
+                host_name = get_current_host_name()
+            print_host(host_name)
+            print(json.dumps(result.value, indent=2))
+        return ExitCode.SUCCESS
+
+    if result.code == ResultCode.CANCELED:
+        print("Canceled.")
+        return ExitCode.CANCELED
+
+    if result.code == ResultCode.NOT_FOUND:
+        print(
+            f"Resource:{result.value["resource"]} name:{result.value["name"]} not found."
+        )
+    else:
+        print("Failed to delete index.")
+
+    return ExitCode.FAILURE
 
 
 def cmd_create_index(args):
 
     from eskit.core.index import create
 
-    return create(
+    result = create(
         args.config, args.host, args.index, args.mapping, args.dry_run, args.push
     )
+
+    host_name = args.host
+    dry_run = args.dry_run
+    if result.success:
+        if not dry_run or result.value["executed"]:
+            print("Index created successfully.")
+        else:
+            print_dry_run()
+            if host_name is None:
+                host_name = get_current_host_name()
+            print_host(host_name)
+            print(json.dumps(result.value, indent=2))
+        return ExitCode.SUCCESS
+
+    if result.code == ResultCode.ALREADY_EXISTS:
+        logger.error(
+            "Resource:%s name:%s already exists.",
+            result.value["resource"],
+            result.value["name"],
+        )
+
+    return ExitCode.FAILURE
 
 
 def cmd_show_index(args):
@@ -218,16 +478,34 @@ def cmd_show_index(args):
     fields = args.fields
     flat = args.flat
 
-    from eskit.core.index import show
+    from eskit.core.index import get
 
-    return show(args.config, args.host, index, views, fields, flat)
+    result = get(args.config, args.host, index, views, fields, flat)
+
+    if result.success:
+        print(json.dumps(result.value, indent=2))
+        return ExitCode.SUCCESS
+
+    if result.code == ResultCode.NOT_FOUND:
+        logger.error(
+            "Resource: %s name:%s not found.",
+            result.value["resource"],
+            result.value["name"],
+        )
+
+    logger.error(
+        "Failed to get resource: %s name:%s",
+        result.value["resource"],
+        result.value["name"],
+    )
+    return ExitCode.FAILURE
 
 
 def cmd_reindex(args):
 
     from eskit.core.index import reindex
 
-    return reindex(
+    result = reindex(
         args.config,
         args.host,
         args.src,
@@ -237,17 +515,34 @@ def cmd_reindex(args):
         args.push,
     )
 
+    if result.success:
+        logger.info("Reindex started successfully.")
+        print(json.dumps(result.value, indent=2))
+        return ExitCode.SUCCESS
+
+    if result.code == ResultCode.ALREADY_EXISTS:
+        logger.error(
+            "Resource:%s name:%s already exists.",
+            result.value["resource"],
+            result.value["name"],
+        )
+        if args.mapping:
+            logger.error("Mapping cannot be changed on existing index.")
+    else:
+        logger.error("Failed to create job.")
+        if result.value:
+            print(json.dumps(result.value, indent=2))
+
+    return ExitCode.FAILURE
+
 
 def cmd_get_task(args):
     from eskit.core.task import get
 
-    task = get(args.config, args.host, args.task_id)
-
-    if task:
-        if args.json:
-            print(json.dumps(task, indent=2))
-        else:
-            print(json.dumps(task, indent=2))
+    result = get(args.config, args.host, args.task_id)
+    if result.success:
+        print(json.dumps(result.value, indent=2))
+        return ExitCode.SUCCESS
     else:
         logger.error("Task not found.")
         return ExitCode.FAILURE
@@ -256,20 +551,40 @@ def cmd_get_task(args):
 def cmd_init(args):
     from eskit.core.init import init
 
-    return init(args.demo)
+    result = init(args.demo)
+    if result.success:
+        print("ESKit initialized.")
+        if args.demo:
+            print("Demo folder copied.")
+        return ExitCode.SUCCESS
+
+    if result.code == ResultCode.ALREADY_EXISTS:
+        logger.error(".eskit folder already exists.")
+        if args.demo:
+            logger.error("If you want to reset demo, please remove the folder first.")
+    else:
+        logger.error("Failed to initialize ESKit.")
+    return ExitCode.FAILURE
 
 
 def cmd_list_archive(args):
 
-    from eskit.core.archive import show_list
+    from eskit.core.archive import get_list
 
-    return show_list(args.config, args.host, args.view, args.fields, args.flat)
+    result = get_list(args.config, args.host, args.view, args.fields, args.flat)
+
+    if result.success:
+        print(json.dumps(result.value, indent=2))
+        return ExitCode.SUCCESS
+
+    logger.error("Failed to get archive list.")
+    return ExitCode.FAILURE
 
 
 def cmd_pull_archive(args):
     from eskit.core.archive import pull
 
-    return pull(
+    result = pull(
         args.config,
         args.host,
         args.name,
@@ -279,12 +594,42 @@ def cmd_pull_archive(args):
         False,
         args.preview,
     )
+    host_name = args.host
+    dry_run = args.dry_run
+    preview = args.preview
+    if result.success:
+
+        if not (dry_run or preview) or result.value.get("executed"):
+            pass
+        else:
+            if host_name is None:
+                host_name = get_current_host_name()
+            if dry_run:
+                print_dry_run()
+                print_host(host_name)
+            if preview:
+                print_preview()
+                print_host(host_name)
+
+        print(json.dumps(result.value, indent=2))
+        return ExitCode.SUCCESS
+
+    if result.code == ResultCode.NOT_FOUND:
+        logger.error(
+            "Resource:%s name:%s not found.",
+            result.value["resource"],
+            result.value["name"],
+        )
+    else:
+        logger.error("Failed to pull archive:%s", result.message)
+
+    return ExitCode.FAILURE
 
 
 def cmd_sync_archive(args):
     from eskit.core.archive import pull
 
-    return pull(
+    result = pull(
         args.config,
         args.host,
         args.name,
@@ -294,12 +639,42 @@ def cmd_sync_archive(args):
         True,
         args.preview,
     )
+    host_name = args.host
+    dry_run = args.dry_run
+    preview = args.preview
+    if result.success:
+
+        if not (dry_run or preview) or result.value.get("executed"):
+            pass
+        else:
+            if host_name is None:
+                host_name = get_current_host_name()
+            if dry_run:
+                print_dry_run()
+                print_host(host_name)
+            if preview:
+                print_preview()
+                print_host(host_name)
+
+        print(json.dumps(result.value, indent=2))
+        return ExitCode.SUCCESS
+
+    if result.code == ResultCode.NOT_FOUND:
+        logger.error(
+            "Resource:%s name:%s not found.",
+            result.value["resource"],
+            result.value["name"],
+        )
+    else:
+        logger.error("Failed to sync archive:%s", result.message)
+
+    return ExitCode.FAILURE
 
 
 def cmd_push_archive(args):
     from eskit.core.archive import push
 
-    return push(
+    result = push(
         args.config,
         args.host,
         args.name,
@@ -308,12 +683,49 @@ def cmd_push_archive(args):
         args.dry_run,
         args.preview,
     )
+    host_name = args.host
+    dry_run = args.dry_run
+    preview = args.preview
+    if result.success:
+
+        if not (dry_run or preview) or result.value.get("executed"):
+            pass
+        else:
+            if host_name is None:
+                host_name = get_current_host_name()
+            if dry_run:
+                print_dry_run()
+                print_host(host_name)
+            if preview:
+                print_preview()
+                print_host(host_name)
+
+        print(json.dumps(result.value, indent=2))
+        return ExitCode.SUCCESS
+
+    if result.code == ResultCode.NOT_FOUND:
+        logger.error(
+            "Resource:%s name:%s not found.",
+            result.value["resource"],
+            result.value["name"],
+        )
+    else:
+        logger.error("Failed to push archive:%s", result.message)
+
+    return ExitCode.FAILURE
 
 
 def cmd_show_archive(args):
-    from eskit.core.archive import show
+    from eskit.core.archive import get
 
-    return show(args.config, args.host, args.name, args.view, args.fields, args.flat)
+    result = get(args.config, args.host, args.name, args.view, args.fields, args.flat)
+
+    if result.success:
+        print(json.dumps(result.value, indent=2))
+        return ExitCode.SUCCESS
+
+    logger.error("Failed to get archive:%s", result.message)
+    return ExitCode.FAILURE
 
 
 def cmd_root(args):
@@ -386,7 +798,7 @@ def build_parser():
     sub = p.add_subparsers()
 
     # Init command
-    init = sub.add_parser("init", help="Initializes ESKit.")
+    init = sub.add_parser("init", help="Initializes ESKit.", parents=[output_parser])
     init.set_defaults(function=cmd_init)
     init.add_argument(
         "--demo", action="store_true", help="Initialize with demo data set"

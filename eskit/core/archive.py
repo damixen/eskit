@@ -1,27 +1,21 @@
-import json
 import uuid
 import logging
-import json
 from datetime import datetime, timezone
 from eskit.utils.config import load_config, get_host_config
 from eskit.utils.view import build_field_list, apply_view
 from eskit.utils.archive import list_archives, read_archive
-from eskit.core.host import (
-    get_current_host_name,
-    check_host_name,
-    print_host,
-    print_dry_run,
-    print_preview,
-)
+from eskit.core.host import get_current_host_name, check_host_name, print_host
 from eskit.core.metadata import pull_archive_stat
 from eskit.jobs.job import ESKitJob
 from eskit.jobs.executers import LocalExecutor
-from eskit.jobs.job_manager import get
+from eskit.jobs.job_manager import get as get_jbm
+from eskit.result import Result, ResultCode
+from eskit.resource_type import ResourceType
 
 logger = logging.getLogger(__name__)
 
 
-def show_list(config_path, host_name, views, fields, flat):
+def get_list(config_path, host_name, views, fields, flat):
 
     if host_name is None:
         host_name = get_current_host_name()
@@ -41,7 +35,7 @@ def show_list(config_path, host_name, views, fields, flat):
     else:
         out = data
 
-    print(json.dumps(out, indent=2))
+    return Result.ok(out)
 
 
 def pull(config_path, host_name, name, contents, dry_run, all, sync, preview):
@@ -63,8 +57,12 @@ def pull(config_path, host_name, name, contents, dry_run, all, sync, preview):
             archive = a
 
     if not archive:
-        logger.warning("archive:%s is not found for host:%s", name, host_name)
-        return
+        # logger.warning("archive:%s is not found for host:%s", name, host_name)
+        return Result.fail(
+            ResultCode.NOT_FOUND,
+            "Resource not found.",
+            {"resource": ResourceType.ARCHIVE, "name": name},
+        )
 
     archive_type = archive["type"]
     job = None
@@ -73,10 +71,12 @@ def pull(config_path, host_name, name, contents, dry_run, all, sync, preview):
             config, host_name, name, archive, contents, dry_run, sync, preview
         )
 
-    if not dry_run:
-        print(
-            f"job started:\nid:{job.id}\ncache:{job.cache_path}\nlog:{job.log_path}\npid:{job.pid}"
+    if not job:
+        return Result.fail(
+            ResultCode.INTERNAL_ERROR, "Failed to pull archive.", archive
         )
+
+    return Result.ok(job.to_dict())
 
 
 def push(config_path, host_name, name, dst, contents, dry_run, preview):
@@ -98,8 +98,12 @@ def push(config_path, host_name, name, dst, contents, dry_run, preview):
             archive = a
 
     if not archive:
-        logger.error("archive:%s is not found for host:%s", name, host_name)
-        return
+        # logger.error("archive:%s is not found for host:%s", name, host_name)
+        return Result.fail(
+            ResultCode.NOT_FOUND,
+            "Resource not found.",
+            {"resource": ResourceType.ARCHIVE, "name": name},
+        )
 
     archive_type = archive["type"]
     job = None
@@ -108,13 +112,18 @@ def push(config_path, host_name, name, dst, contents, dry_run, preview):
             config, host_name, name, archive, dst, contents, dry_run, preview
         )
 
-    if not dry_run:
-        print(
-            f"job started:\nid:{job.id}\ncache:{job.cache_path}\nlog:{job.log_path}\npid:{job.pid}"
+    if not job:
+        return Result.fail(
+            ResultCode.INTERNAL_ERROR, "Failed to pull archive.", archive
         )
 
+    return Result.ok(job.to_dict())
 
-def show(config_path, host_name, name, views, fields, flat):
+
+def get(config_path, host_name, name, views, fields, flat):
+    """
+    Public API
+    """
     if host_name is None:
         host_name = get_current_host_name()
 
@@ -133,7 +142,7 @@ def show(config_path, host_name, name, views, fields, flat):
     else:
         out = data
 
-    print(json.dumps(out, indent=2))
+    return Result.ok(out)
 
 
 # Internal
@@ -153,7 +162,7 @@ def pull_snapshot(config, host, name, archive, contets, dry_run, sync, preview):
     cmd = ["rsync", "-av", "--progress"]
 
     if preview:
-        print_preview()
+        # print_preview()
         cmd.append("-n")
 
     if sync:
@@ -165,24 +174,29 @@ def pull_snapshot(config, host, name, archive, contets, dry_run, sync, preview):
     cmd.append(remote_rsync_src)
     cmd.append(rsync_dst)
 
+    job_id = ""
+    job_status = "running"
+    if dry_run:
+        job_status = "dry-run"
+    else:
+        job_id = str(uuid.uuid4())
+
     job = ESKitJob(
-        id=str(uuid.uuid4()),
+        id=job_id,
         name="snapshots",
         type="rsync",
         host=host,
-        status="running",
+        status=job_status,
         created_at=datetime.now(timezone.utc).isoformat(),
         updated_at=datetime.now(timezone.utc).isoformat(),
         payload={"src": rsync_src, "dst": rsync_dst, "cmd": cmd},
+        preview=preview,
     )
-    if dry_run:
-        print_dry_run()
-        print(f"dry-run job:{json.dumps(job.to_dict(),indent=2)}")
-    else:
-        job = get().submit(job, LocalExecutor())
 
-    host_config = get_host_config(config, host)
-    pull_archive_stat(host_config, host, archive)
+    if not dry_run:
+        job = get_jbm().submit(job, LocalExecutor())
+        host_config = get_host_config(config, host)
+        pull_archive_stat(host_config, host, archive)
 
     return job
 
@@ -211,7 +225,7 @@ def push_snapshot(config, host, name, archive, remote_dst, contents, dry_run, pr
     ]
 
     if preview:
-        print_preview()
+        # print_preview()
         cmd.append("-n")
 
     if ssh_cmd:
@@ -221,21 +235,26 @@ def push_snapshot(config, host, name, archive, remote_dst, contents, dry_run, pr
     cmd.append(rsync_src)
     cmd.append(rsync_dst)
 
+    job_id = ""
+    job_status = "running"
+    if dry_run:
+        job_status = "dry-run"
+    else:
+        job_id = str(uuid.uuid4())
+
     job = ESKitJob(
-        id=str(uuid.uuid4()),
+        id=job_id,
         name="snapshots",
         type="rsync",
         host=host,
-        status="running",
+        status=job_status,
         created_at=datetime.now(timezone.utc).isoformat(),
         updated_at=datetime.now(timezone.utc).isoformat(),
         payload={"src": rsync_src, "dst": rsync_dst, "cmd": cmd},
+        preview=preview,
     )
-    if dry_run:
-        print_dry_run()
-        print(f"dry-run job:{json.dumps(job.to_dict(),indent=2)}")
-    else:
-        job = get().submit(job, LocalExecutor())
+    if not dry_run:
+        job = get_jbm().submit(job, LocalExecutor())
 
     return job
 

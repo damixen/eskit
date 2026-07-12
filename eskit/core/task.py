@@ -1,7 +1,8 @@
-import json
 from eskit.utils.config import load_config, get_host_config
 from eskit.core.host import get_current_host_name, check_host_name, print_host
 from eskit.clients.es_client import connect_es
+from eskit.resource_type import ResourceType
+from eskit.result import Result, ResultCode
 
 HTTP_METHOD_GET = "GET"
 
@@ -20,10 +21,14 @@ def get(config_path, host_name, task_id):
     ssh, es = connect_es(host_config)
     try:
         res = es.request(HTTP_METHOD_GET, url)
-        return res
+        return Result.ok(res)
     except Exception as e:
         print(e)
     finally:
         ssh.close()
-    
-    return None
+
+    return Result.fail(
+        ResultCode.INTERNAL_ERROR,
+        "Failed to get task.",
+        {"resource": ResourceType.TASK, "name": task_id},
+    )

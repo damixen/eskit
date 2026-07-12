@@ -1,4 +1,3 @@
-import json
 import uuid
 import logging
 from datetime import datetime, timezone
@@ -11,12 +10,12 @@ from eskit.core.host import (
     check_host_name,
     print_host,
     check_push_protected,
-    print_dry_run,
 )
 from eskit.cache.store import read_cache, write_job
 from eskit.clients.es_client import connect_es
 from eskit.jobs.job import ESKitJob
-from eskit.exit_code import ExitCode
+from eskit.result import Result, ResultCode
+from eskit.resource_type import ResourceType
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +25,10 @@ HTTP_METHOD_POST = "POST"
 HTTP_METHOD_GET = "GET"
 
 
-def show(config_path, host_name, index, views, fields, flat):
+def get(config_path, host_name, index, views, fields, flat):
+    """
+    Public API
+    """
     config = load_config(config_path)
 
     if host_name is None:
@@ -35,12 +37,16 @@ def show(config_path, host_name, index, views, fields, flat):
     print_host(host_name)
 
     if not find_index(host_name, index):
-        logger.error(
-            "Index:%s not found in cache or does not exist. "
-            "Please update cache and try again.",
-            index,
+        # logger.error(
+        #     "Index:%s not found in cache or does not exist. "
+        #     "Please update cache and try again.",
+        #     index,
+        # )
+        return Result.fail(
+            ResultCode.NOT_FOUND,
+            "Resource not found.",
+            {"resource": ResourceType.INDEX, "name": index},
         )
-        return ExitCode.FAILURE
 
     url = f"/{index}"
     host_config = get_host_config(config, host_name)
@@ -49,22 +55,29 @@ def show(config_path, host_name, index, views, fields, flat):
         res = es.request(HTTP_METHOD_GET, url)
         index_data = res[index]
         target_fields = build_field_list(config, views, fields)
-
+        out = index_data
         if len(target_fields) > 0:
-            print(json.dumps(apply_view(index_data, target_fields, flat), indent=2))
-        else:
-            print(json.dumps(index_data, indent=2))
+            out = apply_view(index_data, target_fields, flat)
+
+        return Result.ok(out)
 
     except Exception as e:
-        print(e)
-        return ExitCode.FAILURE
+        logger.exception(e)
+
     finally:
         ssh.close()
 
-    return ExitCode.SUCCESS
+    return Result.fail(
+        ResultCode.INTERNAL_ERROR,
+        "Failed to get index data.",
+        {"resource": ResourceType.INDEX, "name": index},
+    )
 
 
 def create(config_path, host_name, index, mapping, dry_run, push):
+    """
+    Public API
+    """
     config = load_config(config_path)
 
     if host_name is None:
@@ -74,11 +87,15 @@ def create(config_path, host_name, index, mapping, dry_run, push):
     print_host(host_name)
 
     if find_index(host_name, index):
-        logger.error(
-            "Index:%s already exists in the cache. Please pull the latest or delete the index.",
-            index,
+        # logger.error(
+        #     "Index:%s already exists in the cache. Please pull the latest or delete the index.",
+        #     index,
+        # )
+        return Result.fail(
+            ResultCode.ALREADY_EXISTS,
+            "Resource already exists.",
+            {"resource": ResourceType.INDEX, "name": index},
         )
-        return ExitCode.FAILURE
 
     body = {}
     if mapping:
@@ -88,30 +105,42 @@ def create(config_path, host_name, index, mapping, dry_run, push):
 
     url = f"/{index}"
     if dry_run:
-        print_dry_run()
-        print(HTTP_METHOD_PUT, url)
-        print(json.dumps(body, indent=2))
-        return ExitCode.SUCCESS
+        # print_dry_run()
+        # print(HTTP_METHOD_PUT, url)
+        # print(json.dumps(body, indent=2))
+        return Result.ok(
+            {
+                "executed": False,
+                "command": {"method": HTTP_METHOD_PUT, "url": f"/{index}"},
+            }
+        )
 
     host_config = get_host_config(config, host_name)
     ssh, es = connect_es(host_config)
     try:
         res = es.request(HTTP_METHOD_PUT, url, body)
-        print(res)
+        logger.debug("Response:%s", res)
         logger.info("Index:%s created. Updating Cache.", index)
-        from eskit.core.metadata import pull
+        from eskit.core.metadata import pull_metadata
 
-        pull(config_path, host_name)
+        pull_metadata(config_path, host_name)
     except Exception as e:
-        print(e)
-        return ExitCode.FAILURE
+        logger.exception(e)
+        return Result.fail(
+            ResultCode.INTERNAL_ERROR,
+            "Failed to create index.",
+            {"resource": ResourceType.INDEX, "name": index},
+        )
     finally:
         ssh.close()
 
-    return ExitCode.SUCCESS
+    return Result.ok()
 
 
 def delete(config_path, host_name, index, dry_run, push, force):
+    """
+    Public API
+    """
     config = load_config(config_path)
 
     if host_name is None:
@@ -121,38 +150,57 @@ def delete(config_path, host_name, index, dry_run, push, force):
     print_host(host_name)
 
     if not find_index(host_name, index):
-        logger.error("Index:%s not found in cache. Please pull the latest.", index)
-        return ExitCode.FAILURE
+        # logger.error("Index:%s not found in cache. Please pull the latest.", index)
+        return Result.fail(
+            ResultCode.NOT_FOUND,
+            "Repository not found.",
+            {"resource": ResourceType.REPOSITORY, "name": index},
+        )
 
     if not dry_run and not force:
         if not confirm_delete("index", index):
-            print("Cancelled.")
-            return ExitCode.CANCELED
+            return Result.fail(
+                ResultCode.CANCELED,
+                "Canceled.",
+                {"resource": ResourceType.REPOSITORY, "name": index},
+            )
 
     url = f"/{index}"
     if dry_run:
-        print_dry_run()
-        print(HTTP_METHOD_DELETE, url)
-        return ExitCode.SUCCESS
+        # print_dry_run()
+        # print(HTTP_METHOD_DELETE, url)
+        return Result.ok(
+            {
+                "executed": False,
+                "command": {"method": "DELETE", "url": f"/{index}"},
+            }
+        )
     host_config = get_host_config(config, host_name)
     ssh, es = connect_es(host_config)
     try:
         res = es.request(HTTP_METHOD_DELETE, url)
-        print(res)
+        logger.debug("Response:%s", res)
         logger.info("Index:%s deleted. Updating Cache.", index)
-        from eskit.core.metadata import pull
+        from eskit.core.metadata import pull_metadata
 
-        pull(config_path, host_name)
+        pull_metadata(config_path, host_name)
     except Exception as e:
-        print(e)
-        return ExitCode.FAILURE
+        logger.exception(e)
+        return Result.fail(
+            ResultCode.INTERNAL_ERROR,
+            "Failed to delete index.",
+            {"resource": ResourceType.INDEX, "name": index},
+        )
     finally:
         ssh.close()
 
-    return ExitCode.SUCCESS
+    return Result.ok()
 
 
 def status(config_path, host_name, index, views, fields, flat):
+    """
+    Public API
+    """
     config = load_config(config_path)
 
     if host_name is None:
@@ -172,14 +220,16 @@ def status(config_path, host_name, index, views, fields, flat):
             else:
                 out.append(r)
         out.sort(key=lambda x: x["index"])
-        print(json.dumps(out, indent=2))
     finally:
         ssh.close()
 
-    return ExitCode.SUCCESS
+    return Result.ok(out)
 
 
 def reindex(config_path, host_name, src, dst, mapping, dry_run, push):
+    """
+    Public API
+    """
     config = load_config(config_path)
 
     if host_name is None:
@@ -195,15 +245,23 @@ def reindex(config_path, host_name, src, dst, mapping, dry_run, push):
         if m:
             body["mappings"] = m
         else:
-            logger.error("Mapping:%s does not exist in the config.", mapping)
-            return ExitCode.FAILURE
+            # logger.error("Mapping:%s does not exist in the config.", mapping)
+            return Result.fail(
+                ResultCode.NOT_FOUND,
+                "Mapping config not found.",
+                {"resource": ResourceType.CONFIG, "name": mapping},
+            )
 
     dst_exists = find_index(host_name, dst)
     if m and dst_exists:
-        logger.error(
-            "Mapping specified, but index already exists in cache. Please pull latest or delete the index."
+        # logger.error(
+        #    "Mapping specified, but index already exists in cache. Please pull latest or delete the index."
+        # )
+        return Result.fail(
+            ResultCode.ALREADY_EXISTS,
+            "Resource already exists. Cannot change mapping.",
+            {"resource": ResourceType.INDEX, "name": dst},
         )
-        return ExitCode.FAILURE
 
     if not dst_exists:
         logger.info("Creating a new index:%s.", dst)
@@ -225,17 +283,27 @@ def reindex(config_path, host_name, src, dst, mapping, dry_run, push):
     body["dest"] = {"index": dst}
 
     # default: don't wait
-    url = f"/_reindex?wait_for_completion=false"
+    url = "/_reindex?wait_for_completion=false"
     if dry_run:
-        print_dry_run()
-        print(HTTP_METHOD_POST, url)
-        print(json.dumps(body, indent=2))
-        return ExitCode.SUCCESS
+        # print_dry_run()
+        # print(HTTP_METHOD_POST, url)
+        # print(json.dumps(body, indent=2))
+        return Result.ok(
+            {
+                "executed": False,
+                "command": {
+                    "method": HTTP_METHOD_POST,
+                    "url": "/_reindex?wait_for_completion=false",
+                },
+            }
+        )
 
     write_job(host_name, job)
 
     host_config = get_host_config(config, host_name)
     ssh, es = connect_es(host_config)
+    result_code = ResultCode.SUCCESS
+    result_msg = ""
     try:
         res = es.request(HTTP_METHOD_POST, url, body)
         # print(json.dumps(res, indent=2))
@@ -247,20 +315,19 @@ def reindex(config_path, host_name, src, dst, mapping, dry_run, push):
 
         write_job(host_name, job)
 
-        print(
-            f"[{host_name}] reindex job started search id/output name: {job.get_output_id()}"
-        )
-
     except Exception as e:
         job.status = "failed"
         job.error = str(e)
         write_job(host_name, job)
-        print(e)
-        return ExitCode.FAILURE
+        result_code = ResultCode.INTERNAL_ERROR
     finally:
         ssh.close()
 
-    return ExitCode.SUCCESS
+    return Result(
+        code=result_code,
+        value=job.to_dict(),
+        message=result_msg,
+    )
 
 
 # Internal

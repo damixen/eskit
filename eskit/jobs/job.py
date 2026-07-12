@@ -19,6 +19,7 @@ class ESKitJob:
     pid: int | None = None
 
     cache_path: str | None = None
+    preview: bool = False
 
     def get_output_id(self):
         return self.id
@@ -39,6 +40,7 @@ class ESKitJob:
             cache_path=data.get("cache_path"),
             log_path=data.get("log_path"),
             pid=data.get("pid"),
+            preview=data.get("preview"),
         )
 
     def to_dict(self) -> dict:
@@ -54,6 +56,7 @@ class ESKitJob:
             "log_path": self.log_path,
             "cache_path": self.cache_path,
             "pid": self.pid,
+            "preview": self.preview,
         }
 
         if self.result is not None:

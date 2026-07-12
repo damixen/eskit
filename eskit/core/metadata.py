@@ -10,12 +10,16 @@ from eskit.transport.process import SynchronousProcess
 from eskit.archive.model import ESKitArchiveState
 from eskit.utils.archive import list_archives, delete_archive, write_archive
 from eskit.utils.view import build_field_list, apply_view
-from eskit.exit_code import ExitCode
+from eskit.result import Result, ResultCode
+from eskit.resource_type import ResourceType
 
 logger = logging.getLogger(__name__)
 
 
-def pull(config_path, host_name, kind=None):
+def pull_metadata(config_path, host_name, kind=None):
+    """
+    Public API
+    """
 
     if host_name is None:
         host_name = get_current_host_name()
@@ -64,9 +68,7 @@ def pull(config_path, host_name, kind=None):
         logger.info("pull archive metadata")
         pull_archive_metadata(host_config, host_name)
 
-    print("\nCache updated.\n")
-
-    return ExitCode.SUCCESS
+    return Result.ok()
 
 
 def pull_archive_metadata(host_config, host_name):
@@ -74,8 +76,8 @@ def pull_archive_metadata(host_config, host_name):
     archives = host_config.get("archives")
 
     if not archives:
-        logger.warning("no archives to pull metadata")
-        return ExitCode.SUCCESS
+        logger.info("No archive in the config")
+        return
 
     for archive in archives:
         pull_archive_stat(host_config, host_name, archive)
@@ -86,9 +88,8 @@ def pull_archive_metadata(host_config, host_name):
     for cache in cached_archives:
         exists = any(d.get("name") == cache["name"] for d in archives)
         if not exists:
+            logger.info("Deleting an archive that's not in the config.")
             delete_archive(host_name, ESKitArchiveState.from_dict(cache))
-
-    return ExitCode.SUCCESS
 
 
 def parse_stat_line(line: str):
@@ -127,29 +128,6 @@ def get_file_stats(path, transport):
     return stat
 
 
-def write_archive_all(config, host):
-    host_config = get_host_config(config, host)
-    archives = host_config.get("archives")
-
-    if not archives:
-        logger.warning("no archives to pull metadata")
-        return ExitCode.SUCCESS
-
-    for archive in archives:
-        pull_archive_stat(config, host, archive)
-
-    # clean stale cache
-    cached_archives = list_archives(host)
-
-    for cache in cached_archives:
-        exists = any(d.get("name") == cache["name"] for d in archives)
-        if not exists:
-            logger.info("deleting stale archive cache:%s", cache["name"])
-            delete_archive(host, ESKitArchiveState.from_dict(cache))
-
-    return ExitCode.SUCCESS
-
-
 def pull_archive_stat(host_config, host_name, archive_config):
 
     rsync_src = archive_config["remote_src"]
@@ -159,21 +137,13 @@ def pull_archive_stat(host_config, host_name, archive_config):
     # src - remote
     transport = SSHConnection(host_config)
     transport.connect()
-    try:
-        src_stats = get_file_stats(rsync_src, transport)
-    except RuntimeError as e:
-        logger.error("failed to get file stats for remote_src:%s", e)
-        return ExitCode.FAILURE
+    src_stats = get_file_stats(rsync_src, transport)
     transport.close()
     # print(json.dumps(src_stats, indent=2))
 
     # dst - local
     transport = SynchronousProcess(shell=True)
-    try:
-        dst_stats = get_file_stats(rsync_dst, transport)
-    except RuntimeError as e:
-        logger.error("failed to get file stats for local_dst:%s", e)
-        return ExitCode.FAILURE
+    dst_stats = get_file_stats(rsync_dst, transport)
     # print(json.dumps(dst_stats, indent=2))
 
     archive = ESKitArchiveState(
@@ -189,10 +159,11 @@ def pull_archive_stat(host_config, host_name, archive_config):
     # print(f"archive:{archive}")
     write_archive(host_name, archive)
 
-    return ExitCode.SUCCESS
 
-
-def cat(config_path, host_name, kind, views, fields, flat):
+def get_metadata(config_path, host_name, kind, views, fields, flat):
+    """
+    Public API
+    """
     # config, kind, host_name, views, fields, flat
     config = load_config(config_path)
 
@@ -208,19 +179,24 @@ def cat(config_path, host_name, kind, views, fields, flat):
     data = read_cache(host_name, kind)
 
     if not data:
-        return
+        return Result.fail(
+            ResultCode.NOT_FOUND,
+            "Resource not found.",
+            {"resource": ResourceType.CACHE, "name": host_name},
+        )
 
     out = {}
     if kind == "snapshots":
+        snap_list = []
         for repo, repo_data in data.items():
             snapshots = repo_data.get("snapshots", {})
-            snap_list = []
+
             for s in snapshots:
                 if len(target_fields) > 0:
                     snap_list.append(apply_view(s, target_fields, flat))
                 else:
                     snap_list.append(s)
-            out = snap_list
+        out = snap_list
     elif kind == "repos":
         out = {}
         for repo, repo_data in data.items():
@@ -242,6 +218,4 @@ def cat(config_path, host_name, kind, views, fields, flat):
     elif kind == "recovery":
         out = data
 
-    print(json.dumps(out, indent=2))
-
-    return ExitCode.SUCCESS
+    return Result.ok(out)

@@ -84,7 +84,6 @@ class ESKitJobManager:
             path = local_cache_path
 
         if not path:
-            logger.error("job:%s is not found.", job_id)
             return None
 
         with open(path) as fp:

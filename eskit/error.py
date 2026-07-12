@@ -1,3 +1,6 @@
+import json
+
+
 class ESKitError(Exception):
     def __init__(self, msg):
         self.msg = msg
@@ -17,19 +20,22 @@ class ElasticsearchError(ESKitError):
         self.response = response
         error_type = None
         reason = None
+        caused_by = None
 
         if isinstance(response, dict):
             error = response.get("error", {})
-
             if isinstance(error, dict):
                 error_type = error.get("type")
                 reason = error.get("reason")
+                caused_by = error.get("caused_by")
 
         msg = f"HTTP {status}"
         if error_type:
             msg += f" [{error_type}]"
         if reason:
             msg += f": {reason}"
+        if caused_by:
+            msg += f": {caused_by}"
 
         super().__init__(msg)
 
