@@ -1,28 +1,24 @@
 import uuid
 import logging
 from datetime import datetime, timezone
-from eskit.utils.config import load_config, get_host_config
+from eskit.utils.config import get_host_config
 from eskit.utils.view import build_field_list, apply_view
 from eskit.utils.archive import list_archives, read_archive
-from eskit.core.host import get_current_host_name, check_host_name, print_host
+from eskit.core.host import check_host_name
 from eskit.core.metadata import pull_archive_stat
 from eskit.jobs.job import ESKitJob
 from eskit.jobs.executers import LocalExecutor
 from eskit.jobs.job_manager import get as get_jbm
-from eskit.result import Result, ResultCode
+from eskit.result import Result, ResultCode, ResourceTarget
 from eskit.resource_type import ResourceType
+from eskit.config.types import Config
 
 logger = logging.getLogger(__name__)
 
 
-def get_list(config_path, host_name, views, fields, flat):
-
-    if host_name is None:
-        host_name = get_current_host_name()
+def get_list(config: Config, host_name, views, fields, flat):
 
     check_host_name(host_name)
-
-    config = load_config(config_path)
 
     data = list_archives(host_name)
 
@@ -38,16 +34,11 @@ def get_list(config_path, host_name, views, fields, flat):
     return Result.ok(out)
 
 
-def pull(config_path, host_name, name, contents, dry_run, all, sync, preview):
-    config = load_config(config_path)
+def pull(config: Config, host_name, name, contents, dry_run, all, sync, preview):
 
-    if host_name is None:
-        host_name = get_current_host_name()
     check_host_name(host_name)
 
     host_config = get_host_config(config, host_name)
-
-    print_host(host_name)
 
     archives = host_config.get("archives") or {}
 
@@ -58,11 +49,7 @@ def pull(config_path, host_name, name, contents, dry_run, all, sync, preview):
 
     if not archive:
         # logger.warning("archive:%s is not found for host:%s", name, host_name)
-        return Result.fail(
-            ResultCode.NOT_FOUND,
-            "Resource not found.",
-            {"resource": ResourceType.ARCHIVE, "name": name},
-        )
+        return Result.fail(ResultCode.NOT_FOUND, "Resource not found.")
 
     archive_type = archive["type"]
     job = None
@@ -73,22 +60,17 @@ def pull(config_path, host_name, name, contents, dry_run, all, sync, preview):
 
     if not job:
         return Result.fail(
-            ResultCode.INTERNAL_ERROR, "Failed to pull archive.", archive
+            ResultCode.INTERNAL_ERROR, "Failed to pull archive.", context=archive
         )
 
     return Result.ok(job.to_dict())
 
 
-def push(config_path, host_name, name, dst, contents, dry_run, preview):
-    config = load_config(config_path)
+def push(config: Config, host_name, name, dst, contents, dry_run, preview):
 
-    if host_name is None:
-        host_name = get_current_host_name()
     check_host_name(host_name)
 
     host_config = get_host_config(config, host_name)
-
-    print_host(host_name)
 
     archives = host_config.get("archives") or {}
 
@@ -99,11 +81,7 @@ def push(config_path, host_name, name, dst, contents, dry_run, preview):
 
     if not archive:
         # logger.error("archive:%s is not found for host:%s", name, host_name)
-        return Result.fail(
-            ResultCode.NOT_FOUND,
-            "Resource not found.",
-            {"resource": ResourceType.ARCHIVE, "name": name},
-        )
+        return Result.fail(ResultCode.NOT_FOUND, "Resource not found.")
 
     archive_type = archive["type"]
     job = None
@@ -114,22 +92,18 @@ def push(config_path, host_name, name, dst, contents, dry_run, preview):
 
     if not job:
         return Result.fail(
-            ResultCode.INTERNAL_ERROR, "Failed to pull archive.", archive
+            ResultCode.INTERNAL_ERROR, "Failed to pull archive.", context=archive
         )
 
     return Result.ok(job.to_dict())
 
 
-def get(config_path, host_name, name, views, fields, flat):
+def get(config: Config, host_name, name, views, fields, flat):
     """
     Public API
     """
-    if host_name is None:
-        host_name = get_current_host_name()
 
     check_host_name(host_name)
-
-    config = load_config(config_path)
 
     archive_name = name
     target_fields = build_field_list(config, views, fields)
@@ -146,7 +120,7 @@ def get(config_path, host_name, name, views, fields, flat):
 
 
 # Internal
-def pull_snapshot(config, host, name, archive, contets, dry_run, sync, preview):
+def pull_snapshot(config: Config, host, name, archive, contets, dry_run, sync, preview):
 
     rsync_src = archive["remote_src"]
     rsync_dst = archive["local_dst"]
@@ -194,14 +168,18 @@ def pull_snapshot(config, host, name, archive, contets, dry_run, sync, preview):
     )
 
     if not dry_run:
-        job = get_jbm().submit(job, LocalExecutor())
+        jbm = get_jbm()
+        assert jbm is not None
+        job = jbm.submit(job, LocalExecutor())
         host_config = get_host_config(config, host)
         pull_archive_stat(host_config, host, archive)
 
     return job
 
 
-def push_snapshot(config, host, name, archive, remote_dst, contents, dry_run, preview):
+def push_snapshot(
+    config: Config, host, name, archive, remote_dst, contents, dry_run, preview
+):
 
     # archive's local dst become source for push
     rsync_src = archive["local_dst"]
@@ -254,13 +232,15 @@ def push_snapshot(config, host, name, archive, remote_dst, contents, dry_run, pr
         preview=preview,
     )
     if not dry_run:
-        job = get_jbm().submit(job, LocalExecutor())
+        jbm = get_jbm()
+        assert jbm is not None
+        job = jbm.submit(job, LocalExecutor())
 
     return job
 
 
 # <eskit_host>:<dst> to <ssh_host>:<dst>
-def convert_remote_host(config, remote_target):
+def convert_remote_host(config: Config, remote_target):
 
     remote_host, sep, remote_path = remote_target.partition(":")
 
@@ -276,7 +256,7 @@ def convert_remote_host(config, remote_target):
     return f"{user}@{remote_host_config["ip"]}:{remote_path}"
 
 
-def get_ssh_config_from_remote_target(config, remote_target):
+def get_ssh_config_from_remote_target(config: Config, remote_target):
     remote_host, sep, remote_path = remote_target.partition(":")
 
     if not sep:
@@ -289,7 +269,7 @@ def get_ssh_config_from_remote_target(config, remote_target):
     return None
 
 
-def get_ssh_command(config, remote_target):
+def get_ssh_command(config: Config, remote_target):
 
     ssh_config = get_ssh_config_from_remote_target(config, remote_target)
     if not ssh_config:

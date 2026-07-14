@@ -17,11 +17,20 @@ class LocalExecutor(ESKitExecutor):
 
     def start(self, job: ESKitJob):
 
-        log_file = open(job.log_path, "ab")
+        log_handle = None
 
-        proc = subprocess.Popen(
-            job.payload["cmd"], stdout=log_file, stderr=subprocess.STDOUT
-        )
+        if job.log_path:
+            log_handle = open(job.log_path, "ab")
+
+        stdout = log_handle if log_handle else subprocess.DEVNULL
+
+        try:
+            proc = subprocess.Popen(
+                job.payload["cmd"], stdout=stdout, stderr=subprocess.STDOUT
+            )
+        finally:
+            if log_handle is not None:
+                log_handle.close()
 
         job.pid = proc.pid
         job.status = "running"

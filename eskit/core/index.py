@@ -2,20 +2,19 @@ import uuid
 import logging
 from datetime import datetime, timezone
 
-from eskit.utils.config import load_config, get_host_config, get_reindex_mapping
+from eskit.utils.config import get_host_config, get_reindex_mapping
 from eskit.utils.view import build_field_list, apply_view
 from eskit.utils.input import confirm_delete
 from eskit.core.host import (
-    get_current_host_name,
     check_host_name,
-    print_host,
     check_push_protected,
 )
 from eskit.cache.store import read_cache, write_job
 from eskit.clients.es_client import connect_es
 from eskit.jobs.job import ESKitJob
-from eskit.result import Result, ResultCode
+from eskit.result import Result, ResultCode, ResourceTarget
 from eskit.resource_type import ResourceType
+from eskit.config.types import Config
 
 logger = logging.getLogger(__name__)
 
@@ -25,16 +24,12 @@ HTTP_METHOD_POST = "POST"
 HTTP_METHOD_GET = "GET"
 
 
-def get(config_path, host_name, index, views, fields, flat):
+def get(config: Config, host_name, index, views, fields, flat):
     """
     Public API
     """
-    config = load_config(config_path)
 
-    if host_name is None:
-        host_name = get_current_host_name()
     check_host_name(host_name)
-    print_host(host_name)
 
     if not find_index(host_name, index):
         # logger.error(
@@ -42,11 +37,7 @@ def get(config_path, host_name, index, views, fields, flat):
         #     "Please update cache and try again.",
         #     index,
         # )
-        return Result.fail(
-            ResultCode.NOT_FOUND,
-            "Resource not found.",
-            {"resource": ResourceType.INDEX, "name": index},
-        )
+        return Result.fail(ResultCode.NOT_FOUND, "Resource not found.")
 
     url = f"/{index}"
     host_config = get_host_config(config, host_name)
@@ -67,35 +58,23 @@ def get(config_path, host_name, index, views, fields, flat):
     finally:
         ssh.close()
 
-    return Result.fail(
-        ResultCode.INTERNAL_ERROR,
-        "Failed to get index data.",
-        {"resource": ResourceType.INDEX, "name": index},
-    )
+    return Result.fail(ResultCode.INTERNAL_ERROR, "Failed to get index data.")
 
 
-def create(config_path, host_name, index, mapping, dry_run, push):
+def create(config: Config, host_name, index, mapping, dry_run, push):
     """
     Public API
     """
-    config = load_config(config_path)
 
-    if host_name is None:
-        host_name = get_current_host_name()
     check_host_name(host_name)
     check_push_protected(config, host_name, dry_run, push)
-    print_host(host_name)
 
     if find_index(host_name, index):
         # logger.error(
         #     "Index:%s already exists in the cache. Please pull the latest or delete the index.",
         #     index,
         # )
-        return Result.fail(
-            ResultCode.ALREADY_EXISTS,
-            "Resource already exists.",
-            {"resource": ResourceType.INDEX, "name": index},
-        )
+        return Result.fail(ResultCode.ALREADY_EXISTS, "Resource already exists.")
 
     body = {}
     if mapping:
@@ -123,47 +102,31 @@ def create(config_path, host_name, index, mapping, dry_run, push):
         logger.info("Index:%s created. Updating Cache.", index)
         from eskit.core.metadata import pull_metadata
 
-        pull_metadata(config_path, host_name)
+        pull_metadata(config, host_name)
     except Exception as e:
         logger.exception(e)
-        return Result.fail(
-            ResultCode.INTERNAL_ERROR,
-            "Failed to create index.",
-            {"resource": ResourceType.INDEX, "name": index},
-        )
+        return Result.fail(ResultCode.INTERNAL_ERROR, "Failed to create index.")
     finally:
         ssh.close()
 
     return Result.ok()
 
 
-def delete(config_path, host_name, index, dry_run, push, force):
+def delete(config: Config, host_name, index, dry_run, push, force):
     """
     Public API
     """
-    config = load_config(config_path)
 
-    if host_name is None:
-        host_name = get_current_host_name()
     check_host_name(host_name)
     check_push_protected(config, host_name, dry_run, push)
-    print_host(host_name)
 
     if not find_index(host_name, index):
         # logger.error("Index:%s not found in cache. Please pull the latest.", index)
-        return Result.fail(
-            ResultCode.NOT_FOUND,
-            "Repository not found.",
-            {"resource": ResourceType.REPOSITORY, "name": index},
-        )
+        return Result.fail(ResultCode.NOT_FOUND, "Index not found.")
 
     if not dry_run and not force:
         if not confirm_delete("index", index):
-            return Result.fail(
-                ResultCode.CANCELED,
-                "Canceled.",
-                {"resource": ResourceType.REPOSITORY, "name": index},
-            )
+            return Result.fail(ResultCode.CANCELED, "Canceled.")
 
     url = f"/{index}"
     if dry_run:
@@ -183,28 +146,21 @@ def delete(config_path, host_name, index, dry_run, push, force):
         logger.info("Index:%s deleted. Updating Cache.", index)
         from eskit.core.metadata import pull_metadata
 
-        pull_metadata(config_path, host_name)
+        pull_metadata(config, host_name)
     except Exception as e:
         logger.exception(e)
-        return Result.fail(
-            ResultCode.INTERNAL_ERROR,
-            "Failed to delete index.",
-            {"resource": ResourceType.INDEX, "name": index},
-        )
+        return Result.fail(ResultCode.INTERNAL_ERROR, "Failed to delete index.")
     finally:
         ssh.close()
 
     return Result.ok()
 
 
-def status(config_path, host_name, index, views, fields, flat):
+def status(config: Config, host_name, index, views, fields, flat):
     """
     Public API
     """
-    config = load_config(config_path)
 
-    if host_name is None:
-        host_name = get_current_host_name()
     check_host_name(host_name)
 
     target_fields = build_field_list(config, views, fields)
@@ -226,17 +182,13 @@ def status(config_path, host_name, index, views, fields, flat):
     return Result.ok(out)
 
 
-def reindex(config_path, host_name, src, dst, mapping, dry_run, push):
+def reindex(config: Config, host_name, src, dst, mapping, dry_run, push):
     """
     Public API
     """
-    config = load_config(config_path)
 
-    if host_name is None:
-        host_name = get_current_host_name()
     check_host_name(host_name)
     check_push_protected(config, host_name, dry_run, push)
-    print_host(host_name)
 
     body = {}
     m = None
@@ -249,7 +201,7 @@ def reindex(config_path, host_name, src, dst, mapping, dry_run, push):
             return Result.fail(
                 ResultCode.NOT_FOUND,
                 "Mapping config not found.",
-                {"resource": ResourceType.CONFIG, "name": mapping},
+                context=ResourceTarget(resource=ResourceType.CONFIG, name=mapping),
             )
 
     dst_exists = find_index(host_name, dst)
@@ -260,12 +212,12 @@ def reindex(config_path, host_name, src, dst, mapping, dry_run, push):
         return Result.fail(
             ResultCode.ALREADY_EXISTS,
             "Resource already exists. Cannot change mapping.",
-            {"resource": ResourceType.INDEX, "name": dst},
+            context=ResourceTarget(resource=ResourceType.INDEX, name=dst),
         )
 
     if not dst_exists:
         logger.info("Creating a new index:%s.", dst)
-        create(config_path, host_name, dst, mapping, dry_run, push)
+        create(config, host_name, dst, mapping, dry_run, push)
 
     job = ESKitJob(
         id=str(uuid.uuid4()),

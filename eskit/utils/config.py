@@ -1,6 +1,7 @@
 import json
 
 from eskit.error import ConfigError
+from eskit.config.types import Config
 
 
 def get_view_configs(config, views):
@@ -23,12 +24,9 @@ def get_reindex_mapping(config, name):
     return None
 
 
-def load_config(path):
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except FileNotFoundError:
-        return None
+def load_config(path) -> Config:
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)
 
 
 def get_host_config(config, host_name):

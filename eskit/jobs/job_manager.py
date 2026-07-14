@@ -61,18 +61,20 @@ class ESKitJobManager:
 
     def save(self, job: ESKitJob):
         self.jobs_dir.mkdir(parents=True, exist_ok=True)
-        with open(job.cache_path, "w") as fp:
+        if not job.cache_path:
+            return
+        with open(job.cache_path, "w", encoding="utf-8") as fp:
             json.dump(job.to_dict(), fp, indent=2)
 
     def load(self, job_id: str) -> ESKitJob:
         path = self.jobs_dir / f"{job_id}.json"
 
-        with open(path) as fp:
+        with open(path, encoding="utf-8") as fp:
             data = json.load(fp)
 
         return ESKitJob.from_dict(data)
 
-    def load_dict(self, host, job_id: str) -> Dict:
+    def load_dict(self, host, job_id: str) -> Dict | None:
         host_cache_path = self.cache_dir / host / "cache" / "jobs" / f"{job_id}.json"
         local_cache_path = self.jobs_dir / f"{job_id}.json"
 
@@ -86,7 +88,7 @@ class ESKitJobManager:
         if not path:
             return None
 
-        with open(path) as fp:
+        with open(path, encoding="utf-8") as fp:
             data = json.load(fp)
 
         return data
@@ -99,7 +101,7 @@ class ESKitJobManager:
         logger.info("jobs_dir:%s", jobs_dir)
 
         for file in sorted(jobs_dir.glob("*.json")):
-            with open(file) as fp:
+            with open(file, encoding="utf-8") as fp:
                 try:
                     jobs.append(ESKitJob.from_dict(json.load(fp)))
                 except Exception as e:
@@ -107,7 +109,7 @@ class ESKitJobManager:
 
         if local:
             for file in sorted(self.jobs_dir.glob("*.json")):
-                with open(file) as fp:
+                with open(file, encoding="utf-8") as fp:
                     jobs.append(ESKitJob.from_dict(json.load(fp)))
         return jobs
 

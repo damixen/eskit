@@ -44,6 +44,18 @@ class CacheError(ESKitError):
     pass
 
 
+class ConfigNotFoundError(ESKitError):
+    def __init__(self, path: str):
+        super().__init__(f"Configuration file not found: {path}")
+        self.path = path
+
+
+class CurrentHostNotFoundError(ESKitError):
+    def __init__(self, path: str):
+        super().__init__(f"Current host file not found: {path}")
+        self.path = path
+
+
 class ConfigError(ESKitError):
     pass
 

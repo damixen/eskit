@@ -40,7 +40,7 @@ class ESKitJob:
             cache_path=data.get("cache_path"),
             log_path=data.get("log_path"),
             pid=data.get("pid"),
-            preview=data.get("preview"),
+            preview=data.get("preview", False),
         )
 
     def to_dict(self) -> dict:

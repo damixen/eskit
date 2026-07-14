@@ -1,19 +1,15 @@
-from eskit.utils.config import load_config, get_host_config
-from eskit.core.host import get_current_host_name, check_host_name, print_host
+from eskit.utils.config import get_host_config
+from eskit.core.host import check_host_name
 from eskit.clients.es_client import connect_es
 from eskit.resource_type import ResourceType
-from eskit.result import Result, ResultCode
+from eskit.result import Result, ResultCode, ResourceTarget
 
 HTTP_METHOD_GET = "GET"
 
 
-def get(config_path, host_name, task_id):
-    config = load_config(config_path)
+def get(config, host_name, task_id):
 
-    if host_name is None:
-        host_name = get_current_host_name()
     check_host_name(host_name)
-    print_host(host_name)
 
     url = f"/_tasks/{task_id}"
 
@@ -27,8 +23,4 @@ def get(config_path, host_name, task_id):
     finally:
         ssh.close()
 
-    return Result.fail(
-        ResultCode.INTERNAL_ERROR,
-        "Failed to get task.",
-        {"resource": ResourceType.TASK, "name": task_id},
-    )
+    return Result.fail(ResultCode.INTERNAL_ERROR, "Failed to get task.")

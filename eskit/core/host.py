@@ -1,22 +1,11 @@
 import logging
-from eskit.utils.config import load_config, get_host_config
+from eskit.utils.config import get_host_config
 from eskit.utils.paths import CURRENT_HOST_FILE
-from eskit.result import Result, ResultCode
+from eskit.result import Result, ResultCode, ResourceTarget, Argument
 from eskit.resource_type import ResourceType
+from eskit.config.types import Config
 
 logger = logging.getLogger(__name__)
-
-
-def print_dry_run():
-    print("\n*Dry Run*\n")
-
-
-def print_preview():
-    print("\n*Preview*\n")
-
-
-def print_host(host):
-    logger.info("\n=== ESKit HOST: %s ===\n", host)
 
 
 def get_current_host_name():
@@ -45,33 +34,32 @@ def check_push_protected(config, host, dry_run, push):
         and not dry_run
         and not push
     ):
-        print_host(host)
-
         # TODO: add PushProtectionError error class
         raise SystemExit(
             f"Host:{host} is push protected. Please use --push to make a change or --dry-run to check command."
         )
     return
 
-def get_host(host_name, config_path):
+
+def get_host(host_name, config: Config):
     """
     Public API Retuns the host config by name.
     """
-    config = load_config(config_path)
+
     host = host_name
 
     if not host:
         return Result.fail(
             ResultCode.INVALID_ARGUMENT,
-            "Invalid argument.",
-            {"resource": ResourceType.HOST, "name": host},
+            "Empty host name.",
+            context=Argument(name="host", value=None),
         )
 
     if not config:
         return Result.fail(
-            ResultCode.NOT_FOUND,
-            "Resource not found.",
-            {"resource": ResourceType.CONFIG, "name": config_path},
+            ResultCode.INVALID_ARGUMENT,
+            "Config is None.",
+            context=Argument(name="config", value=None),
         )
 
     hosts = config.get("hosts", [])
@@ -79,11 +67,7 @@ def get_host(host_name, config_path):
         for h in hosts:
             if h["name"] == host:
                 return Result.ok(h)
-    return Result.fail(
-        ResultCode.NOT_FOUND,
-        "Resource not found.",
-        {"resource": ResourceType.HOST, "name": host},
-    )
+    return Result.fail(ResultCode.NOT_FOUND, "Resource not found.")
 
 
 def set_current_host_name(host):
@@ -98,6 +82,8 @@ def set_current_host_name(host):
         return Result.fail(
             ResultCode.INTERNAL_ERROR,
             "Failed to write current host configuration.",
-            {"resource": ResourceType.CONFIG, "name": CURRENT_HOST_FILE},
+            context=ResourceTarget(
+                resource=ResourceType.CONFIG, name=str(CURRENT_HOST_FILE)
+            ),
         )
     return Result.ok({"host": host})

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-from dataclasses import dataclass, asdict
-from typing import List, Dict
+from dataclasses import dataclass
+from typing import Dict
+from eskit.config.types import FileStat
 
 
 @dataclass
@@ -43,8 +44,8 @@ class ESKitArchiveState:
 
     last_pull: str
 
-    remote_src_stat: Dict
-    local_dst_stat: Dict
+    remote_src_stat: FileStat | None
+    local_dst_stat: FileStat | None
 
     @classmethod
     def from_dict(cls, data: dict):

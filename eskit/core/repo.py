@@ -1,72 +1,50 @@
 import logging
-from eskit.utils.config import load_config, get_host_config
+from eskit.utils.config import get_host_config
 from eskit.utils.view import build_field_list, apply_view
 from eskit.utils.input import confirm_delete
 from eskit.core.host import (
-    get_current_host_name,
     check_host_name,
-    print_host,
     check_push_protected,
 )
 from eskit.cache.store import read_cache
 from eskit.clients.es_client import connect_es
-from eskit.result import Result, ResultCode
+from eskit.result import Result, ResultCode, ResourceTarget
 from eskit.resource_type import ResourceType
 
 logger = logging.getLogger(__name__)
 
 
-def get(config_path, host_name, name, views, fields, flat):
+def get(config, host_name, name, views, fields, flat):
     """
     Public API
     """
-    config = load_config(config_path)
 
-    if host_name is None:
-        host_name = get_current_host_name()
     check_host_name(host_name)
 
     repo, sep, snap = name.partition("/")
     if repo and snap:
         data = get_snap(config, host_name, name, views, fields, flat)
         if not data:
-            return Result.fail(
-                ResultCode.NOT_FOUND,
-                "Snapshot not found.",
-                {"resource": ResourceType.SNAPSHOT, "name": name},
-            )
-        return Result.ok(data["value"])
+            return Result.fail(ResultCode.NOT_FOUND, "Snapshot not found.")
+        return Result.ok(data)
     else:
         data = get_repo(config, host_name, repo, views, fields, flat)
         if not data:
-            return Result.fail(
-                ResultCode.NOT_FOUND,
-                "Repository not found.",
-                {"resource": ResourceType.REPOSITORY, "name": name},
-            )
-        return Result.ok(data["value"])
+            return Result.fail(ResultCode.NOT_FOUND, "Repository not found.")
+        return Result.ok(data)
 
 
-def create(config_path, host_name, name, repo_type, location, dry_run, push):
+def create(config, host_name, name, repo_type, location, dry_run, push):
     """
     Public API
     """
-    config = load_config(config_path)
 
-    if host_name is None:
-        host_name = get_current_host_name()
     check_host_name(host_name)
-
     check_push_protected(config, host_name, dry_run, push)
-    print_host(host_name)
 
     if find_repo(host_name, name):
         # logger.error("Repository:%s found in cache. Please pull latest.", name)
-        return Result.fail(
-            ResultCode.ALREADY_EXISTS,
-            "Repository already exists.",
-            {"resource": ResourceType.REPOSITORY, "name": name},
-        )
+        return Result.fail(ResultCode.ALREADY_EXISTS, "Repository already exists.")
 
     body = {"type": repo_type, "settings": {"location": location, "compress": True}}
     if dry_run:
@@ -86,40 +64,28 @@ def create(config_path, host_name, name, repo_type, location, dry_run, push):
         # print(f"Repository:{name} created. Updating Cache...")
         from eskit.core.metadata import pull_metadata
 
-        pull_metadata(config_path, host_name)
+        pull_metadata(config, host_name)
     finally:
         ssh.close()
 
     return Result.ok()
 
 
-def delete(config_path, host_name, name, dry_run, push, force):
+def delete(config, host_name, name, dry_run, push, force):
     """
     Public API
     """
-    config = load_config(config_path)
 
-    if host_name is None:
-        host_name = get_current_host_name()
     check_host_name(host_name)
     check_push_protected(config, host_name, dry_run, push)
-    print_host(host_name)
 
     if not find_repo(host_name, name):
         # logger.error("Repository:%s not found in cache. Please pull latest.", name)
-        return Result.fail(
-            ResultCode.NOT_FOUND,
-            "Repository not found.",
-            {"resource": ResourceType.REPOSITORY, "name": name},
-        )
+        return Result.fail(ResultCode.NOT_FOUND, "Repository not found.")
 
     if not dry_run and not force:
         if not confirm_delete("repo", name):
-            return Result.fail(
-                ResultCode.CANCELED,
-                "Canceled.",
-                {"resource": ResourceType.REPOSITORY, "name": name},
-            )
+            return Result.fail(ResultCode.CANCELED, "Canceled.")
 
     if dry_run:
         # print_dry_run()
@@ -137,7 +103,7 @@ def delete(config_path, host_name, name, dry_run, push, force):
         # print(f"Repository:{name} deleted. updating cache...")
         from eskit.core.metadata import pull_metadata
 
-        pull_metadata(config_path, host_name)
+        pull_metadata(config, host_name)
     finally:
         ssh.close()
 
@@ -147,6 +113,9 @@ def delete(config_path, host_name, name, dry_run, push, force):
 # Internal
 def find_repo(host, repo):
     repos_cache = read_cache(host, "repos")
+    if not repos_cache:
+        return False
+
     for repo_name, repo_data in repos_cache.items():
         if repo == repo_name:
             return True
@@ -165,7 +134,6 @@ def get_repo(config, host_name, repo, views, fields, flat):
 
     repo_data = data.get(repo, {})
     if not repo_data:
-        # print_host(host_name)
         # logger.error("Repository:%s not found in cache.", repo)
         return None
 
@@ -174,7 +142,7 @@ def get_repo(config, host_name, repo, views, fields, flat):
     snapshots = read_cache(host_name, "snapshots")
 
     if not snapshots:
-        return {"resource": ResourceType.REPOSITORY, "value": out}
+        return out
 
     snapshots = snapshots.get(repo, {}).get("snapshots", {})
     snap_list = []
@@ -186,12 +154,9 @@ def get_repo(config, host_name, repo, views, fields, flat):
     target_fields = build_field_list(config, views, fields)
 
     if len(target_fields) > 0:
-        return {
-            "resource": ResourceType.REPOSITORY,
-            "value": apply_view(out, target_fields, flat),
-        }
+        return apply_view(out, target_fields, flat)
     else:
-        return {"resource": ResourceType.REPOSITORY, "value": out}
+        return out
 
 
 def get_snap(config, host_name, path, views, fields, flat):
@@ -205,10 +170,7 @@ def get_snap(config, host_name, path, views, fields, flat):
     for s in data.get(repo, {}).get("snapshots", []):
         if s.get("snapshot") == snap:
             if len(target_fields) > 0:
-                return {
-                    "resource": ResourceType.SNAPSHOT,
-                    "value": apply_view(s, target_fields, flat),
-                }
+                return apply_view(s, target_fields, flat)
             else:
-                return {"resource": ResourceType.SNAPSHOT, "value": s}
+                return s
     return None

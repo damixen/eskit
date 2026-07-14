@@ -1,8 +1,7 @@
-import json
 import logging
 from datetime import datetime, timezone
-from eskit.utils.config import load_config, get_host_config
-from eskit.core.host import get_current_host_name, check_host_name, print_host
+from eskit.utils.config import get_host_config
+from eskit.core.host import check_host_name
 from eskit.clients.es_client import connect_es
 from eskit.cache.store import write_cache, read_cache
 from eskit.transport.ssh import SSHConnection
@@ -10,29 +9,25 @@ from eskit.transport.process import SynchronousProcess
 from eskit.archive.model import ESKitArchiveState
 from eskit.utils.archive import list_archives, delete_archive, write_archive
 from eskit.utils.view import build_field_list, apply_view
-from eskit.result import Result, ResultCode
+from eskit.result import Result, ResultCode, ResourceTarget
 from eskit.resource_type import ResourceType
+from eskit.config.types import FileStat
 
 logger = logging.getLogger(__name__)
 
 
-def pull_metadata(config_path, host_name, kind=None):
+def pull_metadata(config, host_name, kind=None):
     """
     Public API
     """
 
-    if host_name is None:
-        host_name = get_current_host_name()
-
     check_host_name(host_name)
-    print_host(host_name)
 
-    config = load_config(config_path)
     host_config = get_host_config(config, host_name)
 
     pull_all = kind is None or len(kind) == 0
 
-    if pull_all or "es" in kind:
+    if pull_all or "es" == kind:
         transport, es = connect_es(host_config)
         repos = es.request("GET", "/_snapshot")
         write_cache(host_name, "repos", repos)
@@ -64,7 +59,7 @@ def pull_metadata(config_path, host_name, kind=None):
         transport.close()
 
     # pull archive status
-    if pull_all or "archive" in kind:
+    if pull_all or "archive" == kind:
         logger.info("pull archive metadata")
         pull_archive_metadata(host_config, host_name)
 
@@ -97,7 +92,25 @@ def parse_stat_line(line: str):
     return dict(kv.split("=", 1) for kv in parts)
 
 
-def get_file_stats(path, transport):
+def parse_stat(line: str) -> FileStat:
+    raw = parse_stat_line(line)
+
+    return {
+        "name": raw["name"],
+        "mode": raw["mode"],
+        "owner": raw["owner"],
+        "group": raw["group"],
+        "mtime_ms": int(raw["mtime_ms"]) * 1000,
+        "atime_ms": int(raw["atime_ms"]) * 1000,
+        "ctime_ms": int(raw["ctime_ms"]) * 1000,
+        "mtime_iso": raw["mtime_iso"],
+        "atime_iso": raw["atime_iso"],
+        "ctime_iso": raw["ctime_iso"],
+        "size": 0,
+    }
+
+
+def get_file_stats(path, transport) -> FileStat | None:
 
     stas_format = "name=%n|mode=%a|owner=%U|group=%G|mtime_ms=%Y|atime_ms=%X|ctime_ms=%W|mtime_iso=%y|atime_iso=%x|ctime_iso=%w"
 
@@ -111,18 +124,15 @@ def get_file_stats(path, transport):
 
     if not out:
         logger.warning("path:%s does not exist or failed to get stat", path)
-        return {}
+        return None
 
-    stat = parse_stat_line(out)
-    stat["mtime_ms"] = int(stat["mtime_ms"]) * 1000
-    stat["ctime_ms"] = int(stat["ctime_ms"]) * 1000
-    stat["atime_ms"] = int(stat["atime_ms"]) * 1000
+    stat = parse_stat(out)
 
     cmd = f"du -sb {path}"
     # print(f"cmd:{cmd}")
     file_size = transport.run(cmd)
     # print(f"file_size:{file_size}")
-    stat["size"] = file_size.split("\t")[0]
+    stat["size"] = int(file_size.split("\t")[0])
     # print(stat)
 
     return stat
@@ -160,18 +170,13 @@ def pull_archive_stat(host_config, host_name, archive_config):
     write_archive(host_name, archive)
 
 
-def get_metadata(config_path, host_name, kind, views, fields, flat):
+def get_metadata(config, host_name, kind, views, fields, flat):
     """
     Public API
     """
-    # config, kind, host_name, views, fields, flat
-    config = load_config(config_path)
 
     mapping = {"repo": "repos", "snap": "snapshots", "index": "indices"}
     kind = mapping[kind]
-
-    if host_name is None:
-        host_name = get_current_host_name()
 
     check_host_name(host_name)
 
@@ -179,11 +184,7 @@ def get_metadata(config_path, host_name, kind, views, fields, flat):
     data = read_cache(host_name, kind)
 
     if not data:
-        return Result.fail(
-            ResultCode.NOT_FOUND,
-            "Resource not found.",
-            {"resource": ResourceType.CACHE, "name": host_name},
-        )
+        return Result.fail(ResultCode.NOT_FOUND, "Resource not found.")
 
     out = {}
     if kind == "snapshots":

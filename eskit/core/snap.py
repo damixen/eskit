@@ -1,22 +1,17 @@
 import logging
-from eskit.utils.config import load_config, get_host_config
-from eskit.core.host import (
-    get_current_host_name,
-    check_host_name,
-    check_push_protected,
-    print_host,
-)
+from eskit.utils.config import get_host_config
+from eskit.core.host import get_current_host_name, check_host_name, check_push_protected
 from eskit.cache.store import read_cache
 from eskit.clients.es_client import connect_es
 from eskit.utils.input import confirm_delete
 from eskit.resource_type import ResourceType
-from eskit.result import Result, ResultCode
+from eskit.result import Result, ResultCode, ResourceTarget, Argument
 
 logger = logging.getLogger(__name__)
 
 
 def create(
-    config_path,
+    config,
     host_name,
     spec,
     indices,
@@ -28,13 +23,9 @@ def create(
     """
     Public API
     """
-    config = load_config(config_path)
 
-    if host_name is None:
-        host_name = get_current_host_name()
     check_host_name(host_name)
     check_push_protected(config, host_name, dry_run, push)
-    print_host(host_name)
 
     repo, delim, snap = spec.partition("/")
     if not repo or not snap:
@@ -42,16 +33,12 @@ def create(
         return Result.fail(
             ResultCode.INVALID_ARGUMENT,
             "Invalid resource name.",
-            {"resource": ResourceType.SNAPSHOT, "name": spec},
+            context=Argument(name="spec", value=spec),
         )
 
     if find_snapshot(host_name, repo, snap):
         # logger.error("Snapshot:%s found in cache. Please pull latest.", spec)
-        return Result.fail(
-            ResultCode.ALREADY_EXISTS,
-            "Resource already exists.",
-            {"resource": ResourceType.SNAPSHOT, "name": spec},
-        )
+        return Result.fail(ResultCode.ALREADY_EXISTS, "Resource already exists.")
 
     body = {}
     if indices:
@@ -79,42 +66,33 @@ def create(
         es.request("PUT", f"/_snapshot/{repo}/{snap}", body)
         from eskit.core.metadata import pull_metadata
 
-        pull_metadata(config_path, host_name)
+        pull_metadata(config, host_name)
     finally:
         ssh.close()
 
     return Result.ok()
 
 
-def delete(config_path, host_name, spec, dry_run, push, force):
+def delete(config, host_name, spec, dry_run, push, force):
     """
     Public API
     """
-    config = load_config(config_path)
+
     repo, delim, snap = spec.partition("/")
     if host_name is None:
         host_name = get_current_host_name()
 
     check_host_name(host_name)
     check_push_protected(config, host_name, dry_run, push)
-    print_host(host_name)
 
     if not find_snapshot(host_name, repo, snap):
         # logger.error("Snapshot:%s not found in cache. Please pull the latest.", spec)
-        return Result.fail(
-            ResultCode.NOT_FOUND,
-            "Resource not found.",
-            {"resource": ResourceType.SNAPSHOT, "name": spec},
-        )
+        return Result.fail(ResultCode.NOT_FOUND, "Resource not found.")
 
     if not dry_run and not force:
         if not confirm_delete("snapshot", spec):
             # print("Cancelled.")
-            return Result.fail(
-                ResultCode.CANCELED,
-                "Canceled.",
-                {"resource": ResourceType.SNAPSHOT, "name": spec},
-            )
+            return Result.fail(ResultCode.CANCELED, "Canceled.")
 
     if dry_run:
         # print_dry_run()
@@ -132,24 +110,20 @@ def delete(config_path, host_name, spec, dry_run, push, force):
         # print(f"Snapshot:{spec} deleted. Updating Cache.")
         from eskit.core.metadata import pull_metadata
 
-        pull_metadata(config_path, host_name)
+        pull_metadata(config, host_name)
     finally:
         ssh.close()
 
     return Result.ok()
 
 
-def restore(config_path, host_name, spec, index, dry_run, push):
+def restore(config, host_name, spec, index, dry_run, push):
     """
     Public API
     """
-    config = load_config(config_path)
 
-    if host_name is None:
-        host_name = get_current_host_name()
     check_host_name(host_name)
     check_push_protected(config, host_name, dry_run, push)
-    print_host(host_name)
 
     body = {}
 
@@ -181,7 +155,7 @@ def restore(config_path, host_name, spec, index, dry_run, push):
         # print(f"Snapshot:{spec} restore requested. Updating Cache...")
         from eskit.core.metadata import pull_metadata
 
-        pull_metadata(config_path, host_name)
+        pull_metadata(config, host_name)
     finally:
         ssh.close()
 
@@ -191,6 +165,8 @@ def restore(config_path, host_name, spec, index, dry_run, push):
 # Internal
 def find_snapshot(host, repo, snapshot):
     snapshots_cache = read_cache(host, "snapshots")
+    if not snapshots_cache:
+        return False
     if not repo in snapshots_cache:
         return False
     snap_list = snapshots_cache[repo]["snapshots"]
