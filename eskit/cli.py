@@ -71,11 +71,13 @@ def check_host_name(host):
 
 def load_command_context(args) -> CommandContext:
 
+    config_path = getattr(args, "config", None)
     config = None
-    try:
-        config = load_config(args.config)
-    except FileNotFoundError as e:
-        raise ConfigNotFoundError(args.config) from e
+    if config_path:
+        try:
+            config = load_config(config_path)
+        except FileNotFoundError as e:
+            raise ConfigNotFoundError(args.config) from e
 
     host = args.host
     if not host:
