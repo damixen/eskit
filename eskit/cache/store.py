@@ -1,7 +1,7 @@
 import json
 import logging
 from datetime import datetime
-from dataclasses import dataclass, asdict
+from dataclasses import asdict
 from eskit.utils.paths import cache_dir, archive_dir, ensure_job_dir, job_dir
 from eskit.jobs.job import ESKitJob
 
@@ -11,7 +11,8 @@ def read_archive(host, archive_id):
     path = archive_dir(host) / f"{archive_id}.json"
     if not path.exists():
         return None
-    return json.load(open(path))
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)
 
 
 def ensure_cache(host):
@@ -43,5 +44,5 @@ def read_cache(host, name):
 
 def write_job(host, job: ESKitJob):
     ensure_job_dir(host)
-    with open(job_dir(host) / f"{job.get_output_id()}.json", "w") as f:
+    with open(job_dir(host) / f"{job.get_output_id()}.json", "w", encoding="utf-8") as f:
         json.dump(asdict(job), f, indent=2)

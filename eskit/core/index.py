@@ -3,7 +3,6 @@ import logging
 from datetime import datetime, timezone
 
 from eskit.utils.config import get_host_config, get_reindex_mapping
-from eskit.utils.view import build_field_list, apply_view
 from eskit.utils.input import confirm_delete
 from eskit.core.host import (
     check_host_name,
@@ -24,7 +23,7 @@ HTTP_METHOD_POST = "POST"
 HTTP_METHOD_GET = "GET"
 
 
-def get(config: Config, host_name, index, views, fields, flat):
+def get(config: Config, host_name, index):
     """
     Public API
     """
@@ -45,12 +44,8 @@ def get(config: Config, host_name, index, views, fields, flat):
     try:
         res = es.request(HTTP_METHOD_GET, url)
         index_data = res[index]
-        target_fields = build_field_list(config, views, fields)
-        out = index_data
-        if len(target_fields) > 0:
-            out = apply_view(index_data, target_fields, flat)
 
-        return Result.ok(out)
+        return Result.ok(index_data)
 
     except Exception as e:
         logger.exception(e)
@@ -156,14 +151,12 @@ def delete(config: Config, host_name, index, dry_run, push, force):
     return Result.ok()
 
 
-def status(config: Config, host_name, index, views, fields, flat):
+def status(config: Config, host_name, index):
     """
     Public API
     """
 
     check_host_name(host_name)
-
-    target_fields = build_field_list(config, views, fields)
 
     host_config = get_host_config(config, host_name)
     ssh, es = connect_es(host_config)
@@ -171,10 +164,7 @@ def status(config: Config, host_name, index, views, fields, flat):
         out = []
         data = es.request("GET", f"/_cat/recovery/{index}?format=json")
         for r in data:
-            if len(target_fields) > 0:
-                out.append(apply_view(r, target_fields, flat))
-            else:
-                out.append(r)
+            out.append(r)
         out.sort(key=lambda x: x["index"])
     finally:
         ssh.close()

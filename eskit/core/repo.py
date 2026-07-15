@@ -1,6 +1,5 @@
 import logging
 from eskit.utils.config import get_host_config
-from eskit.utils.view import build_field_list, apply_view
 from eskit.utils.input import confirm_delete
 from eskit.core.host import (
     check_host_name,
@@ -8,13 +7,12 @@ from eskit.core.host import (
 )
 from eskit.cache.store import read_cache
 from eskit.clients.es_client import connect_es
-from eskit.result import Result, ResultCode, ResourceTarget
-from eskit.resource_type import ResourceType
+from eskit.result import Result, ResultCode
 
 logger = logging.getLogger(__name__)
 
 
-def get(config, host_name, name, views, fields, flat):
+def get(host_name, name):
     """
     Public API
     """
@@ -23,12 +21,12 @@ def get(config, host_name, name, views, fields, flat):
 
     repo, sep, snap = name.partition("/")
     if repo and snap:
-        data = get_snap(config, host_name, name, views, fields, flat)
+        data = get_snap(host_name, name)
         if not data:
             return Result.fail(ResultCode.NOT_FOUND, "Snapshot not found.")
         return Result.ok(data)
     else:
-        data = get_repo(config, host_name, repo, views, fields, flat)
+        data = get_repo(host_name, repo)
         if not data:
             return Result.fail(ResultCode.NOT_FOUND, "Repository not found.")
         return Result.ok(data)
@@ -48,9 +46,6 @@ def create(config, host_name, name, repo_type, location, dry_run, push):
 
     body = {"type": repo_type, "settings": {"location": location, "compress": True}}
     if dry_run:
-        # print_dry_run()
-        # print("PUT", f"/_snapshot/{name}")
-        # print(json.dumps(body, indent=2))
         return Result.ok(
             {
                 "executed": False,
@@ -88,8 +83,6 @@ def delete(config, host_name, name, dry_run, push, force):
             return Result.fail(ResultCode.CANCELED, "Canceled.")
 
     if dry_run:
-        # print_dry_run()
-        # print("DELETE", f"/_snapshot/{name}")
         return Result.ok(
             {
                 "executed": False,
@@ -100,7 +93,6 @@ def delete(config, host_name, name, dry_run, push, force):
     ssh, es = connect_es(host_config)
     try:
         es.request("DELETE", f"/_snapshot/{name}")
-        # print(f"Repository:{name} deleted. updating cache...")
         from eskit.core.metadata import pull_metadata
 
         pull_metadata(config, host_name)
@@ -123,7 +115,7 @@ def find_repo(host, repo):
     return False
 
 
-def get_repo(config, host_name, repo, views, fields, flat):
+def get_repo(host_name, repo):
 
     data = read_cache(host_name, "repos")
     if not data:
@@ -151,17 +143,10 @@ def get_repo(config, host_name, repo, views, fields, flat):
 
     out["snapshots"] = snap_list
 
-    target_fields = build_field_list(config, views, fields)
-
-    if len(target_fields) > 0:
-        return apply_view(out, target_fields, flat)
-    else:
-        return out
+    return out
 
 
-def get_snap(config, host_name, path, views, fields, flat):
-
-    target_fields = build_field_list(config, views, fields)
+def get_snap(host_name, path):
 
     repo, snap = path.split("/", 1)
     data = read_cache(host_name, "snapshots")
@@ -169,8 +154,5 @@ def get_snap(config, host_name, path, views, fields, flat):
         return None
     for s in data.get(repo, {}).get("snapshots", []):
         if s.get("snapshot") == snap:
-            if len(target_fields) > 0:
-                return apply_view(s, target_fields, flat)
-            else:
-                return s
+            return s
     return None

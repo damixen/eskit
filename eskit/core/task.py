@@ -1,8 +1,7 @@
 from eskit.utils.config import get_host_config
 from eskit.core.host import check_host_name
 from eskit.clients.es_client import connect_es
-from eskit.resource_type import ResourceType
-from eskit.result import Result, ResultCode, ResourceTarget
+from eskit.result import Result, ResultCode
 
 HTTP_METHOD_GET = "GET"
 

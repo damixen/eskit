@@ -4,8 +4,7 @@ from eskit.core.host import get_current_host_name, check_host_name, check_push_p
 from eskit.cache.store import read_cache
 from eskit.clients.es_client import connect_es
 from eskit.utils.input import confirm_delete
-from eskit.resource_type import ResourceType
-from eskit.result import Result, ResultCode, ResourceTarget, Argument
+from eskit.result import Result, ResultCode, Argument
 
 logger = logging.getLogger(__name__)
 

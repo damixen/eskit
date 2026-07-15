@@ -10,8 +10,10 @@ from eskit.core.host import get_current_host_name
 from eskit.version import __version__
 from eskit.log import configure_logging
 from eskit.exit_code import ExitCode
-from eskit.result import ResultCode, Result, ResourceTarget
+from eskit.result import ResultCode, Result
 from eskit.resource_type import ResourceType
+from eskit.render.projection import build_field_list
+from eskit.render.renderer import render
 from eskit.utils.paths import CACHE_ROOT, ensure_root, root_dir, DEMO_DIR
 from eskit.version import __cache_version__
 from eskit.utils.config import load_config
@@ -26,9 +28,18 @@ logger = logging.getLogger("eskit")
 
 
 @dataclass
+class RenderOptions:
+    output_format: str
+    fields: str | None
+    views: list[dict] | None
+    flat: bool
+
+
+@dataclass
 class CommandContext:
     config: Config
     host: str | None
+    render: RenderOptions
 
 
 def print_dry_run():
@@ -73,12 +84,28 @@ def load_command_context(args) -> CommandContext:
         except FileNotFoundError as e:
             raise CurrentHostNotFoundError(str(CACHE_ROOT / CURRENT_HOST)) from e
 
-    context = CommandContext(config=config, host=host)
+    output_format = "table"
+    if getattr(args, "json", False):
+        output_format = "json"
+
+    fields = getattr(args, "fields", None)
+
+    views = getattr(args, "view", None)
+
+    flat = getattr(args, "flat", False)
+
+    context = CommandContext(
+        config=config,
+        host=host,
+        render=RenderOptions(
+            output_format=output_format, fields=fields, views=views, flat=flat
+        ),
+    )
 
     return context
 
 
-def cmd_host(args):
+def cmd_show_host(args):
     from eskit.core.host import get_host
 
     try:
@@ -89,7 +116,17 @@ def cmd_host(args):
 
     result = get_host(context.host, context.config)
     if result.success:
-        print(json.dumps(result.value, indent=2))
+        fields = build_field_list(
+            view_config=context.config["views"],
+            views=context.render.views,
+            fields=context.render.fields,
+        )
+        render(
+            result.value,
+            output_format=context.render.output_format,
+            fields=fields,
+            flatten=context.render.flat,
+        )
         return ExitCode.SUCCESS
 
     if result.code == ResultCode.NOT_FOUND:
@@ -111,7 +148,6 @@ def cmd_host(args):
     elif result.code == ResultCode.INVALID_ARGUMENT:
         argument = result.get_argument()
         if argument:
-            value = argument.value
             logger.error(
                 "Invalid argument name:%s valiue:%s", argument.name, argument.value
             )
@@ -123,7 +159,7 @@ def cmd_host(args):
     return ExitCode.FAILURE
 
 
-def cmd_host_set(args):
+def cmd_set_host(args):
     from eskit.core.host import set_current_host_name
 
     try:
@@ -148,7 +184,7 @@ def cmd_host_set(args):
     return ExitCode.FAILURE
 
 
-def cmd_host_get(args):
+def cmd_get_host(args):
     host_name = get_current_host_name()
 
     if host_name:
@@ -171,12 +207,21 @@ def cmd_list_job(args):
         logger.error("%s", e)
         return ExitCode.FAILURE
 
-    result = get_list(
-        context.config, context.host, args.local, args.view, args.fields, args.flat
-    )
+    result = get_list(context.host, args.local)
 
     if result.success:
-        print(json.dumps(result.value, indent=2))
+        fields = build_field_list(
+            view_config=context.config["views"],
+            views=context.render.views,
+            fields=context.render.fields,
+        )
+        render(
+            result.value,
+            output_format=context.render.output_format,
+            fields=fields,
+            flatten=context.render.flat,
+        )
+        # print(json.dumps(result.value, indent=2))
         return ExitCode.SUCCESS
 
     logger.error("Failed to list jobs.")
@@ -193,17 +238,20 @@ def cmd_read_job(args):
         logger.error("%s", e)
         return ExitCode.FAILURE
 
-    result = get(
-        context.config,
-        context.host,
-        args.job_search_id,
-        args.view,
-        args.fields,
-        args.flat,
-    )
+    result = get(context.host, args.job_search_id)
 
     if result.success:
-        print(json.dumps(result.value, indent=2))
+        fields = build_field_list(
+            view_config=context.config["views"],
+            views=context.render.views,
+            fields=context.render.fields,
+        )
+        render(
+            result.value,
+            output_format=context.render.output_format,
+            fields=fields,
+            flatten=context.render.flat,
+        )
         return ExitCode.SUCCESS
 
     if result.code == ResultCode.NOT_FOUND:
@@ -228,11 +276,17 @@ def cmd_status(args):
 
     result = get_status(context.host, context.config)
     if result.success:
-        if args.json:
-            print(json.dumps(result.value, indent=2))
-        else:
-            # TODO: add table view
-            print(json.dumps(result.value, indent=2))
+        fields = build_field_list(
+            view_config=context.config["views"],
+            views=context.render.views,
+            fields=context.render.fields,
+        )
+        render(
+            result.value,
+            output_format=context.render.output_format,
+            fields=fields,
+            flatten=context.render.flat,
+        )
 
     return ExitCode.FAILURE
 
@@ -265,12 +319,21 @@ def cmd_cat2(args):
         logger.error("%s", e)
         return ExitCode.FAILURE
 
-    result = get_metadata(
-        context.config, context.host, args.kind, args.view, args.fields, args.flat
-    )
+    result = get_metadata(context.config, context.host, args.kind)
 
     if result.success:
-        print(json.dumps(result.value, indent=2))
+        fields = build_field_list(
+            view_config=context.config["views"],
+            views=context.render.views,
+            fields=context.render.fields,
+        )
+        render(
+            result.value,
+            output_format=context.render.output_format,
+            fields=fields,
+            flatten=context.render.flat,
+        )
+        # print(json.dumps(result.value, indent=2))
         return ExitCode.SUCCESS
 
     resource = ResourceType.CACHE
@@ -288,9 +351,6 @@ def cmd_cat2(args):
 def cmd_repo_show2(args):
 
     name = args.name
-    views = args.view
-    fields = args.fields
-    flat = args.flat
 
     from eskit.core.repo import get
 
@@ -300,10 +360,20 @@ def cmd_repo_show2(args):
         logger.error("%s", e)
         return ExitCode.FAILURE
 
-    result = get(context.config, context.host, name, views, fields, flat)
+    result = get(context.host, name)
 
     if result.success:
-        print(json.dumps(result.value, indent=2))
+        fields = build_field_list(
+            view_config=context.config["views"],
+            views=context.render.views,
+            fields=context.render.fields,
+        )
+        render(
+            result.value,
+            output_format=context.render.output_format,
+            fields=fields,
+            flatten=context.render.flat,
+        )
         return ExitCode.SUCCESS
 
     logger.error("Repository:%s not found.", name)
@@ -521,12 +591,20 @@ def cmd_restore_status(args):
         logger.error("%s", e)
         return ExitCode.FAILURE
     index = args.index
-    result = status(
-        context.config, context.host, index, args.view, args.fields, args.flat
-    )
+    result = status(context.config, context.host, index)
 
     if result.success:
-        print(json.dumps(result.value, indent=2))
+        fields = build_field_list(
+            view_config=context.config["views"],
+            views=context.render.views,
+            fields=context.render.fields,
+        )
+        render(
+            value=result.value,
+            output_format=context.render.output_format,
+            fields=fields,
+            flatten=context.render.flat,
+        )
     else:
         logger.error("Failed to get restore status for index:%s", index)
 
@@ -606,9 +684,6 @@ def cmd_create_index(args):
 def cmd_show_index(args):
 
     index = args.index
-    views = args.view
-    fields = args.fields
-    flat = args.flat
 
     from eskit.core.index import get
 
@@ -618,10 +693,20 @@ def cmd_show_index(args):
         logger.error("%s", e)
         return ExitCode.FAILURE
 
-    result = get(context.config, context.host, index, views, fields, flat)
+    result = get(context.config, context.host, index)
 
     if result.success:
-        print(json.dumps(result.value, indent=2))
+        fields = build_field_list(
+            context.config["views"],
+            views=context.render.views,
+            fields=context.render.fields,
+        )
+        render(
+            result.value,
+            output_format=context.render.output_format,
+            fields=fields,
+            flatten=context.render.flat,
+        )
         return ExitCode.SUCCESS
 
     if result.code == ResultCode.NOT_FOUND:
@@ -745,10 +830,21 @@ def cmd_list_archive(args):
         logger.error("%s", e)
         return ExitCode.FAILURE
 
-    result = get_list(context.config, context.host, args.view, args.fields, args.flat)
+    result = get_list(context.host)
 
     if result.success:
-        print(json.dumps(result.value, indent=2))
+        fields = build_field_list(
+            context.config["views"],
+            views=context.render.views,
+            fields=context.render.fields,
+        )
+        print(context.render.output_format)
+        render(
+            result.value,
+            output_format=context.render.output_format,
+            fields=fields,
+            flatten=context.render.flat,
+        )
         return ExitCode.SUCCESS
 
     logger.error("Failed to get archive list.")
@@ -910,12 +1006,20 @@ def cmd_show_archive(args):
         logger.error("%s", e)
         return ExitCode.FAILURE
 
-    result = get(
-        context.config, context.host, args.name, args.view, args.fields, args.flat
-    )
+    result = get(context.host, args.name)
 
     if result.success:
-        print(json.dumps(result.value, indent=2))
+        fields = build_field_list(
+            context.config["views"],
+            views=context.render.views,
+            fields=context.render.fields,
+        )
+        render(
+            result.value,
+            output_format=context.render.output_format,
+            fields=fields,
+            flatten=context.render.flat,
+        )
         return ExitCode.SUCCESS
 
     logger.error("Failed to get archive:%s", result.message)
@@ -1004,21 +1108,21 @@ def build_parser():
 
     host_show_parser = host_parser_sub.add_parser(
         "show",
-        parents=[common_parser, output_parser],
+        parents=[common_parser, output_parser, viewer_command_parser],
         help="Show available hosts in the config",
     )
-    host_show_parser.set_defaults(function=cmd_host)
+    host_show_parser.set_defaults(function=cmd_show_host)
 
     host_set_parser = host_parser_sub.add_parser(
         "set", parents=[output_parser], help="Set as current host"
     )
     host_set_parser.add_argument("host")
-    host_set_parser.set_defaults(function=cmd_host_set)
+    host_set_parser.set_defaults(function=cmd_set_host)
 
     host_get_parser = host_parser_sub.add_parser(
         "get", parents=[output_parser], help="Get current host"
     )
-    host_get_parser.set_defaults(function=cmd_host_get)
+    host_get_parser.set_defaults(function=cmd_get_host)
     #
 
     # Pull
@@ -1260,7 +1364,7 @@ def build_parser():
 
     status = sub.add_parser(
         "status",
-        parents=[common_parser, output_parser],
+        parents=[common_parser, output_parser, viewer_command_parser],
         help="Show current ESKit status.",
     )
     status.set_defaults(function=cmd_status)

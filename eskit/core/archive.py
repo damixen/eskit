@@ -2,36 +2,25 @@ import uuid
 import logging
 from datetime import datetime, timezone
 from eskit.utils.config import get_host_config
-from eskit.utils.view import build_field_list, apply_view
 from eskit.utils.archive import list_archives, read_archive
 from eskit.core.host import check_host_name
 from eskit.core.metadata import pull_archive_stat
 from eskit.jobs.job import ESKitJob
 from eskit.jobs.executers import LocalExecutor
 from eskit.jobs.job_manager import get as get_jbm
-from eskit.result import Result, ResultCode, ResourceTarget
-from eskit.resource_type import ResourceType
+from eskit.result import Result, ResultCode
 from eskit.config.types import Config
 
 logger = logging.getLogger(__name__)
 
 
-def get_list(config: Config, host_name, views, fields, flat):
+def get_list(host_name):
 
     check_host_name(host_name)
 
     data = list_archives(host_name)
 
-    target_fields = build_field_list(config, views, fields)
-    out = []
-
-    if len(target_fields) > 0:
-        for job in data:
-            out.append(apply_view(job, target_fields, flat))
-    else:
-        out = data
-
-    return Result.ok(out)
+    return Result.ok(data)
 
 
 def pull(config: Config, host_name, name, contents, dry_run, all, sync, preview):
@@ -55,7 +44,7 @@ def pull(config: Config, host_name, name, contents, dry_run, all, sync, preview)
     job = None
     if archive_type == "snapshot":
         job = pull_snapshot(
-            config, host_name, name, archive, contents, dry_run, sync, preview
+            config, host_name, archive, contents, dry_run, sync, preview
         )
 
     if not job:
@@ -86,9 +75,7 @@ def push(config: Config, host_name, name, dst, contents, dry_run, preview):
     archive_type = archive["type"]
     job = None
     if archive_type == "snapshot":
-        job = push_snapshot(
-            config, host_name, name, archive, dst, contents, dry_run, preview
-        )
+        job = push_snapshot(config, host_name, archive, dst, contents, dry_run, preview)
 
     if not job:
         return Result.fail(
@@ -98,7 +85,7 @@ def push(config: Config, host_name, name, dst, contents, dry_run, preview):
     return Result.ok(job.to_dict())
 
 
-def get(config: Config, host_name, name, views, fields, flat):
+def get(host_name, name):
     """
     Public API
     """
@@ -106,21 +93,14 @@ def get(config: Config, host_name, name, views, fields, flat):
     check_host_name(host_name)
 
     archive_name = name
-    target_fields = build_field_list(config, views, fields)
-    out = {}
 
     data = read_archive(host_name, archive_name)
 
-    if len(target_fields) > 0:
-        out = apply_view(data, target_fields, flat)
-    else:
-        out = data
-
-    return Result.ok(out)
+    return Result.ok(data)
 
 
 # Internal
-def pull_snapshot(config: Config, host, name, archive, contets, dry_run, sync, preview):
+def pull_snapshot(config: Config, host, archive, contets, dry_run, sync, preview):
 
     rsync_src = archive["remote_src"]
     rsync_dst = archive["local_dst"]
@@ -178,7 +158,7 @@ def pull_snapshot(config: Config, host, name, archive, contets, dry_run, sync, p
 
 
 def push_snapshot(
-    config: Config, host, name, archive, remote_dst, contents, dry_run, preview
+    config: Config, host, archive, remote_dst, contents, dry_run, preview
 ):
 
     # archive's local dst become source for push
