@@ -123,6 +123,7 @@ def cmd_show_host(args):
         )
         render(
             result.value,
+            command=None,
             output_format=context.render.output_format,
             fields=fields,
             flatten=context.render.flat,
@@ -211,6 +212,7 @@ def cmd_list_job(args):
         )
         render(
             result.value,
+            command=None,
             output_format=context.render.output_format,
             fields=fields,
             flatten=context.render.flat,
@@ -242,6 +244,7 @@ def cmd_read_job(args):
         )
         render(
             result.value,
+            command=None,
             output_format=context.render.output_format,
             fields=fields,
             flatten=context.render.flat,
@@ -277,6 +280,7 @@ def cmd_status(args):
         )
         render(
             result.value,
+            command="status",
             output_format=context.render.output_format,
             fields=fields,
             flatten=context.render.flat,
@@ -323,6 +327,7 @@ def cmd_cat2(args):
         )
         render(
             result.value,
+            command=None,
             output_format=context.render.output_format,
             fields=fields,
             flatten=context.render.flat,
@@ -364,6 +369,7 @@ def cmd_repo_show2(args):
         )
         render(
             result.value,
+            command=None,
             output_format=context.render.output_format,
             fields=fields,
             flatten=context.render.flat,
@@ -601,6 +607,7 @@ def cmd_restore_status(args):
         )
         render(
             value=result.value,
+            command=None,
             output_format=context.render.output_format,
             fields=fields,
             flatten=context.render.flat,
@@ -703,6 +710,7 @@ def cmd_show_index(args):
         )
         render(
             result.value,
+            command=None,
             output_format=context.render.output_format,
             fields=fields,
             flatten=context.render.flat,
@@ -841,6 +849,7 @@ def cmd_list_archive(args):
         print(context.render.output_format)
         render(
             result.value,
+            command=None,
             output_format=context.render.output_format,
             fields=fields,
             flatten=context.render.flat,
@@ -1016,6 +1025,7 @@ def cmd_show_archive(args):
         )
         render(
             result.value,
+            command=None,
             output_format=context.render.output_format,
             fields=fields,
             flatten=context.render.flat,

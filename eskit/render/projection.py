@@ -1,3 +1,14 @@
+from typing import Any, overload
+from dataclasses import dataclass
+
+
+@dataclass
+class Field:
+    path: str
+    label: str | None = None
+    format: str | None = None
+
+
 def build_field_list(view_config, views, fields):
     """
     Builds a unique list of fields from views and explicit field selections.
@@ -45,25 +56,72 @@ def set_path(data, path, value):
     current[parts[-1].replace("$", ".")] = value
 
 
-def project(value, fields, flatten=False):
-    """
-    Project a dict or list of dicts to the selected fields.
-    """
+def normalize_field(field):
+    if isinstance(field, str):
+        return Field(path=field, label=None, format=None)
+
+    _path = field["path"]
+    _label = field.get("label", None)
+    _format = field.get("format", None)
+
+    return Field(path=_path, label=_label, format=_format)
+
+
+@overload
+def project(
+    value: dict[str, Any],
+    fields: list[str] | list[dict[str, str]],
+    flatten: bool = False,
+) -> dict[str, Any]: ...
+
+
+@overload
+def project(
+    value: list[dict[str, Any]],
+    fields: list[str] | list[dict[str, str]],
+    flatten: bool = False,
+) -> list[dict[str, Any]]: ...
+
+
+def project(
+    value: dict[str, Any] | list[dict[str, Any]],
+    fields: list[str] | list[dict[str, str]],
+    flatten: bool = False,
+) -> dict[str, Any] | list[dict[str, Any]]:
 
     if isinstance(value, list):
-        return [
-            project(item, fields, flatten)
-            for item in value
-        ]
+        return project_list(value, fields, flatten)
 
-    out = {}
+    return project_object(value, fields, flatten)
+
+
+def project_list(
+    value: list[dict[str, Any]],
+    fields: list[str] | list[dict[str, str]],
+    flatten: bool = False,
+) -> list[dict[str, Any]]:
+
+    return [project_object(item, fields, flatten) for item in value]
+
+
+def project_object(
+    value: dict[str, Any],
+    fields: list[str] | list[dict[str, str]],
+    flatten: bool = False,
+) -> dict[str, Any]:
+
+    out: dict[str, Any] = {}
 
     for field in fields:
-        field_value = get_path(value, field)
+        descriptor = normalize_field(field)
+
+        path = descriptor.path
+
+        field_value = get_path(value, path)
 
         if flatten:
-            out[field] = field_value
+            out[path] = field_value
         elif field_value is not None:
-            set_path(out, field, field_value)
+            set_path(out, path, field_value)
 
     return out

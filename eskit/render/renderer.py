@@ -1,10 +1,23 @@
-from dataclasses import asdict, is_dataclass
 import json
-
+from dataclasses import asdict, is_dataclass
+from typing import Any
 from eskit.render.projection import project
+from eskit.render.generic import render_object, render_table
+from eskit.render.commands.status import render_status
 
 
-def normalize(value):
+def render_command(
+    command,
+    value,
+):
+    if command == "status":
+        render_status(value)
+        return
+
+    render_human(value)
+
+
+def normalize(value: Any) -> Any:
     """
     Convert dataclasses to dictionaries recursively.
     """
@@ -19,11 +32,12 @@ def normalize(value):
 
 
 def render(
-    value,
+    value: Any,
     *,
-    output_format="table",
-    fields=None,
-    flatten=False,
+    command: str | None,
+    output_format: str = "table",
+    fields: list[str] | None,
+    flatten: bool = False,
 ):
     value = normalize(value)
 
@@ -36,8 +50,16 @@ def render(
 
     if output_format == "json":
         render_json(value)
+        return
+
+    if command:
+        render_command(command, value)
+        return
+
+    if isinstance(value, list):
+        render_table(value)
     else:
-        render_human(value)
+        render_object(value)
 
 
 def render_json(value):
@@ -50,8 +72,3 @@ def render_human(value):
     else:
         for key, val in value.items():
             print(f"{key}: {val}")
-
-
-def render_table(rows):
-    # TODO: implement pretty table
-    print(rows)
