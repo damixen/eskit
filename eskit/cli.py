@@ -72,12 +72,10 @@ def check_host_name(host):
 def load_command_context(args) -> CommandContext:
 
     config_path = getattr(args, "config", None)
-    config = None
-    if config_path:
-        try:
-            config = load_config(config_path)
-        except FileNotFoundError as e:
-            raise ConfigNotFoundError(args.config) from e
+    try:
+        config = load_config(config_path)
+    except FileNotFoundError as e:
+        raise ConfigNotFoundError(args.config) from e
 
     host = args.host
     if not host:
@@ -164,19 +162,13 @@ def cmd_show_host(args):
 def cmd_set_host(args):
     from eskit.core.host import set_current_host_name
 
-    try:
-        context = load_command_context(args)
-    except ESKitError as e:
-        logger.error("%s", e)
-        return ExitCode.FAILURE
-
-    result = set_current_host_name(context.host)
+    host = args.host
+    result = set_current_host_name(host)
 
     if result.success:
         if args.json:
             print(json.dumps(result.value, indent=2))
         else:
-            host = context.host
             if result.value:
                 host = result.value["host"]
             print(f"Current host set to: {host}")
@@ -505,6 +497,9 @@ def cmd_create_snapshot(args):
             logger.error(
                 "Invalid argument name:%s value:%s", argument.name, argument.value
             )
+            logger.error(
+                "Please make sure the snapshot name include repository name. <repository>/<name>."
+            )
         else:
             logger.error("Invalid argument.")
     elif result.code == ResultCode.ALREADY_EXISTS:
@@ -548,6 +543,9 @@ def cmd_delete_snapshot(args):
     else:
         logger.error("Failed to delete snapshot.")
 
+    logger.error(
+        "Please make sure the snapshot name include repository name. <repository>/<name>."
+    )
     return ExitCode.FAILURE
 
 
