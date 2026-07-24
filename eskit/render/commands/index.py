@@ -1,6 +1,6 @@
 from eskit.projection import project
 from eskit.resource.index import INDEX_SCHEMA
-from eskit.render.generic import render_table_2, render_fields
+from eskit.render.generic import render_table, render_fields
 from eskit.render.display_fields import DisplayField, DisplaySchema
 from eskit.render.generic import (
     render_heading)
@@ -128,7 +128,7 @@ STATUS_DISPLAY = DisplaySchema(
 
 def render_cat_index(indices):
 
-    render_table_2(project(indices, INDEX_DISPLAY.paths()), INDEX_DISPLAY, INDEX_SCHEMA)
+    render_table(project(indices, INDEX_DISPLAY.paths()), INDEX_DISPLAY, INDEX_SCHEMA)
 
 
 def render_show_index(indices):
@@ -154,7 +154,7 @@ def render_show_index(indices):
 
 def render_index_status_list(indices):
 
-    render_table_2(project(indices, STATUS_DISPLAY.paths()), STATUS_DISPLAY, INDEX_SCHEMA)
+    render_table(project(indices, STATUS_DISPLAY.paths()), STATUS_DISPLAY, INDEX_SCHEMA)
 
 
 def render_index_status_detail(index):

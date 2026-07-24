@@ -1,7 +1,7 @@
 from eskit.projection import project
 from eskit.resource.host import HOST_SCHEMA, CACHE_SCHEMA, CLUSTER_SCHEMA
 from eskit.render.display_fields import DisplaySchema, DisplayField
-from eskit.render.generic import render_fields, render_table_2, render_heading
+from eskit.render.generic import render_fields, render_table, render_heading
 
 HOST_DISPLAY = DisplaySchema(
     [
@@ -36,4 +36,4 @@ def render_status(status):
     render_fields(project(status["cluster"], CLUSTER_DISPLAY.paths()), CLUSTER_DISPLAY, CLUSTER_SCHEMA)
 
     render_heading("Caches")
-    render_table_2(project(status["caches"], CACHE_DISPLAY.paths()), CACHE_DISPLAY, CACHE_SCHEMA)
+    render_table(project(status["caches"], CACHE_DISPLAY.paths()), CACHE_DISPLAY, CACHE_SCHEMA)

@@ -1,14 +1,21 @@
 from eskit.render.display_fields import DisplaySchema, DisplayField
 from eskit.projection import project
 from eskit.resource.snapshot import SNAPSHOT_SCHEMA
-from eskit.render.generic import render_table_2, render_fields, render_heading
+from eskit.render.generic import render_table, render_fields, render_heading
 
 SNAPSHOT_DISPLAY = DisplaySchema(
     [
         DisplayField(("repository",)),
         DisplayField(("snapshot",)),
         DisplayField(("version",)),
-        DisplayField(("indices",), width=50, preview=True),
+        DisplayField(
+            ("indices",),
+            width=50,
+            preview=True,
+            preview_single="index",
+            preview_plural="indices",
+            preview_allow_zero=True
+        ),
         DisplayField(("state",)),
         DisplayField(("start_time",), label="Created At"),
     ]
@@ -19,7 +26,15 @@ GENERAL_DISPLAY = DisplaySchema(
         DisplayField(("snapshot",)),
         DisplayField(("repository",)),
         DisplayField(("version",)),
-        DisplayField(("indices",), width=50, preview=True),
+        DisplayField(
+            ("indices",),
+            width=50,
+            preview=True,
+            preview_single="index",
+            preview_plural="indices",
+            preview_allow_zero=True
+
+        ),
         DisplayField(("state",)),
     ]
 )
@@ -64,7 +79,7 @@ def normalize_snapshots(cache: dict) -> list[dict]:
 
 def render_cat_snapshot(snapshot):
 
-    render_table_2(
+    render_table(
         project(snapshot, SNAPSHOT_DISPLAY.paths()), SNAPSHOT_DISPLAY, SNAPSHOT_SCHEMA
     )
 

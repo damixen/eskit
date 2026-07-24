@@ -1,9 +1,7 @@
 from typing import Any
-from datetime import datetime
 from eskit.projection import get_path
 from eskit.render.formatters import (
     format_label,
-    format_value,
     format_value2,
     resolve_label,
 )
@@ -18,7 +16,7 @@ def truncate(value, width: int) -> str:
     return value[: width - 3] + "..."
 
 
-def render_table_2(
+def render_table(
     rows: list[dict[str, Any]], display_schema: DisplaySchema, resource_schema: Schema
 ):
     if not rows:

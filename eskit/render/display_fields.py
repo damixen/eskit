@@ -9,6 +9,9 @@ class DisplayField:
     label: str | None | object = AUTO_LABEL
     width: int | None = None
     preview: bool | None = None
+    preview_single: str | None = None
+    preview_plural: str | None = None
+    preview_allow_zero: bool | None = None
 
 
 class DisplaySchema:

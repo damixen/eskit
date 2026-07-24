@@ -110,13 +110,11 @@ def format_value(
     return formatter(value)
 
 
-def format_list_preview(values, preview=2):
-    if not values:
-        return ""
+def format_list_preview(values, preview=2, preview_single=None, preview_plural=None):
 
     count = len(values)
 
-    noun = "index" if count == 1 else "indices"
+    noun = preview_single if count <= 1 else preview_plural
 
     if count <= preview:
         preview_text = ", ".join(values)
@@ -126,12 +124,19 @@ def format_list_preview(values, preview=2):
     return f"({count} {noun}) {preview_text}"
 
 
-def format_list(value: list[str], indent: int = 0, preview: bool | None = False) -> str:
-    if not value:
+def format_list(
+    value: list[str],
+    indent: int = 0,
+    preview: bool | None = False,
+    preview_single: str | None = "",
+    preview_plural: str | None = "",
+    preview_allow_zero: bool | None = False,
+) -> str:
+    if not value and not preview_allow_zero:
         return ""
 
     if preview:
-        return format_list_preview(value, 2)
+        return format_list_preview(value, 2, preview_single, preview_plural)
 
     prefix = " " * indent
 
@@ -146,7 +151,13 @@ def format_value2(value, fmt: FieldType | None, display_field: DisplayField):
         return value
 
     if fmt is FieldType.LIST:
-        return format_list(value, preview=display_field.preview)
+        return format_list(
+            value,
+            preview=display_field.preview,
+            preview_single=display_field.preview_single,
+            preview_plural=display_field.preview_plural,
+            preview_allow_zero=display_field.preview_allow_zero,
+        )
 
     formatter = FORMATTERS2.get(fmt)
 

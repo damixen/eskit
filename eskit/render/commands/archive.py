@@ -1,6 +1,6 @@
 from eskit.projection import project
 from eskit.resource.archive import ARCHIVE_SCHEMA
-from eskit.render.generic import render_table_2, render_fields, render_heading
+from eskit.render.generic import render_table, render_fields, render_heading
 from eskit.render.display_fields import DisplayField, DisplaySchema
 
 ARCHIVE_DISPLAY = DisplaySchema(
@@ -106,7 +106,7 @@ LOCAL_DESTINATION_SCHEMA = DisplaySchema(
 
 def render_list_archives(archives):
 
-    render_table_2(
+    render_table(
         project(archives, ARCHIVE_DISPLAY.paths()), ARCHIVE_DISPLAY, ARCHIVE_SCHEMA
     )
 
