@@ -14,6 +14,7 @@ from eskit.jobs.job import ESKitJob
 from eskit.result import Result, ResultCode, ResourceTarget
 from eskit.resource_type import ResourceType
 from eskit.config.types import Config
+from eskit.resource.index import INDEX_SCHEMA
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +45,13 @@ def get(config: Config, host_name, index):
     try:
         res = es.request(HTTP_METHOD_GET, url)
         index_data = res[index]
+
+        cat_param = ",".join(INDEX_SCHEMA.names())
+        indices = es.request(
+            "GET", f"/_cat/indices?h={cat_param}&format=json&index={index}"
+        )
+        if indices and len(indices) > 0:
+            index_data |= indices[0]
 
         return Result.ok(index_data)
 

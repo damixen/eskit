@@ -8,6 +8,7 @@ from eskit.core.host import (
 from eskit.cache.store import read_cache
 from eskit.clients.es_client import connect_es
 from eskit.result import Result, ResultCode
+from eskit.resource_type import ResourceType
 
 logger = logging.getLogger(__name__)
 
@@ -24,12 +25,12 @@ def get(host_name, name):
         data = get_snap(host_name, name)
         if not data:
             return Result.fail(ResultCode.NOT_FOUND, "Snapshot not found.")
-        return Result.ok(data)
+        return Result.ok(data, context={"resource_type":ResourceType.SNAPSHOT})
     else:
         data = get_repo(host_name, repo)
         if not data:
             return Result.fail(ResultCode.NOT_FOUND, "Repository not found.")
-        return Result.ok(data)
+        return Result.ok(data, context={"resource_type":ResourceType.REPOSITORY})
 
 
 def create(config, host_name, name, repo_type, location, dry_run, push):
@@ -108,14 +109,14 @@ def find_repo(host, repo):
     if not repos_cache:
         return False
 
-    for repo_name, repo_data in repos_cache.items():
-        if repo == repo_name:
+    for repo_data in repos_cache:
+        if repo == repo_data["name"]:
             return True
 
     return False
 
 
-def get_repo(host_name, repo):
+def get_repo(host_name, repo_name):
 
     data = read_cache(host_name, "repos")
     if not data:
@@ -123,20 +124,20 @@ def get_repo(host_name, repo):
         return None
 
     out = {}
+    for repo in data:
+        if repo["name"] == repo_name:
+            out = repo
 
-    repo_data = data.get(repo, {})
-    if not repo_data:
+    if not out:
         # logger.error("Repository:%s not found in cache.", repo)
         return None
-
-    out = repo_data
 
     snapshots = read_cache(host_name, "snapshots")
 
     if not snapshots:
         return out
 
-    snapshots = snapshots.get(repo, {}).get("snapshots", {})
+    snapshots = snapshots.get(repo_name, {}).get("snapshots", {})
     snap_list = []
     for s in snapshots:
         snap_list.append(s["snapshot"])

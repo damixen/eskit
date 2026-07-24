@@ -1,11 +1,13 @@
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, UTC
 from dataclasses import asdict
 from eskit.utils.paths import cache_dir, archive_dir, ensure_job_dir, job_dir
 from eskit.jobs.job import ESKitJob
+from eskit.version import __cache_format_version__
 
 logger = logging.getLogger(__name__)
+
 
 def read_archive(host, archive_id):
     path = archive_dir(host) / f"{archive_id}.json"
@@ -22,9 +24,11 @@ def ensure_cache(host):
 def cache_date(path):
     if not path.exists():
         return None
-    return datetime.fromtimestamp(path.stat().st_mtime).strftime(
-        "%A, %B %d, %Y at %I:%M %p"
-    )
+
+    return datetime.fromtimestamp(
+        path.stat().st_mtime,
+        tz=UTC,
+    ).isoformat(timespec="seconds")
 
 
 def write_cache(host, name, data):
@@ -44,5 +48,27 @@ def read_cache(host, name):
 
 def write_job(host, job: ESKitJob):
     ensure_job_dir(host)
-    with open(job_dir(host) / f"{job.get_output_id()}.json", "w", encoding="utf-8") as f:
+    with open(
+        job_dir(host) / f"{job.get_output_id()}.json", "w", encoding="utf-8"
+    ) as f:
         json.dump(asdict(job), f, indent=2)
+
+
+def check_cache_version(host):
+    if not (cache_dir(host) / "version.json").exists():
+        return False
+
+    version = read_cache(host, "version")
+    if not version:
+        return False
+
+    version_meta = version.get("_meta", None)
+
+    if not version_meta:
+        return False
+
+    cache_format_version = version_meta.get("cache_format_version", None)
+    if not cache_format_version or cache_format_version < __cache_format_version__:
+        return False
+
+    return True

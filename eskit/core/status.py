@@ -36,14 +36,14 @@ def get_status(host_name, config):
 
     cache_root = cache_dir(host_name)
 
+    status["caches"] = []
     for name in ["indices", "repos", "snapshots", "version"]:
         path = cache_root / f"{name}.json"
         date = cache_date(path)
-        status["caches"][name] = {}
         if date is None:
-            status["caches"][name]["last-updated"] = ""
+            status["caches"].append({"name":name, "last-updated": ""})
         else:
-            status["caches"][name]["last-updated"] = date
+            status["caches"].append({"name":name, "last-updated": date})
 
     return Result.ok(status)
     # print(json.dumps(status, indent=2))

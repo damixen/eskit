@@ -96,6 +96,9 @@ def get(host_name, name):
 
     data = read_archive(host_name, archive_name)
 
+    if data is None:
+        return Result.fail(ResultCode.NOT_FOUND, f"Archive {name} not found.")
+
     return Result.ok(data)
 
 

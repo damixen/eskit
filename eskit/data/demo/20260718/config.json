@@ -1,0 +1,87 @@
+{
+    "hosts": [
+        {
+            "name": "DemoHost1",
+            "ip": "192.0.2.10",
+            "ssh": {
+                "port": 22,
+                "user": "demo-user",
+                "password": "example-password"
+            },
+            "elastic":{
+                "user":{
+                    "name": "elastic",
+                    "password": "example-password"
+                } 
+            },
+            "archives": [
+                {"type":"snapshot","name":"snapshots","remote_src":"/home/zach/snapshot", "local_dst":"snapshots"
+                },
+                {"type":"snapshot","name":"test","remote_src":"/home/zach/rsynctest", "local_dst":"./rsynctest"
+                }
+            ]
+        },
+        {
+            "name": "DemoHost2",
+            "ip": "192.0.2.11",
+            "ssh": {
+                "port": 22,
+                "user": "example-user",
+                "identity": "C:\\Users\\example-user\\.ssh\\id_ed25519"
+            },
+            "elastic":{
+                "port":9999
+            },
+            "push-protected":true
+        }
+    ],
+    "reindex-configs": [
+        {
+            "name": "timestamp-mapping",
+            "mappings": {
+                "properties": {
+                    "@timestamp": {
+                        "type": "date",
+                        "format": "strict_date_optional_time||epoch_millis"
+                    }
+                }
+            }
+        }
+    ],
+    "views": {
+        "index-basic": [
+            "settings.index.provided_name",
+            "mappings.properties.@timestamp",
+            "settings.index.creation_date"
+        ],
+
+        "repo-basic": [
+            "type",
+            "settings.location"
+        ],
+
+        "snapshot-basic": [
+            "snapshot",
+            "repository",
+            "state",
+            "start_time",
+            "end_time",
+            "indices"
+        ],
+
+        "cat-index-basic":[
+            "index",
+            "health",
+            "status",
+            "docs$count",
+            "store$size"
+        ],
+        "index-status-basic":[
+            "index",
+            "bytes_percent",
+            "stage",
+            "repository",
+            "snapshot"
+        ]
+    }
+}

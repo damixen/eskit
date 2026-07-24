@@ -1,0 +1,38 @@
+[
+  {
+    "health": "yellow",
+    "status": "open",
+    "index": "metric-2026.05.12",
+    "uuid": "OSlNV9qhTM6N4qMArJl4wg",
+    "docs.count": "170456",
+    "store.size": "118.9mb",
+    "creation.date.string": "2026-05-14T00:00:53.344Z",
+    "version": {
+      "created": "9039003"
+    }
+  },
+  {
+    "health": "green",
+    "status": "open",
+    "index": "metrics-endpoint.metadata_current_default",
+    "uuid": "OLg3by0LRJio_C-_47yZAQ",
+    "docs.count": "0",
+    "store.size": "249b",
+    "creation.date.string": "2026-06-25T00:00:53.473Z",
+    "version": {
+      "created": "9060001"
+    }
+  },
+  {
+    "health": "green",
+    "status": "open",
+    "index": "log-2026.05.17",
+    "uuid": "z_wFt9GOSqCsia56RLXQFA",
+    "docs.count": "835694",
+    "store.size": "342.8mb",
+    "creation.date.string": "2026-05-13T00:00:21.494Z",
+    "version": {
+      "created": "9039003"
+    }
+  }
+]

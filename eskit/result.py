@@ -11,11 +11,11 @@ class ResourceTarget:
     resource: ResourceType
     name: str
 
+
 @dataclass
 class Argument:
     name: str
     value: Any
-
 
 
 class ResultCode(Enum):
@@ -44,8 +44,8 @@ class Result(Generic[T]):
         return self.code == ResultCode.SUCCESS
 
     @classmethod
-    def ok(cls, value: T | None = None):
-        return cls(ResultCode.SUCCESS, value=value)
+    def ok(cls, value: T | None = None, context: Any | None = None):
+        return cls(ResultCode.SUCCESS, value=value, context=context)
 
     @classmethod
     def fail(
@@ -57,7 +57,7 @@ class Result(Generic[T]):
         if isinstance(self.context, ResourceTarget):
             return self.context
         return None
-    
+
     def get_argument(self) -> Argument | None:
         if isinstance(self.context, Argument):
             return self.context

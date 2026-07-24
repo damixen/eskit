@@ -1,61 +1,80 @@
 from typing import Any
 from datetime import datetime
-from eskit.render.projection import get_path, normalize_field
+from eskit.projection import get_path
+from eskit.render.formatters import (
+    format_label,
+    format_value,
+    format_value2,
+    resolve_label,
+)
+from eskit.render.display_fields import DisplaySchema, AUTO_LABEL
+from eskit.resource.schema import Schema, FieldType
 
 
-def render_table(rows):
-    # TODO: implement pretty table
-    print(rows)
+def truncate(value, width: int) -> str:
+    if len(value) <= width:
+        return value
+
+    return value[: width - 3] + "..."
 
 
-def render_object(rows):
-    # TODO: implement pretty table
-    print(rows)
+def render_table_2(
+    rows: list[dict[str, Any]], display_schema: DisplaySchema, resource_schema: Schema
+):
+    if not rows:
+        print("(none)")
+        return
+
+    # Build headers
+    headers = [
+        label
+        for field in display_schema.fields
+        if (label := resolve_label(field)) is not None
+    ]
+
+    # Build table data
+    table = []
+
+    for row in rows:
+        values = []
+
+        for field in display_schema.fields:
+            value = get_path(row, field.path)
+            value = format_value2(
+                value, resource_schema.get(field.path).type, display_field=field
+            )
+            if field.width:
+                value = truncate(value, field.width)
+            values.append("" if value is None else str(value))
+
+        table.append(values)
+
+    # Compute column widths
+    widths = [len(header) for header in headers]
+
+    for values in table:
+        for i, value in enumerate(values):
+            widths[i] = max(widths[i], len(value))
+
+    # Header
+    print("  ".join(header.ljust(widths[i]) for i, header in enumerate(headers)))
+
+    # Separator
+    print("  ".join("-" * width for width in widths))
+
+    # Rows
+    for values in table:
+        print("  ".join(value.ljust(widths[i]) for i, value in enumerate(values)))
 
 
-def format_label(path: str) -> str:
-    words = (
-        path.replace("$", ".")
-        .replace(".", " ")
-        .replace("_", " ")
-        .replace("-", " ")
-        .split()
-    )
-
-    return " ".join(word.capitalize() for word in words)
-
-
-def format_datetime(value: str) -> str:
-    dt = datetime.strptime(
-        value,
-        "%A, %B %d, %Y at %I:%M %p",
-    )
-
-    return dt.strftime("%Y-%m-%d %H:%M")
-
-
-def format_value(value, format_type=None):
-    if value is None:
-        return ""
-
-    if format_type == "datetime":
-        return format_datetime(value)
-
-    if format_type == "bool":
-        return "Yes" if value else "No"
-
-    return str(value)
-
-
-def render_heading(title: str):
-    print()
-    print(title)
-    print("-" * len(title))
+def omit_label(ftype: FieldType):
+    return ftype == (FieldType.LIST)
 
 
 def render_fields(
     data: dict[str, Any],
-    fields: list[str] | list[dict[str, str]],
+    display_schema: DisplaySchema,
+    resource_schema: Schema,
     *,
     flatten: bool = False,
 ):
@@ -64,20 +83,41 @@ def render_fields(
 
     rows = []
 
-    for field in fields:
-        descriptor = normalize_field(field)
-        path = descriptor.path
+    for field in display_schema.fields:
+        path = field.path
 
-        label = descriptor.label or format_label(path)
+        if field.label is AUTO_LABEL:
+            label = format_label(path)
+        else:
+            label = field.label
 
         if flatten:
-            value = data.get(path)
+            value = data.get(".".join(path))
         else:
             value = get_path(data, path)
 
-        rows.append((label, format_value(value, descriptor.format)))
+        field_type = resource_schema.get(field.path).type
+        value = format_value2(value, field_type, field)
+        rows.append((label, value))
 
-    width = max(len(label) for label, _ in rows)
+    labels = [label for label, _ in rows if label is not None]
+
+    width = max((len(label) for label in labels), default=0)
 
     for label, value in rows:
-        print(f"{label:<{width}}  {value}")
+        if label is None:
+            print(value)
+        else:
+            print(f"{label:<{width}}  {value}")
+
+
+def render_object(rows):
+    # TODO: implement pretty table
+    print(rows)
+
+
+def render_heading(title: str, skip_newline: bool = False):
+    if not skip_newline:
+        print()
+    print(title)
+    print("-" * len(title))

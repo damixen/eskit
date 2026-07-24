@@ -12,13 +12,14 @@ from eskit.log import configure_logging
 from eskit.exit_code import ExitCode
 from eskit.result import ResultCode, Result
 from eskit.resource_type import ResourceType
-from eskit.render.projection import build_field_list
+from eskit.projection import build_field_list, normalize_projection
 from eskit.render.renderer import render
 from eskit.utils.paths import CACHE_ROOT, ensure_root, root_dir, DEMO_DIR
-from eskit.version import __cache_version__
+from eskit.version import __cache_format_version__
 from eskit.utils.config import load_config
 from eskit.config.types import Config
 from eskit.error import ESKitError, ConfigNotFoundError, CurrentHostNotFoundError
+from eskit.cache.store import check_cache_version
 
 DEFAULT_CONFIG = ".eskit/config.json"
 CACHE_ROOT = Path(".eskit")
@@ -85,14 +86,22 @@ def load_command_context(args) -> CommandContext:
             raise CurrentHostNotFoundError(str(CACHE_ROOT / CURRENT_HOST)) from e
 
     output_format = "table"
+    projection_supported = False
     if getattr(args, "json", False):
         output_format = "json"
+        projection_supported = True
 
     fields = getattr(args, "fields", None)
-
     views = getattr(args, "view", None)
-
     flat = getattr(args, "flat", False)
+
+    if not projection_supported and (fields or views or flat):
+        fields = None
+        views = None
+        flat = False
+        logger.warning(
+            "Warning: --fields and --view are only supported with --json and have been ignored."
+        )
 
     context = CommandContext(
         config=config,
@@ -121,11 +130,13 @@ def cmd_show_host(args):
             views=context.render.views,
             fields=context.render.fields,
         )
+        projection = normalize_projection(fields)
+
         render(
             result.value,
-            command=None,
+            command="show_host_config",
             output_format=context.render.output_format,
-            fields=fields,
+            fields=projection,
             flatten=context.render.flat,
         )
         return ExitCode.SUCCESS
@@ -193,7 +204,7 @@ def cmd_get_host(args):
     return ExitCode.FAILURE
 
 
-def cmd_list_job(args):
+def cmd_list_jobs(args):
     from eskit.core.job import get_list
 
     try:
@@ -210,11 +221,12 @@ def cmd_list_job(args):
             views=context.render.views,
             fields=context.render.fields,
         )
+        projection = normalize_projection(fields)
         render(
             result.value,
-            command=None,
+            command="list_jobs",
             output_format=context.render.output_format,
-            fields=fields,
+            fields=projection,
             flatten=context.render.flat,
         )
         # print(json.dumps(result.value, indent=2))
@@ -242,11 +254,12 @@ def cmd_read_job(args):
             views=context.render.views,
             fields=context.render.fields,
         )
+        projection = normalize_projection(fields)
         render(
             result.value,
-            command=None,
+            command="show_job",
             output_format=context.render.output_format,
-            fields=fields,
+            fields=projection,
             flatten=context.render.flat,
         )
         return ExitCode.SUCCESS
@@ -278,11 +291,12 @@ def cmd_status(args):
             views=context.render.views,
             fields=context.render.fields,
         )
+        projection = normalize_projection(fields)
         render(
             result.value,
             command="status",
             output_format=context.render.output_format,
-            fields=fields,
+            fields=projection,
             flatten=context.render.flat,
         )
 
@@ -317,7 +331,15 @@ def cmd_cat2(args):
         logger.error("%s", e)
         return ExitCode.FAILURE
 
-    result = get_metadata(context.config, context.host, args.kind)
+    if not check_cache_version(context.host):
+        logger.warning(
+            "Cache format version doesn't match. Please pull the cache again."
+        )
+
+    result = get_metadata(context.host, args.kind)
+
+    mapping = {"repo": "cat_repository", "snap": "cat_snapshot", "index": "cat_index"}
+    cmd = mapping[args.kind]
 
     if result.success:
         fields = build_field_list(
@@ -325,11 +347,12 @@ def cmd_cat2(args):
             views=context.render.views,
             fields=context.render.fields,
         )
+        projection = normalize_projection(fields)
         render(
             result.value,
-            command=None,
+            command=cmd,
             output_format=context.render.output_format,
-            fields=fields,
+            fields=projection,
             flatten=context.render.flat,
         )
         # print(json.dumps(result.value, indent=2))
@@ -367,17 +390,37 @@ def cmd_repo_show2(args):
             views=context.render.views,
             fields=context.render.fields,
         )
+        projection = normalize_projection(fields)
+
+        cmd = "show_repository"
+
+        result_context = result.context
+        if result_context and result_context["resource_type"] == ResourceType.SNAPSHOT:
+            cmd = "show_snapshot"
+
         render(
             result.value,
-            command=None,
+            command=cmd,
             output_format=context.render.output_format,
-            fields=fields,
+            fields=projection,
             flatten=context.render.flat,
         )
         return ExitCode.SUCCESS
 
     logger.error("Repository:%s not found.", name)
     return ExitCode.FAILURE
+
+
+def cmd_snap_show(args):
+
+    name = args.name
+    repo, sep, snap = name.partition("/")
+
+    if not (repo and snap):
+        logger.error("Snapshot name needs to be in format of <repository>/<snapshot>.")
+        return ExitCode.FAILURE
+
+    return cmd_repo_show2(args)
 
 
 def cmd_delete_repo(args):
@@ -605,11 +648,12 @@ def cmd_restore_status(args):
             views=context.render.views,
             fields=context.render.fields,
         )
+        projection = normalize_projection(fields)
         render(
             value=result.value,
-            command=None,
+            command="status_index",
             output_format=context.render.output_format,
-            fields=fields,
+            fields=projection,
             flatten=context.render.flat,
         )
     else:
@@ -708,11 +752,12 @@ def cmd_show_index(args):
             views=context.render.views,
             fields=context.render.fields,
         )
+        projection = normalize_projection(fields)
         render(
             result.value,
-            command=None,
+            command="show_index",
             output_format=context.render.output_format,
-            fields=fields,
+            fields=projection,
             flatten=context.render.flat,
         )
         return ExitCode.SUCCESS
@@ -748,7 +793,13 @@ def cmd_reindex(args):
 
     if result.success:
         logger.info("Reindex started successfully.")
-        print(json.dumps(result.value, indent=2))
+        render(
+            result.value,
+            command="show_job",
+            output_format=context.render.output_format,
+            fields=[],
+            flatten=False,
+        )
         return ExitCode.SUCCESS
 
     if result.code == ResultCode.ALREADY_EXISTS:
@@ -803,9 +854,9 @@ def _init(is_demo):
 
     if is_demo:
         shutil.copytree(
-            f"{DEMO_DIR}/{__cache_version__}", root_dir(), dirs_exist_ok=True
+            f"{DEMO_DIR}/{__cache_format_version__}", root_dir(), dirs_exist_ok=True
         )
-        # print(f"demo/{__cache_version__} copied to .eskit folder.")
+        # print(f"demo/{__cache_format_version__} copied to .eskit folder.")
 
     return Result.ok({"resource": ResourceType.CACHE, "name": config_path})
 
@@ -828,7 +879,7 @@ def cmd_init(args):
     return ExitCode.FAILURE
 
 
-def cmd_list_archive(args):
+def cmd_list_archives(args):
 
     from eskit.core.archive import get_list
 
@@ -846,12 +897,12 @@ def cmd_list_archive(args):
             views=context.render.views,
             fields=context.render.fields,
         )
-        print(context.render.output_format)
+        projection = normalize_projection(fields)
         render(
             result.value,
-            command=None,
+            command="list_archives",
             output_format=context.render.output_format,
-            fields=fields,
+            fields=projection,
             flatten=context.render.flat,
         )
         return ExitCode.SUCCESS
@@ -900,7 +951,13 @@ def cmd_pull_archive(args):
                 print_preview()
                 print_host(host_name)
 
-        print(json.dumps(result.value, indent=2))
+        render(
+            result.value,
+            command="show_job",
+            output_format=context.render.output_format,
+            fields=[],
+            flatten=False,
+        )
         return ExitCode.SUCCESS
 
     if result.code == ResultCode.NOT_FOUND:
@@ -948,7 +1005,13 @@ def cmd_sync_archive(args):
                 print_preview()
                 print_host(host_name)
 
-        print(json.dumps(result.value, indent=2))
+        render(
+            result.value,
+            command="show_job",
+            output_format=context.render.output_format,
+            fields=[],
+            flatten=False,
+        )
         return ExitCode.SUCCESS
 
     if result.code == ResultCode.NOT_FOUND:
@@ -995,7 +1058,13 @@ def cmd_push_archive(args):
                 print_preview()
                 print_host(host_name)
 
-        print(json.dumps(result.value, indent=2))
+        render(
+            result.value,
+            command="show_job",
+            output_format=context.render.output_format,
+            fields=[],
+            flatten=False,
+        )
         return ExitCode.SUCCESS
 
     if result.code == ResultCode.NOT_FOUND:
@@ -1015,7 +1084,8 @@ def cmd_show_archive(args):
         logger.error("%s", e)
         return ExitCode.FAILURE
 
-    result = get(context.host, args.name)
+    archive_name = args.name
+    result = get(context.host, archive_name)
 
     if result.success:
         fields = build_field_list(
@@ -1023,16 +1093,20 @@ def cmd_show_archive(args):
             views=context.render.views,
             fields=context.render.fields,
         )
+        projection = normalize_projection(fields)
         render(
             result.value,
-            command=None,
+            command="show_archive",
             output_format=context.render.output_format,
-            fields=fields,
+            fields=projection,
             flatten=context.render.flat,
         )
         return ExitCode.SUCCESS
 
-    logger.error("Failed to get archive:%s", result.message)
+    if result.code == ResultCode.NOT_FOUND:
+        logger.error("Archive %s not found.", archive_name)
+    else:
+        logger.error("Failed to get archive:%s", result.message)
     return ExitCode.FAILURE
 
 
@@ -1261,6 +1335,17 @@ def build_parser():
     )
     snap_restore.set_defaults(function=cmd_restore_snapshot)
 
+    snap_show_parser = snap_sub.add_parser(
+        "show",
+        parents=[
+            common_parser,
+            common_snap_parser,
+            viewer_command_parser,
+            output_parser,
+        ],
+    )
+    snap_show_parser.set_defaults(function=cmd_snap_show)
+
     # Index commands
     common_index_parser = argparse.ArgumentParser(add_help=False)
     common_index_parser.add_argument("index")
@@ -1362,7 +1447,7 @@ def build_parser():
         action="store_true",
         help="Show local jobs in .eskit/jobs generated by archive commands.",
     )
-    job_list.set_defaults(function=cmd_list_job)
+    job_list.set_defaults(function=cmd_list_jobs)
 
     job_show = job_sub.add_parser(
         "show", parents=[common_parser, viewer_command_parser, output_parser]
@@ -1406,7 +1491,7 @@ def build_parser():
         "list",
         parents=[common_parser, viewer_command_parser, output_parser],
     )
-    archive_list_parser.set_defaults(function=cmd_list_archive)
+    archive_list_parser.set_defaults(function=cmd_list_archives)
 
     archive_pull_parser = archive_sub.add_parser(
         "pull",

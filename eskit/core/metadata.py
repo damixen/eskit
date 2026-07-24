@@ -10,8 +10,24 @@ from eskit.archive.model import ESKitArchiveState
 from eskit.utils.archive import list_archives, delete_archive, write_archive
 from eskit.result import Result, ResultCode
 from eskit.config.types import FileStat
+from eskit.resource.index import INDEX_SCHEMA
+from eskit.version import __cache_format_version__, __version__
 
 logger = logging.getLogger(__name__)
+
+
+def normalize_repositories(raw: dict) -> list[dict]:
+    repositories = []
+
+    for name, repo in raw.items():
+        repositories.append(
+            {
+                "name": name,
+                **repo,
+            }
+        )
+
+    return repositories
 
 
 def pull_metadata(config, host_name, kind=None):
@@ -28,7 +44,8 @@ def pull_metadata(config, host_name, kind=None):
     if pull_all or "es" == kind:
         transport, es = connect_es(host_config)
         repos = es.request("GET", "/_snapshot")
-        write_cache(host_name, "repos", repos)
+        normalized_repo = normalize_repositories(repos)
+        write_cache(host_name, "repos", normalized_repo)
 
         snapshots = {}
         if isinstance(repos, dict):
@@ -36,7 +53,8 @@ def pull_metadata(config, host_name, kind=None):
                 snapshots[repo] = es.request("GET", f"/_snapshot/{repo}/_all")
         write_cache(host_name, "snapshots", snapshots)
 
-        indices = es.request("GET", "/_cat/indices?format=json")
+        cat_param = ",".join(INDEX_SCHEMA.names())
+        indices = es.request("GET", f"/_cat/indices?h={cat_param}&format=json")
 
         # get index version
         index_settings = es.request(
@@ -53,6 +71,10 @@ def pull_metadata(config, host_name, kind=None):
         write_cache(host_name, "indices", indices)
 
         version = es.request("GET", "/")
+        version["_meta"] = {
+            "eskit_version": __version__,
+            "cache_format_version": __cache_format_version__,
+        }
         write_cache(host_name, "version", version)
         transport.close()
 
@@ -168,7 +190,7 @@ def pull_archive_stat(host_config, host_name, archive_config):
     write_archive(host_name, archive)
 
 
-def get_metadata(config, host_name, kind):
+def get_metadata(host_name, kind):
     """
     Public API
     """
@@ -194,9 +216,7 @@ def get_metadata(config, host_name, kind):
 
         out = snap_list
     elif kind == "repos":
-        out = {}
-        for repo, repo_data in data.items():
-            out[repo] = repo_data
+        out = data
     elif kind == "indices":
         out = data
         out.sort(key=lambda x: x["index"])
