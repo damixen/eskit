@@ -58,7 +58,7 @@ def pull_metadata(config, host_name, kind=None):
 
         # get index version
         index_settings = es.request(
-            "GET", "/_all/_settings?filter_path=*.settings.index.version.created"
+            "GET", "/_all/_settings?filter_path=*.settings.index.version.created,*.settings.index.lifecycle.name"
         )
         # print(f"index_settings:{json.dumps(index_settings, indent=2)}")
         for index in indices:
@@ -67,6 +67,12 @@ def pull_metadata(config, host_name, kind=None):
                 index["version"] = index_settings[index_name]["settings"]["index"][
                     "version"
                 ]
+                lifecycle = index_settings[index_name]["settings"]["index"].get("lifecycle", None)
+                if lifecycle:
+                    index["lifecycle"] = lifecycle
+                else:
+                    index["lifecycle"] = {"name": "none"}
+                
 
         write_cache(host_name, "indices", indices)
 

@@ -928,8 +928,230 @@ You can check "status.total", "status.created", and "completed" to see progress.
 eskit index delete logs-2026.05.31
 ```
 
+---
+
+## CLI Output Contract
+
+ESKit separates command results from operational logs.
+
+### Output Streams
+
+| Stream | Purpose | Examples |
+|---|---|---|
+| stdout | Command result | table output, JSON output, command data |
+| stderr | Operational logs | connection details, execution progress, warnings, errors |
+
+### Output Modes
+
+#### Human-readable (default)
+
+Designed for interactive terminal use.
+
+```bash
+eskit index status logstash-2026.06.23
+```
+
+## Resource Schema Architecture
+
+Early versions of ESKit treated each command independently. Core functions returned raw Elasticsearch responses or cached data, and each command implemented its own projection, formatting, and rendering logic.
+
+As support for more Elasticsearch resources (indices, repositories, snapshots, etc.) was added, the same problems repeatedly appeared:
+
+- Selecting which fields to retrieve
+- Selecting which fields to display
+- Converting Elasticsearch field names into human-readable labels
+- Formatting common data types (sizes, dates, booleans, integers)
+- Keeping machine-readable JSON output separate from human-friendly output
+
+Rather than solving these problems separately for each command, ESKit models resources explicitly using **Resource Schemas** and **Display Schemas**.
+
+---
+
+### Resource Schema
+
+Each Elasticsearch resource is described by a `Schema`.
+
+For example:
+
+```python
+INDEX_SCHEMA = Schema([
+    Field(("health",)),
+    Field(("status",)),
+    Field(("index",)),
+    Field(("docs", "count"), type=FieldType.INTEGER),
+    Field(("store", "size"), type=FieldType.SIZE),
+])
+```
+
+A Resource Schema defines:
+
+- which fields belong to the resource
+- how nested fields are represented
+- the semantic type of each field
+
+The schema becomes the single source of truth for the core layer.
+
+---
+
+### Display Schema
+
+Presentation is defined independently from the resource itself.
+
+```python
+INDEX_DISPLAY = DisplaySchema([
+    DisplayField(("health",), label="Health"),
+    DisplayField(("status",), label="Status"),
+    DisplayField(("index",), label="Name"),
+    DisplayField(("docs", "count"), label="Docs"),
+    DisplayField(("store", "size"), label="Size"),
+])
+```
+
+The Display Schema controls:
+
+- column order
+- labels
+- visibility
+
+without affecting the underlying resource definition.
+
+This cleanly separates business data from presentation.
+
+---
+
+### Typed Formatting
+
+Fields are formatted according to their semantic type rather than by individual commands.
+
+Examples include:
+
+- Integer
+- Size
+- Boolean
+- DateTime
+- List Preview
+
+Instead of each command implementing its own formatting rules, formatting is shared across all resources.
+
+---
+
+### Normalization
+
+Elasticsearch APIs return different response structures.
+
+For example, repositories are returned as:
+
+```json
+{
+  "repo1": {...},
+  "repo2": {...}
+}
+```
+
+while snapshots are grouped by repository:
+
+```json
+{
+  "repo1": {
+    "snapshots": [...]
+  }
+}
+```
+
+Before rendering, ESKit normalizes these responses into a consistent list of resource objects.
+
+This allows every renderer to operate on the same abstraction regardless of the original Elasticsearch API.
+
+---
+
+### Rendering Pipeline
+
+```
+Elasticsearch API
+        │
+        ▼
+ Normalize
+        │
+        ▼
+ Resource Objects
+        │
+        ▼
+ Display Schema
+        │
+        ▼
+ Generic Renderer
+        │
+        ├── Human-readable table
+        └── Raw JSON
+```
+
+The renderer no longer knows anything about Elasticsearch APIs or specific resource types.
+
+---
+
+## Benefits
+
+This architecture significantly reduces duplication and makes new commands easier to implement.
+
+Supporting a new resource typically consists of:
+
+1. Define a Resource Schema.
+2. Normalize the Elasticsearch response (if necessary).
+3. Define a Display Schema.
+4. Reuse the generic renderer.
+
+Most new commands no longer require custom rendering logic.
+
+---
+
+## Design Philosophy
+
+The guiding principle is:
+
+> **Core owns data. Presentation owns appearance.**
+
+The core layer understands Elasticsearch resources.
+
+The presentation layer decides how those resources should be displayed.
+
+This separation keeps the implementation simple while allowing the same resource definitions to be reused across multiple output formats.
+
+---
+
+## Evolution
+
+This architecture was **not designed upfront**.
+
+It emerged naturally as ESKit evolved from a collection of Elasticsearch utilities into a reusable management toolkit. As additional commands were implemented, common patterns around field selection, formatting, and rendering became apparent. Rather than continuing to duplicate these patterns, they were consolidated into a schema-based architecture.
+
+The result is a system that is easier to extend, easier to maintain, and provides a consistent user experience across all commands.
+
+```
+                 Resource Schema
+                 ┌──────────────┐
+                 │ Field        │
+                 │ FieldType    │
+                 └──────┬───────┘
+                        │
+                 Resource Object
+                        │
+                        ▼
+                Display Schema
+                 ┌──────────────┐
+                 │ Label        │
+                 │ Order        │
+                 │ Visibility   │
+                 └──────┬───────┘
+                        │
+                        ▼
+                 Generic Renderer
+```
+
+---
+
 ## Limitations
 - This tool has been tested with the Elasticsearch/Kibana version of 9.2.3.
+
 
 ---
 
@@ -964,3 +1186,4 @@ Planned or under consideration:
 ## License
 
 This project is licensed under the MIT License. See the LICENSE file for details.
+

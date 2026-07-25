@@ -2,8 +2,7 @@ from eskit.projection import project
 from eskit.resource.index import INDEX_SCHEMA
 from eskit.render.generic import render_table, render_fields
 from eskit.render.display_fields import DisplayField, DisplaySchema
-from eskit.render.generic import (
-    render_heading)
+from eskit.render.generic import render_heading
 
 INDEX_DISPLAY = DisplaySchema(
     [
@@ -26,6 +25,13 @@ INDEX_DISPLAY = DisplaySchema(
                 "created",
             ),
             label="Version",
+        ),
+        DisplayField(
+            path=(
+                "lifecycle",
+                "name",
+            ),
+            label="ILM",
         ),
         DisplayField(
             path=("creation.date.string",),
@@ -90,9 +96,6 @@ RECOVERY_SCHEMA = DisplaySchema(
         DisplayField(("type",)),
         DisplayField(("stage",)),
         DisplayField(("time",)),
-
-
-
     ]
 )
 
@@ -123,8 +126,8 @@ STATUS_DISPLAY = DisplaySchema(
         DisplayField(("bytes_total",), label="Total Bytes"),
         DisplayField(("bytes_percent",), label="Progress"),
     ]
-
 )
+
 
 def render_cat_index(indices):
 
@@ -152,14 +155,14 @@ def render_show_index(indices):
         project(indices, MAPPING_SCHEMA.paths()), MAPPING_SCHEMA, INDEX_SCHEMA
     )
 
+
 def render_index_status_list(indices):
 
     render_table(project(indices, STATUS_DISPLAY.paths()), STATUS_DISPLAY, INDEX_SCHEMA)
 
 
 def render_index_status_detail(index):
-
-    '''
+    """
     Recovery
     --------
     Index      logstash-2026.06.30
@@ -177,7 +180,7 @@ def render_index_status_detail(index):
     ----
     Total Files  52
     Total Size   310.2 MB
-    '''
+    """
 
     render_heading("Recovery")
     render_fields(
@@ -185,14 +188,11 @@ def render_index_status_detail(index):
     )
 
     render_heading("Target")
-    render_fields(
-        project(index, TARGET_SCHEMA.paths()), TARGET_SCHEMA, INDEX_SCHEMA
-    )
+    render_fields(project(index, TARGET_SCHEMA.paths()), TARGET_SCHEMA, INDEX_SCHEMA)
 
     render_heading("Data")
-    render_fields(
-        project(index, DATA_SCHEMA.paths()), DATA_SCHEMA, INDEX_SCHEMA
-    )
+    render_fields(project(index, DATA_SCHEMA.paths()), DATA_SCHEMA, INDEX_SCHEMA)
+
 
 def render_index_status(indices):
     render_index_status_list(indices)

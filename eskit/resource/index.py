@@ -9,6 +9,7 @@ INDEX_SCHEMA = Schema([
     Field(("store.size",), type=FieldType.SIZE),
     Field(("creation.date.string",), type=FieldType.DATETIME),
     Field(("version","created"), type=FieldType.TEXT),
+    Field(("lifecycle","name"), type=FieldType.TEXT),
 
     Field(("settings","index", "provided_name"), type=FieldType.TEXT),
     Field(("settings","index", "creation_date"), type=FieldType.TEXT),
