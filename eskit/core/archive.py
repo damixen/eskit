@@ -20,7 +20,7 @@ def get_list(host_name):
 
     data = list_archives(host_name)
 
-    return Result.ok(data, context={"sources":[DataSource.CACHE]})
+    return Result.ok(data, context={"sources": [DataSource.CACHE]})
 
 
 def pull(config: Config, host_name, name, contents, dry_run, all, sync, preview):
@@ -99,7 +99,7 @@ def get(host_name, name):
     if data is None:
         return Result.fail(ResultCode.NOT_FOUND, f"Archive {name} not found.")
 
-    return Result.ok(data, context={"sources":[DataSource.CACHE]})
+    return Result.ok(data, context={"sources": [DataSource.CACHE]})
 
 
 # Internal

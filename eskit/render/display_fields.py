@@ -3,6 +3,7 @@ from typing import Any
 
 AUTO_LABEL = object()
 
+
 @dataclass
 class DisplayField:
     path: tuple[str, ...]

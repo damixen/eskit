@@ -16,7 +16,7 @@ def get(config, host_name, task_id):
     ssh, es = connect_es(host_config)
     try:
         res = es.request(HTTP_METHOD_GET, url)
-        return Result.ok(res, context={"sources":[DataSource.ELASTICSEARCH]})
+        return Result.ok(res, context={"sources": [DataSource.ELASTICSEARCH]})
     except Exception as e:
         print(e)
     finally:

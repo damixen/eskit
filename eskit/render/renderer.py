@@ -1,7 +1,7 @@
 import json
 from dataclasses import asdict, is_dataclass
 from typing import Any
-from eskit.render.generic import render_object, render_table
+from eskit.render.generic import render_object
 from eskit.render.commands.status import render_status
 from eskit.render.commands.host import render_host_show
 from eskit.render.commands.index import (
@@ -34,15 +34,11 @@ RENDERER = {
     "list_archives": render_list_archives,
     "show_archive": render_show_archive,
     "cat_ilm": render_cat_ilm,
-    "show_ilm": render_show_ilm
+    "show_ilm": render_show_ilm,
 }
 
 
-def render_command(
-    command,
-    value,
-    context
-):
+def render_command(command, value, context):
     renderer = RENDERER.get(command)
 
     if renderer:
@@ -73,7 +69,7 @@ def render(
     output_format: str = "table",
     fields: list[tuple[str, ...]],
     flatten: bool = False,
-    context: dict[str, Any] | None
+    context: dict[str, Any] | None,
 ):
     value = normalize(value)
 

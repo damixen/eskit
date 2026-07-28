@@ -123,17 +123,7 @@ def delete(config, host_name, spec, dry_run, push, force):
     return Result.ok()
 
 
-def restore(
-    config,
-    host_name,
-    spec,
-    index,
-    dry_run,
-    push,
-    ilm,
-    remove_ilm,
-    wait
-):
+def restore(config, host_name, spec, index, dry_run, push, ilm, remove_ilm, wait):
     """
     Public API
     """

@@ -1,6 +1,11 @@
 from eskit.projection import project
 from eskit.resource.job import JOB_SCHEMA
-from eskit.render.generic import render_table, render_fields, render_heading, render_context
+from eskit.render.generic import (
+    render_table,
+    render_fields,
+    render_heading,
+    render_context,
+)
 from eskit.render.display_fields import DisplayField, DisplaySchema
 
 JOB_DISPLAY = DisplaySchema(
@@ -64,14 +69,14 @@ RESULT_SCHEMA = DisplaySchema(
 )
 
 
-def render_list_jobs(jobs, context = None):
+def render_list_jobs(jobs, context=None):
 
     render_table(project(jobs, JOB_DISPLAY.paths()), JOB_DISPLAY, JOB_SCHEMA)
 
     render_context(context)
 
 
-def render_show_job(job, context = None):
+def render_show_job(job, context=None):
     render_heading("General")
     render_fields(project(job, GENERAL_SCHEMA.paths()), GENERAL_SCHEMA, JOB_SCHEMA)
 

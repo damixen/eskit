@@ -119,7 +119,9 @@ def render_object(rows):
     print(rows)
 
 
-def render_heading(title: str, skip_newline: bool = False, skip_underline: bool = False):
+def render_heading(
+    title: str, skip_newline: bool = False, skip_underline: bool = False
+):
     if not skip_newline:
         print()
     print(title)

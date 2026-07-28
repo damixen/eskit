@@ -216,12 +216,13 @@ STATUS_DISPLAY = DisplaySchema(
 )
 
 
-def render_cat_index(indices, context = None):
+def render_cat_index(indices, context=None):
 
     render_table(project(indices, INDEX_DISPLAY.paths()), INDEX_DISPLAY, INDEX_SCHEMA)
     render_context(context)
 
-def render_show_index(indices, context = None):
+
+def render_show_index(indices, context=None):
     render_heading("General")
     render_fields(
         project(indices, GENERAL_DISPLAY.paths()), GENERAL_DISPLAY, INDEX_SCHEMA
@@ -244,12 +245,13 @@ def render_show_index(indices, context = None):
     render_context(context)
 
 
-def render_index_status_list(indices, context = None):
+def render_index_status_list(indices, context=None):
 
     render_table(project(indices, STATUS_DISPLAY.paths()), STATUS_DISPLAY, INDEX_SCHEMA)
     render_context(context)
 
-def render_index_status_detail(index, context = None):
+
+def render_index_status_detail(index, context=None):
     """
     Recovery
     --------
@@ -284,7 +286,7 @@ def render_index_status_detail(index, context = None):
     render_context(context)
 
 
-def render_index_status(indices, context = None):
+def render_index_status(indices, context=None):
     render_index_status_list(indices)
 
     render_context(context)

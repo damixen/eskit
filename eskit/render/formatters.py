@@ -223,10 +223,7 @@ def format_value2(value, fmt: FieldType | None, display_field: DisplayField):
         )
 
     if fmt is FieldType.DURATION:
-        return format_duration(
-            value,
-            compact=display_field.duration_compact
-        )
+        return format_duration(value, compact=display_field.duration_compact)
 
     formatter = FORMATTERS2.get(fmt)
 

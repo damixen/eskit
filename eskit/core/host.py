@@ -66,7 +66,7 @@ def get_host(host_name, config: Config):
     if host:
         for h in hosts:
             if h["name"] == host:
-                return Result.ok(h, context={"sources":[DataSource.CONFIG]})
+                return Result.ok(h, context={"sources": [DataSource.CONFIG]})
     return Result.fail(ResultCode.NOT_FOUND, "Resource not found.")
 
 

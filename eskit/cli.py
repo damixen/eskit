@@ -635,7 +635,7 @@ def cmd_restore_snapshot(args):
         args.push,
         args.ilm,
         args.remove_ilm,
-        args.wait
+        args.wait,
     )
 
     if result.success:
@@ -1386,7 +1386,12 @@ def build_parser():
             output_parser,
         ],
     )
-    snap_create.add_argument("--wait", help="Wait for snapshot creation to be completed.", default=False, action="store_true")
+    snap_create.add_argument(
+        "--wait",
+        help="Wait for snapshot creation to be completed.",
+        default=False,
+        action="store_true",
+    )
     snap_create.set_defaults(function=cmd_create_snapshot)
 
     snap_delete = snap_sub.add_parser(

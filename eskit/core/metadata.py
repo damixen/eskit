@@ -30,6 +30,7 @@ def normalize_repositories(raw: dict) -> list[dict]:
 
     return repositories
 
+
 def normalize_ilm(raw: dict) -> list[dict]:
     ilms = []
 
@@ -76,11 +77,11 @@ def pull_metadata(config, host_name, kind=None):
         )
         # print(f"index_settings:{json.dumps(index_settings, indent=2)}")
         ilm_policies = ilms = es.request(
-                    "GET",
-                    "/_all/_ilm/explain?filter_path="
-                    "*.*.managed,*.*.policy,*.*.phase,*.*.action,*.*.step,*.*.age_in_millis",
-                )
-        #print("ilm_policies", ilm_policies)
+            "GET",
+            "/_all/_ilm/explain?filter_path="
+            "*.*.managed,*.*.policy,*.*.phase,*.*.action,*.*.step,*.*.age_in_millis",
+        )
+        # print("ilm_policies", ilm_policies)
         for index in indices:
             index_name = index.get("index")
             if index_name in index_settings:
@@ -89,7 +90,6 @@ def pull_metadata(config, host_name, kind=None):
                 ]
             if index_name in ilm_policies["indices"]:
                 index["ilm"] = ilm_policies["indices"][index_name]
-                
 
         write_cache(host_name, "indices", indices)
 
@@ -218,6 +218,7 @@ def pull_archive_stat(host_config, host_name, archive_config):
     # print(f"archive:{archive}")
     write_archive(host_name, archive)
 
+
 def get_retension(ilms, policy_name):
     for ilm in ilms:
         if ilm["name"] == policy_name:
@@ -228,6 +229,7 @@ def get_retension(ilms, policy_name):
                 return delete_policy["min_age"]
     return None
 
+
 _DURATION_UNITS = {
     "ms": 1,
     "s": 1000,
@@ -235,6 +237,7 @@ _DURATION_UNITS = {
     "h": 60 * 60 * 1000,
     "d": 24 * 60 * 60 * 1000,
 }
+
 
 def parse_duration(value: str) -> int:
     match = re.fullmatch(r"(\d+)(ms|s|m|h|d)", value.strip())
@@ -245,6 +248,7 @@ def parse_duration(value: str) -> int:
     unit = match.group(2)
 
     return amount * _DURATION_UNITS[unit]
+
 
 def get_metadata(host_name, kind):
     """
@@ -285,11 +289,13 @@ def get_metadata(host_name, kind):
                 retention = get_retension(ilms, policy)
                 if retention:
                     retension_ms = parse_duration(retention)
-                    index["ilm"]["remaining_ms"] = retension_ms - index["ilm"]["age_in_millis"]
+                    index["ilm"]["remaining_ms"] = (
+                        retension_ms - index["ilm"]["age_in_millis"]
+                    )
 
         out = data
         out.sort(key=lambda x: x["index"])
     elif kind == "ilms":
         out = data
 
-    return Result.ok(out, context={"sources":[DataSource.CACHE]})
+    return Result.ok(out, context={"sources": [DataSource.CACHE]})

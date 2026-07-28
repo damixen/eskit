@@ -1,6 +1,3 @@
-import json
-
-
 class ESKitError(Exception):
     def __init__(self, msg):
         self.msg = msg
