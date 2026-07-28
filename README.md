@@ -102,6 +102,7 @@ ESKit maintains a local cache for:
         ├── indices.json
         ├── repos.json
         ├── snapshots.json
+        ├── ilms.json
         ├── version.json
         ├── jobs
         |     └── <job_id>.json
