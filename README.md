@@ -79,6 +79,11 @@ ESKit provides a consistent CLI workflow:
     - Incremental update by keeping local data
     - Synchronized update or mirroring with source data
 
+### ILM Management
+- List available ILM policies.
+- Enrich index data with associated ILM data.
+- Advanced operation to be added later.
+
 ### Cache System
 
 ESKit maintains a local cache for:
@@ -402,7 +407,7 @@ eskit pull
 
 ## View Metadata
 ```bash
-eskit cat <repo/snap/index>
+eskit cat <repo/snap/index/ilm>
 ```
 - Data Source: Cache
 - Operation Type: View
@@ -451,6 +456,7 @@ eskit snap create backup-repo/nightly-2026.06.01
 - You can use **--index** option to speicify which indices to include.
 > ⚠️ **Wildcard Note**\
 > You may use a wildcard in the index name, but I observed that Elasticsearch would include hidden indices that match the expression. You may exclude such indices during restoration by explicitly specifying the index name.
+- You can use **--wait** option to wait for the snapshot creation to be completed.
 
 Restore a snapshot:
 
@@ -459,6 +465,8 @@ eskit snap restore backup-repo/nightly-2026.06.01
 ```
 - Data Destination: Elasticsearch
 - Operation Type: Mutating
+- You can use **--wait** option to wait for the snapshot creation to be completed.
+
 
 Delete a snapshot:
 
@@ -645,6 +653,18 @@ ESKit currently stores the raw version identifier as the source of truth and doe
 
 ---
 
+## ILM Workflow
+
+Shows the ilm policy information.
+
+```bash
+eskit ilm show <policy-name>
+```
+- Data Source: Cache
+- Operation Type: View
+
+---
+
 ## Local Host Workflow
 
 An optional local Elasticsearch cluster can be deployed on the ESKit host to inspect and restore snapshot archives.
@@ -670,6 +690,7 @@ Please note that ESKit does not manage the Elasticsearch cluster itself, so make
 ## Output Views
 
 Views provide reusable output projections for commands that return metadata.
+> **Note:** Views and Fields options are available for **JSON** output only for commands which accepts **--json** option.  
 
 Example:
 
@@ -689,7 +710,7 @@ Example:
 Usage:
 
 ```bash
-eskit cat snap --view snapshot-basic
+eskit cat snap --view snapshot-basic --json
 ```
 
 Multiple views may be specified:
@@ -697,7 +718,7 @@ Multiple views may be specified:
 ```bash
 eskit cat snap \
   --view snapshot-basic \
-  --view snapshot-stats
+  --view snapshot-stats  --json
 ```
 
 Additional fields can be included:
@@ -705,7 +726,7 @@ Additional fields can be included:
 ```bash
 eskit cat snap \
   --view snapshot-basic \
-  --fields duration_in_millis
+  --fields duration_in_millis  --json
 ```
 
 Please check the command argument to see whether the --view or --fields options are supported.
@@ -714,7 +735,7 @@ Also, the config file in the demo or template shows some sample view configurati
 #### Example:
 Before applying the view:
 ```bash
-eskit cat index
+eskit cat index  --json
 ```
 ```json
 [
@@ -748,7 +769,7 @@ After applying the view:
 ```
 * Please note that if the fields contain the period "." in the name, please replace it with "$".
 ```bash
-eskit cat index --view cat-index-basic
+eskit cat index --view cat-index-basic --json
 ```
 ```json
 [
@@ -948,8 +969,59 @@ ESKit separates command results from operational logs.
 Designed for interactive terminal use.
 
 ```bash
-eskit index status logstash-2026.06.23
+eskit cat index
 ```
+
+```bash
+Health  Name               Docs     Size      Version  Policy  Age    Remaining  Created At         
+------  -----------------  -------  --------  -------  ------  -----  ---------  -------------------
+green   log-2026.05.17     835,694  342.8 MB  9060001  (none)  (n/a)  (n/a)      2026-06-25 17:00:16
+yellow  metric-2026.05.15  171,310  145.8 MB  9039003  (none)  (n/a)  (n/a)      2026-05-11 17:01:02
+yellow  metric-2026.05.16  172,334  148.8 MB  9060001  (none)  (n/a)  (n/a)      2026-06-24 21:14:24
+yellow  metric-2026.05.18  169,875  127.0 MB  9039003  (none)  (n/a)  (n/a)      2026-05-10 17:00:49
+
+(Data Sources: Cache)
+```
+
+---
+
+``` bash
+eskit host show
+```
+
+``` bash
+
+Host Configuration
+------------------
+
+General
+-------
+Name  DemoHost1
+IP    192.0.2.10
+
+SSH
+---
+User         demo-user
+Port         22
+Use sshpass  
+
+Elastic
+-------
+User  elastic
+Port  
+
+Archives
+--------
+Name       Type      Type                  Type       
+---------  --------  --------------------  -----------
+snapshots  snapshot  /home/zach/snapshot   snapshots  
+test       snapshot  /home/zach/rsynctest  ./rsynctest
+
+(Data Sources: Config)
+```
+
+> **Note:** **JSON** output format is available for commands which accepts **--json** option.  
+
 
 ## Resource Schema Architecture
 

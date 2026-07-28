@@ -16,6 +16,7 @@ class DataSource(Enum):
         return {
             DataSource.CACHE: "Cache",
             DataSource.ELASTICSEARCH: "Elasticsearch API",
+            DataSource.CONFIG: "Config"
         }[self]
 
 
