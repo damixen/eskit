@@ -111,18 +111,6 @@ ESKit maintains a local cache for:
 ```
 This allows fast inspection without repeatedly querying Elasticsearch.
 
-### Views and Field Projection
-
-Output can be customized using reusable views defined in the configuration file.
-
-Examples:
-
-```bash
-eskit cat index --view basic
-eskit repo show backup-repo --view summary
-eskit index show logs-2026.06 --fields mappings.properties
-```
-
 ---
 
 ## Architecture
@@ -467,6 +455,8 @@ eskit snap restore backup-repo/nightly-2026.06.01
 - Data Destination: Elasticsearch
 - Operation Type: Mutating
 - You can use **--wait** option to wait for the snapshot creation to be completed.
+- You can use **--ilm <policy_name>** to assing new ilm policy.
+- You can use **--remove-ilm** to remove the original ilm.
 
 
 Delete a snapshot:
@@ -476,6 +466,16 @@ eskit snap delete backup-repo/nightly-2026.06.01
 ```
 - Data Destination: Elasticsearch
 - Operation Type: Mutating | Destructive
+
+
+Show repository or snapshot information:
+
+```bash
+eskit snap show backup-repo/snapshot1
+```
+- Data Source: Cache
+- Operation Type: View
+- Equivalent to the repo show with snapshot name 
 
 ---
 
