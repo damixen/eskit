@@ -1,7 +1,7 @@
 from eskit.render.display_fields import DisplaySchema, DisplayField
 from eskit.projection import project
 from eskit.resource.snapshot import SNAPSHOT_SCHEMA
-from eskit.render.generic import render_table, render_fields, render_heading
+from eskit.render.generic import render_table, render_fields, render_heading, render_context
 
 SNAPSHOT_DISPLAY = DisplaySchema(
     [
@@ -77,14 +77,16 @@ def normalize_snapshots(cache: dict) -> list[dict]:
     return snapshots
 
 
-def render_cat_snapshot(snapshot):
+def render_cat_snapshot(snapshot, context = None):
 
     render_table(
         project(snapshot, SNAPSHOT_DISPLAY.paths()), SNAPSHOT_DISPLAY, SNAPSHOT_SCHEMA
     )
 
+    render_context(context)
 
-def render_show_snapshot(snapshot):
+
+def render_show_snapshot(snapshot, context = None):
     render_heading("General")
     render_fields(
         project(snapshot, GENERAL_DISPLAY.paths()), GENERAL_DISPLAY, SNAPSHOT_SCHEMA
@@ -111,3 +113,5 @@ def render_show_snapshot(snapshot):
     render_fields(
         project(snapshot, CONTENTS_DISPLAY.paths()), CONTENTS_DISPLAY, SNAPSHOT_SCHEMA
     )
+
+    render_context(context)

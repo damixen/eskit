@@ -1,7 +1,7 @@
 import logging
 from eskit.utils.config import get_host_config
 from eskit.utils.paths import CURRENT_HOST_FILE
-from eskit.result import Result, ResultCode, ResourceTarget, Argument
+from eskit.result import Result, ResultCode, ResourceTarget, Argument, DataSource
 from eskit.resource_type import ResourceType
 from eskit.config.types import Config
 
@@ -66,7 +66,7 @@ def get_host(host_name, config: Config):
     if host:
         for h in hosts:
             if h["name"] == host:
-                return Result.ok(h)
+                return Result.ok(h, context={"sources":[DataSource.CONFIG]})
     return Result.fail(ResultCode.NOT_FOUND, "Resource not found.")
 
 

@@ -11,10 +11,11 @@ from eskit.core.host import (
 from eskit.cache.store import read_cache, write_job
 from eskit.clients.es_client import connect_es
 from eskit.jobs.job import ESKitJob
-from eskit.result import Result, ResultCode, ResourceTarget
+from eskit.result import Result, ResultCode, ResourceTarget, DataSource
 from eskit.resource_type import ResourceType
 from eskit.config.types import Config
 from eskit.resource.index import INDEX_SCHEMA
+from eskit.core.metadata import parse_duration
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +54,27 @@ def get(config: Config, host_name, index):
         if indices and len(indices) > 0:
             index_data |= indices[0]
 
-        return Result.ok(index_data)
+        ilm = es.request(
+            "GET", f"/{index}/_ilm/explain"
+        )
+        policy = None
+        retention = None
+        if ilm:
+            policy = ilm["indices"][index].get("policy", None)
+
+        if policy:
+            policy_data = es.request(
+                "GET", f"/_ilm/policy/{policy}"
+            )
+            delete_data = policy_data[policy]["policy"]["phases"].get("delete", None)
+            retention = delete_data["min_age"]
+            if retention:
+                ilm["indices"][index]["retention"] = retention
+                retention_ms = parse_duration(retention)
+                ilm["indices"][index]["remaining_ms"] = retention_ms - ilm["indices"][index]["age_in_millis"]
+            index_data["ilm"] = ilm["indices"][index]
+
+        return Result.ok(index_data, context={"sources":[DataSource.ELASTICSEARCH]})
 
     except Exception as e:
         logger.exception(e)
@@ -177,7 +198,7 @@ def status(config: Config, host_name, index):
     finally:
         ssh.close()
 
-    return Result.ok(out)
+    return Result.ok(out, context={"sources":[DataSource.ELASTICSEARCH]})
 
 
 def reindex(config: Config, host_name, src, dst, mapping, dry_run, push):

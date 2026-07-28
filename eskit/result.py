@@ -5,6 +5,17 @@ from eskit.resource_type import ResourceType
 
 T = TypeVar("T")
 
+class DataSource(Enum):
+    CACHE = "cache"
+    ELASTICSEARCH = "elasticsearch"
+    CONFIG = "config"
+
+    @property
+    def label(self) -> str:
+        return {
+            DataSource.CACHE: "Cache",
+            DataSource.ELASTICSEARCH: "Elasticsearch API",
+        }[self]
 
 @dataclass
 class ResourceTarget:

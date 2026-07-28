@@ -12,6 +12,9 @@ class DisplayField:
     preview_single: str | None = None
     preview_plural: str | None = None
     preview_allow_zero: bool | None = None
+    empty_value: str | None = None
+    duration_compact: bool | None = None
+    blank_field: bool | None = None
 
 
 class DisplaySchema:
@@ -19,10 +22,10 @@ class DisplaySchema:
         self.fields = fields
 
     def paths(self) -> list[tuple[str, ...]]:
-        return [field.path for field in self.fields]
+        return [field.path for field in self.fields if not field.blank_field]
 
     def names(self) -> list[str]:
-        return [".".join(field.path) for field in self.fields]
+        return [".".join(field.path) for field in self.fields if not field.blank_field]
 
 
 def build_field_name_list(

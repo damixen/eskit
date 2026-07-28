@@ -138,6 +138,7 @@ def cmd_show_host(args):
             output_format=context.render.output_format,
             fields=projection,
             flatten=context.render.flat,
+            context=result.context,
         )
         return ExitCode.SUCCESS
 
@@ -228,6 +229,7 @@ def cmd_list_jobs(args):
             output_format=context.render.output_format,
             fields=projection,
             flatten=context.render.flat,
+            context=result.context,
         )
         # print(json.dumps(result.value, indent=2))
         return ExitCode.SUCCESS
@@ -261,6 +263,7 @@ def cmd_read_job(args):
             output_format=context.render.output_format,
             fields=projection,
             flatten=context.render.flat,
+            context=result.context,
         )
         return ExitCode.SUCCESS
 
@@ -298,6 +301,7 @@ def cmd_status(args):
             output_format=context.render.output_format,
             fields=projection,
             flatten=context.render.flat,
+            context=result.context,
         )
 
     return ExitCode.FAILURE
@@ -338,7 +342,12 @@ def cmd_cat2(args):
 
     result = get_metadata(context.host, args.kind)
 
-    mapping = {"repo": "cat_repository", "snap": "cat_snapshot", "index": "cat_index"}
+    mapping = {
+        "repo": "cat_repository",
+        "snap": "cat_snapshot",
+        "index": "cat_index",
+        "ilm": "cat_ilm",
+    }
     cmd = mapping[args.kind]
 
     if result.success:
@@ -354,6 +363,7 @@ def cmd_cat2(args):
             output_format=context.render.output_format,
             fields=projection,
             flatten=context.render.flat,
+            context=result.context,
         )
         # print(json.dumps(result.value, indent=2))
         return ExitCode.SUCCESS
@@ -404,6 +414,7 @@ def cmd_repo_show2(args):
             output_format=context.render.output_format,
             fields=projection,
             flatten=context.render.flat,
+            context=result.context,
         )
         return ExitCode.SUCCESS
 
@@ -523,12 +534,16 @@ def cmd_create_snapshot(args):
         args.ignore_unavailable,
         args.dry_run,
         args.push,
+        args.wait,
     )
     host_name = args.host
     dry_run = args.dry_run
     if result.success:
         if not dry_run or (result.value and result.value["executed"]):
-            print("Snapshot creation started successfully.")
+            if args.wait:
+                print("Snapshot creation completed successfully.")
+            else:
+                print("Snapshot creation started successfully.")
             print(
                 "Please check status of the snapshot by updating the cache with eskit pull."
             )
@@ -610,13 +625,25 @@ def cmd_restore_snapshot(args):
     host_name = args.host
     dry_run = args.dry_run
     name = args.name
+
     result = restore(
-        context.config, context.host, name, args.index, args.dry_run, args.push
+        context.config,
+        context.host,
+        name,
+        args.index,
+        args.dry_run,
+        args.push,
+        args.ilm,
+        args.remove_ilm,
+        args.wait
     )
 
     if result.success:
         if not dry_run or (result.value and result.value["executed"]):
-            print("Restore started.")
+            if args.wait:
+                print("Restore completed.")
+            else:
+                print("Restore started.")
             print(
                 "Please check the status of restore index by updating the cache with eskit pull."
             )
@@ -655,6 +682,7 @@ def cmd_restore_status(args):
             output_format=context.render.output_format,
             fields=projection,
             flatten=context.render.flat,
+            context=result.context,
         )
     else:
         logger.error("Failed to get restore status for index:%s", index)
@@ -759,6 +787,7 @@ def cmd_show_index(args):
             output_format=context.render.output_format,
             fields=projection,
             flatten=context.render.flat,
+            context=result.context,
         )
         return ExitCode.SUCCESS
 
@@ -799,6 +828,7 @@ def cmd_reindex(args):
             output_format=context.render.output_format,
             fields=[],
             flatten=False,
+            context=result.context,
         )
         return ExitCode.SUCCESS
 
@@ -904,6 +934,7 @@ def cmd_list_archives(args):
             output_format=context.render.output_format,
             fields=projection,
             flatten=context.render.flat,
+            context=result.context,
         )
         return ExitCode.SUCCESS
 
@@ -957,6 +988,7 @@ def cmd_pull_archive(args):
             output_format=context.render.output_format,
             fields=[],
             flatten=False,
+            context=result.context,
         )
         return ExitCode.SUCCESS
 
@@ -1011,6 +1043,7 @@ def cmd_sync_archive(args):
             output_format=context.render.output_format,
             fields=[],
             flatten=False,
+            context=result.context,
         )
         return ExitCode.SUCCESS
 
@@ -1064,6 +1097,7 @@ def cmd_push_archive(args):
             output_format=context.render.output_format,
             fields=[],
             flatten=False,
+            context=result.context,
         )
         return ExitCode.SUCCESS
 
@@ -1100,6 +1134,7 @@ def cmd_show_archive(args):
             output_format=context.render.output_format,
             fields=projection,
             flatten=context.render.flat,
+            context=result.context,
         )
         return ExitCode.SUCCESS
 
@@ -1107,6 +1142,48 @@ def cmd_show_archive(args):
         logger.error("Archive %s not found.", archive_name)
     else:
         logger.error("Failed to get archive:%s", result.message)
+    return ExitCode.FAILURE
+
+
+def cmd_show_ilm(args):
+    from eskit.core.ilm import get
+
+    try:
+        context = load_command_context(args)
+    except ESKitError as e:
+        logger.error("%s", e)
+        return ExitCode.FAILURE
+
+    ilm_name = args.name
+    result = get(context.host, ilm_name)
+
+    if result.success:
+        fields = build_field_list(
+            context.config["views"],
+            views=context.render.views,
+            fields=context.render.fields,
+        )
+        projection = normalize_projection(fields)
+        render(
+            result.value,
+            command="show_ilm",
+            output_format=context.render.output_format,
+            fields=projection,
+            flatten=context.render.flat,
+            context=result.context,
+        )
+        return ExitCode.SUCCESS
+
+    if result.code == ResultCode.NOT_FOUND:
+        result_ctx = result.context
+        if result_ctx:
+            resource_type = result_ctx["resource_type"]
+            if resource_type == ResourceType.CACHE:
+                logger.error("ILM cache not found. Please pull.")
+        logger.error("ILM %s not found.", ilm_name)
+    else:
+        logger.error("Failed to get archive:%s", result.message)
+
     return ExitCode.FAILURE
 
 
@@ -1229,7 +1306,7 @@ def build_parser():
         parents=[common_parser, viewer_command_parser, output_parser],
         help="Show cached information.",
     )
-    cat.add_argument("kind", choices=["repo", "snap", "index"])
+    cat.add_argument("kind", choices=["repo", "snap", "index", "ilm"])
     cat.set_defaults(function=cmd_cat2)
 
     # Repo sub command
@@ -1309,6 +1386,7 @@ def build_parser():
             output_parser,
         ],
     )
+    snap_create.add_argument("--wait", help="Wait for snapshot creation to be completed.", default=False, action="store_true")
     snap_create.set_defaults(function=cmd_create_snapshot)
 
     snap_delete = snap_sub.add_parser(
@@ -1332,6 +1410,19 @@ def build_parser():
             mutating_parser,
             output_parser,
         ],
+    )
+    snap_restore.add_argument(
+        "--wait",
+        help="Wait until restoratio is done.",
+        default=False,
+        action="store_true",
+    )
+    snap_restore.add_argument("--ilm", help="Override ILM policy.")
+    snap_restore.add_argument(
+        "--remove-ilm",
+        help="Remove the original ILM when restoring.",
+        default=False,
+        action="store_true",
     )
     snap_restore.set_defaults(function=cmd_restore_snapshot)
 
@@ -1544,6 +1635,29 @@ def build_parser():
         ],
     )
     archive_show_parser.set_defaults(function=cmd_show_archive)
+
+    # ILM Command
+
+    ilm_common_parser = argparse.ArgumentParser(add_help=False)
+    ilm_common_parser.add_argument("name", help="Name of the archive")
+
+    ilm = sub.add_parser(
+        "ilm",
+        parents=[common_parser, output_parser],
+        help="Index lifecycle management commands.",
+    )
+    ilm_sub = ilm.add_subparsers(required=True)
+
+    ilm_show_parser = ilm_sub.add_parser(
+        "show",
+        parents=[
+            common_parser,
+            viewer_command_parser,
+            ilm_common_parser,
+            output_parser,
+        ],
+    )
+    ilm_show_parser.set_defaults(function=cmd_show_ilm)
 
     return p
 

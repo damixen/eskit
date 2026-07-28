@@ -4,7 +4,7 @@ from eskit.core.host import check_host_name
 from eskit.utils.config import is_push_protected
 from eskit.utils.paths import cache_dir
 from eskit.cache.store import read_cache, cache_date
-from eskit.result import Result
+from eskit.result import Result, DataSource
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +45,7 @@ def get_status(host_name, config):
         else:
             status["caches"].append({"name":name, "last-updated": date})
 
-    return Result.ok(status)
+    return Result.ok(status, context={"sources":[DataSource.CACHE]})
     # print(json.dumps(status, indent=2))
 
     """ TODO

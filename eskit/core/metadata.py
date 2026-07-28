@@ -1,4 +1,5 @@
 import logging
+import re
 from datetime import datetime, timezone
 from eskit.utils.config import get_host_config
 from eskit.core.host import check_host_name
@@ -8,7 +9,7 @@ from eskit.transport.ssh import SSHConnection
 from eskit.transport.process import SynchronousProcess
 from eskit.archive.model import ESKitArchiveState
 from eskit.utils.archive import list_archives, delete_archive, write_archive
-from eskit.result import Result, ResultCode
+from eskit.result import Result, ResultCode, DataSource
 from eskit.config.types import FileStat
 from eskit.resource.index import INDEX_SCHEMA
 from eskit.version import __cache_format_version__, __version__
@@ -28,6 +29,19 @@ def normalize_repositories(raw: dict) -> list[dict]:
         )
 
     return repositories
+
+def normalize_ilm(raw: dict) -> list[dict]:
+    ilms = []
+
+    for name, ilm in raw.items():
+        ilms.append(
+            {
+                "name": name,
+                **ilm,
+            }
+        )
+
+    return ilms
 
 
 def pull_metadata(config, host_name, kind=None):
@@ -58,20 +72,23 @@ def pull_metadata(config, host_name, kind=None):
 
         # get index version
         index_settings = es.request(
-            "GET", "/_all/_settings?filter_path=*.settings.index.version.created,*.settings.index.lifecycle.name"
+            "GET", "/_all/_settings?filter_path=*.settings.index.version.created"
         )
         # print(f"index_settings:{json.dumps(index_settings, indent=2)}")
+        ilm_policies = ilms = es.request(
+                    "GET",
+                    "/_all/_ilm/explain?filter_path="
+                    "*.*.managed,*.*.policy,*.*.phase,*.*.action,*.*.step,*.*.age_in_millis",
+                )
+        #print("ilm_policies", ilm_policies)
         for index in indices:
             index_name = index.get("index")
             if index_name in index_settings:
                 index["version"] = index_settings[index_name]["settings"]["index"][
                     "version"
                 ]
-                lifecycle = index_settings[index_name]["settings"]["index"].get("lifecycle", None)
-                if lifecycle:
-                    index["lifecycle"] = lifecycle
-                else:
-                    index["lifecycle"] = {"name": "none"}
+            if index_name in ilm_policies["indices"]:
+                index["ilm"] = ilm_policies["indices"][index_name]
                 
 
         write_cache(host_name, "indices", indices)
@@ -82,6 +99,12 @@ def pull_metadata(config, host_name, kind=None):
             "cache_format_version": __cache_format_version__,
         }
         write_cache(host_name, "version", version)
+
+        # write ilm
+        ilms = es.request("GET", "/_ilm/policy")
+        ilms = normalize_ilm(ilms)
+        write_cache(host_name, "ilms", ilms)
+
         transport.close()
 
     # pull archive status
@@ -195,13 +218,40 @@ def pull_archive_stat(host_config, host_name, archive_config):
     # print(f"archive:{archive}")
     write_archive(host_name, archive)
 
+def get_retension(ilms, policy_name):
+    for ilm in ilms:
+        if ilm["name"] == policy_name:
+            delete_policy = ilm["policy"]["phases"].get("delete", None)
+            if not delete_policy:
+                return None
+            else:
+                return delete_policy["min_age"]
+    return None
+
+_DURATION_UNITS = {
+    "ms": 1,
+    "s": 1000,
+    "m": 60 * 1000,
+    "h": 60 * 60 * 1000,
+    "d": 24 * 60 * 60 * 1000,
+}
+
+def parse_duration(value: str) -> int:
+    match = re.fullmatch(r"(\d+)(ms|s|m|h|d)", value.strip())
+    if not match:
+        raise ValueError(f"Invalid duration: {value}")
+
+    amount = int(match.group(1))
+    unit = match.group(2)
+
+    return amount * _DURATION_UNITS[unit]
 
 def get_metadata(host_name, kind):
     """
     Public API
     """
 
-    mapping = {"repo": "repos", "snap": "snapshots", "index": "indices"}
+    mapping = {"repo": "repos", "snap": "snapshots", "index": "indices", "ilm": "ilms"}
     kind = mapping[kind]
 
     check_host_name(host_name)
@@ -224,9 +274,22 @@ def get_metadata(host_name, kind):
     elif kind == "repos":
         out = data
     elif kind == "indices":
+
+        ilms = read_cache(host_name, "ilms")
+        if ilms:
+            for index in data:
+                policy = index["ilm"].get("policy", None)
+                if not policy:
+                    continue
+
+                retention = get_retension(ilms, policy)
+                if retention:
+                    retension_ms = parse_duration(retention)
+                    index["ilm"]["remaining_ms"] = retension_ms - index["ilm"]["age_in_millis"]
+
         out = data
         out.sort(key=lambda x: x["index"])
-    elif kind == "recovery":
+    elif kind == "ilms":
         out = data
 
-    return Result.ok(out)
+    return Result.ok(out, context={"sources":[DataSource.CACHE]})

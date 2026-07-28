@@ -1,6 +1,6 @@
 from eskit.projection import project
 from eskit.resource.index import INDEX_SCHEMA
-from eskit.render.generic import render_table, render_fields
+from eskit.render.generic import render_table, render_fields, render_context
 from eskit.render.display_fields import DisplayField, DisplaySchema
 from eskit.render.generic import render_heading
 
@@ -28,10 +28,29 @@ INDEX_DISPLAY = DisplaySchema(
         ),
         DisplayField(
             path=(
-                "lifecycle",
-                "name",
+                "ilm",
+                "policy",
             ),
-            label="ILM",
+            label="Policy",
+            empty_value="(none)",
+        ),
+        DisplayField(
+            path=(
+                "ilm",
+                "age_in_millis",
+            ),
+            label="Age",
+            empty_value="(n/a)",
+            duration_compact=True,
+        ),
+        DisplayField(
+            path=(
+                "ilm",
+                "remaining_ms",
+            ),
+            label="Remaining",
+            empty_value="(n/a)",
+            duration_compact=True,
         ),
         DisplayField(
             path=("creation.date.string",),
@@ -40,7 +59,7 @@ INDEX_DISPLAY = DisplaySchema(
     ]
 )
 
-GENERAL_SCHEMA = DisplaySchema(
+GENERAL_DISPLAY = DisplaySchema(
     [
         DisplayField(("index",), label="Name"),
         DisplayField(("uuid",), label="UUID"),
@@ -57,7 +76,7 @@ GENERAL_SCHEMA = DisplaySchema(
     ]
 )
 
-STORAGE_SCHEMA = DisplaySchema(
+STORAGE_DISPLAY = DisplaySchema(
     [
         DisplayField(("health",), label="Health"),
         DisplayField(("status",), label="Status"),
@@ -68,16 +87,83 @@ STORAGE_SCHEMA = DisplaySchema(
     ]
 )
 
-LIFECYCLE_SCHEMA = DisplaySchema(
+LIFECYCLE_DISPLAY = DisplaySchema(
     [
-        DisplayField(("settings", "index", "lifecycle", "name"), label="ILM Policy"),
         DisplayField(
-            ("settings", "index", "refresh_interval"), label="Refresh Interval"
+            path=(
+                "ilm",
+                "managed",
+            ),
+            label="Managed",
+            empty_value="(none)",
+        ),
+        DisplayField(
+            path=(
+                "ilm",
+                "policy",
+            ),
+            label="Policy",
+            empty_value="(none)",
+        ),
+        DisplayField(path=(), blank_field=True),
+        DisplayField(
+            path=(
+                "ilm",
+                "phase",
+            ),
+            label="Phase",
+            empty_value="(none)",
+        ),
+        DisplayField(
+            path=(
+                "ilm",
+                "action",
+            ),
+            label="Action",
+            empty_value="(none)",
+        ),
+        DisplayField(
+            path=(
+                "ilm",
+                "step",
+            ),
+            label="Step",
+            empty_value="(none)",
+        ),
+        DisplayField(
+            path=(
+                "ilm",
+                "retention",
+            ),
+            label="Retention",
+            empty_value="(n/a)",
+        ),
+        DisplayField(path=(), blank_field=True),
+        DisplayField(
+            path=(
+                "ilm",
+                "age_in_millis",
+            ),
+            label="Age",
+            empty_value="(n/a)",
+        ),
+        DisplayField(
+            path=(
+                "ilm",
+                "remaining_ms",
+            ),
+            label="Remaining",
+            empty_value="(n/a)",
+        ),
+        DisplayField(
+            ("settings", "index", "refresh_interval"),
+            label="Refresh Interval",
+            empty_value="-",
         ),
     ]
 )
 
-MAPPING_SCHEMA = DisplaySchema(
+MAPPING_DISPLAY = DisplaySchema(
     [
         DisplayField(
             ("mappings", "properties", "@timestamp", "type"), label="@timestamp Type"
@@ -85,11 +171,12 @@ MAPPING_SCHEMA = DisplaySchema(
         DisplayField(
             ("mappings", "properties", "@timestamp", "format"),
             label="@timestamp Format",
+            empty_value="-",
         ),
     ]
 )
 
-RECOVERY_SCHEMA = DisplaySchema(
+RECOVERY_DISPLAY = DisplaySchema(
     [
         DisplayField(("index",)),
         DisplayField(("shard",)),
@@ -99,14 +186,14 @@ RECOVERY_SCHEMA = DisplaySchema(
     ]
 )
 
-TARGET_SCHEMA = DisplaySchema(
+TARGET_DISPLAY = DisplaySchema(
     [
         DisplayField(("node",)),
         DisplayField(("host",)),
     ]
 )
 
-DATA_SCHEMA = DisplaySchema(
+DATA_DISPLAY = DisplaySchema(
     [
         DisplayField(("files_total",), label="Total Files"),
         DisplayField(("files_percent",), label="File Progres"),
@@ -129,39 +216,40 @@ STATUS_DISPLAY = DisplaySchema(
 )
 
 
-def render_cat_index(indices):
+def render_cat_index(indices, context = None):
 
     render_table(project(indices, INDEX_DISPLAY.paths()), INDEX_DISPLAY, INDEX_SCHEMA)
+    render_context(context)
 
-
-def render_show_index(indices):
+def render_show_index(indices, context = None):
     render_heading("General")
     render_fields(
-        project(indices, GENERAL_SCHEMA.paths()), GENERAL_SCHEMA, INDEX_SCHEMA
+        project(indices, GENERAL_DISPLAY.paths()), GENERAL_DISPLAY, INDEX_SCHEMA
     )
 
     render_heading("Storage")
     render_fields(
-        project(indices, STORAGE_SCHEMA.paths()), STORAGE_SCHEMA, INDEX_SCHEMA
+        project(indices, STORAGE_DISPLAY.paths()), STORAGE_DISPLAY, INDEX_SCHEMA
     )
 
-    render_heading("Lifecycle")
+    render_heading("ILM")
     render_fields(
-        project(indices, LIFECYCLE_SCHEMA.paths()), LIFECYCLE_SCHEMA, INDEX_SCHEMA
+        project(indices, LIFECYCLE_DISPLAY.paths()), LIFECYCLE_DISPLAY, INDEX_SCHEMA
     )
 
     render_heading("Mapping")
     render_fields(
-        project(indices, MAPPING_SCHEMA.paths()), MAPPING_SCHEMA, INDEX_SCHEMA
+        project(indices, MAPPING_DISPLAY.paths()), MAPPING_DISPLAY, INDEX_SCHEMA
     )
+    render_context(context)
 
 
-def render_index_status_list(indices):
+def render_index_status_list(indices, context = None):
 
     render_table(project(indices, STATUS_DISPLAY.paths()), STATUS_DISPLAY, INDEX_SCHEMA)
+    render_context(context)
 
-
-def render_index_status_detail(index):
+def render_index_status_detail(index, context = None):
     """
     Recovery
     --------
@@ -184,15 +272,19 @@ def render_index_status_detail(index):
 
     render_heading("Recovery")
     render_fields(
-        project(index, RECOVERY_SCHEMA.paths()), RECOVERY_SCHEMA, INDEX_SCHEMA
+        project(index, RECOVERY_DISPLAY.paths()), RECOVERY_DISPLAY, INDEX_SCHEMA
     )
 
     render_heading("Target")
-    render_fields(project(index, TARGET_SCHEMA.paths()), TARGET_SCHEMA, INDEX_SCHEMA)
+    render_fields(project(index, TARGET_DISPLAY.paths()), TARGET_DISPLAY, INDEX_SCHEMA)
 
     render_heading("Data")
-    render_fields(project(index, DATA_SCHEMA.paths()), DATA_SCHEMA, INDEX_SCHEMA)
+    render_fields(project(index, DATA_DISPLAY.paths()), DATA_DISPLAY, INDEX_SCHEMA)
+
+    render_context(context)
 
 
-def render_index_status(indices):
+def render_index_status(indices, context = None):
     render_index_status_list(indices)
+
+    render_context(context)

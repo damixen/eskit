@@ -1,7 +1,7 @@
 from eskit.utils.config import get_host_config
 from eskit.core.host import check_host_name
 from eskit.clients.es_client import connect_es
-from eskit.result import Result, ResultCode
+from eskit.result import Result, ResultCode, DataSource
 
 HTTP_METHOD_GET = "GET"
 
@@ -16,7 +16,7 @@ def get(config, host_name, task_id):
     ssh, es = connect_es(host_config)
     try:
         res = es.request(HTTP_METHOD_GET, url)
-        return Result.ok(res)
+        return Result.ok(res, context={"sources":[DataSource.ELASTICSEARCH]})
     except Exception as e:
         print(e)
     finally:

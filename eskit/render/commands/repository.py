@@ -1,7 +1,7 @@
 from eskit.render.display_fields import DisplaySchema, DisplayField
 from eskit.projection import project
 from eskit.resource.repository import REPOSITORY_SCHEMA
-from eskit.render.generic import render_table, render_fields
+from eskit.render.generic import render_table, render_fields, render_context
 from eskit.render.generic import (
     render_heading)
 
@@ -37,14 +37,16 @@ SNAPSHOTS_DISPLAY = DisplaySchema(
 
 
 
-def render_cat_repository(repos):
+def render_cat_repository(repos, context = None):
     render_table(
         project(repos, REPOSITORY_DISPLAY.paths()),
         REPOSITORY_DISPLAY,
         REPOSITORY_SCHEMA,
     )
 
-def render_show_repository(repo):
+    render_context(context)
+
+def render_show_repository(repo, context = None):
     render_heading("Repository")
     render_fields(project(repo, GENERAL_DISPLAY.paths()), GENERAL_DISPLAY, REPOSITORY_SCHEMA)
 
@@ -53,3 +55,5 @@ def render_show_repository(repo):
 
     render_heading("Snapshots")
     render_fields(project(repo, SNAPSHOTS_DISPLAY.paths()), SNAPSHOTS_DISPLAY, REPOSITORY_SCHEMA)
+
+    render_context(context)

@@ -7,7 +7,7 @@ from eskit.core.host import (
 )
 from eskit.cache.store import read_cache
 from eskit.clients.es_client import connect_es
-from eskit.result import Result, ResultCode
+from eskit.result import Result, ResultCode, DataSource
 from eskit.resource_type import ResourceType
 
 logger = logging.getLogger(__name__)
@@ -25,12 +25,12 @@ def get(host_name, name):
         data = get_snap(host_name, name)
         if not data:
             return Result.fail(ResultCode.NOT_FOUND, "Snapshot not found.")
-        return Result.ok(data, context={"resource_type":ResourceType.SNAPSHOT})
+        return Result.ok(data, context={"resource_type":ResourceType.SNAPSHOT, "sources":[DataSource.CACHE]}, )
     else:
         data = get_repo(host_name, repo)
         if not data:
             return Result.fail(ResultCode.NOT_FOUND, "Repository not found.")
-        return Result.ok(data, context={"resource_type":ResourceType.REPOSITORY})
+        return Result.ok(data, context={"resource_type":ResourceType.REPOSITORY, "sources":[DataSource.CACHE]})
 
 
 def create(config, host_name, name, repo_type, location, dry_run, push):

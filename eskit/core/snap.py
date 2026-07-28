@@ -18,6 +18,7 @@ def create(
     ignore_unavailable,
     dry_run,
     push,
+    wait,
 ):
     """
     Public API
@@ -44,6 +45,12 @@ def create(
         body["indices"] = indices
     body["include_global_state"] = include_global_state
     body["ignore_unavailable"] = ignore_unavailable
+
+    url = f"/_snapshot/{repo}/{snap}"
+
+    if wait:
+        url = url + "?wait_for_completion=true"
+
     if dry_run:
         # print_dry_run()
         # print("PUT", f"/_snapshot/{repo}/{snap}")
@@ -53,7 +60,7 @@ def create(
                 "executed": False,
                 "command": {
                     "method": "PUT",
-                    "url": f"/_snapshot/{repo}/{snap}",
+                    "url": url,
                     "body": body,
                 },
             }
@@ -62,7 +69,7 @@ def create(
     host_config = get_host_config(config, host_name)
     ssh, es = connect_es(host_config)
     try:
-        es.request("PUT", f"/_snapshot/{repo}/{snap}", body)
+        es.request("PUT", url, body)
         from eskit.core.metadata import pull_metadata
 
         pull_metadata(config, host_name)
@@ -116,7 +123,17 @@ def delete(config, host_name, spec, dry_run, push, force):
     return Result.ok()
 
 
-def restore(config, host_name, spec, index, dry_run, push):
+def restore(
+    config,
+    host_name,
+    spec,
+    index,
+    dry_run,
+    push,
+    ilm,
+    remove_ilm,
+    wait
+):
     """
     Public API
     """
@@ -134,6 +151,20 @@ def restore(config, host_name, spec, index, dry_run, push):
         body["indices"] = "*"
     body["include_global_state"] = False
 
+    if ilm or remove_ilm:
+        ilm_name = ilm
+        if remove_ilm:
+            ilm_name = None
+        body["index_settings"] = {
+            "index.lifecycle.name": ilm_name,
+            "index.lifecycle.rollover_alias": None,
+        }
+
+    url = f"/_snapshot/{repo}/{snap}/_restore"
+
+    if wait:
+        url = url + "?wait_for_completion=true"
+
     if dry_run:
         # print_dry_run()
         # print("POST", f"/_snapshot/{repo}/{snap}/_restore")
@@ -143,14 +174,14 @@ def restore(config, host_name, spec, index, dry_run, push):
                 "executed": False,
                 "command": {
                     "method": "POST",
-                    "url": f"/_snapshot/{repo}/{snap}/_restore",
+                    "url": url,
                 },
             }
         )
     host_config = get_host_config(config, host_name)
     ssh, es = connect_es(host_config)
     try:
-        es.request("POST", f"/_snapshot/{repo}/{snap}/_restore", body)
+        es.request("POST", url, body)
         # print(f"Snapshot:{spec} restore requested. Updating Cache...")
         from eskit.core.metadata import pull_metadata
 

@@ -11,6 +11,7 @@ class ResourceType(str, Enum):
     CACHE = "cache"
     TASK = "task"
     JOB = "job"
+    ILM = "ilm"
 
     def __str__(self):
         return self.value

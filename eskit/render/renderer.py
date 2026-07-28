@@ -16,6 +16,7 @@ from eskit.render.commands.repository import (
 from eskit.render.commands.snapshot import render_cat_snapshot, render_show_snapshot
 from eskit.render.commands.job import render_show_job, render_list_jobs
 from eskit.render.commands.archive import render_show_archive, render_list_archives
+from eskit.render.commands.ilm import render_cat_ilm, render_show_ilm
 from eskit.projection import project
 
 RENDERER = {
@@ -32,17 +33,20 @@ RENDERER = {
     "list_jobs": render_list_jobs,
     "list_archives": render_list_archives,
     "show_archive": render_show_archive,
+    "cat_ilm": render_cat_ilm,
+    "show_ilm": render_show_ilm
 }
 
 
 def render_command(
     command,
     value,
+    context
 ):
     renderer = RENDERER.get(command)
 
     if renderer:
-        renderer(value)
+        renderer(value, context)
         return
 
     render_object(value)
@@ -69,6 +73,7 @@ def render(
     output_format: str = "table",
     fields: list[tuple[str, ...]],
     flatten: bool = False,
+    context: dict[str, Any] | None
 ):
     value = normalize(value)
 
@@ -84,7 +89,7 @@ def render(
         return
 
     if command:
-        render_command(command, value)
+        render_command(command, value, context)
         return
 
     render_object(value)

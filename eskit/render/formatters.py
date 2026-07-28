@@ -143,9 +143,72 @@ def format_list(
     return "\n".join(f"{prefix}{item}" for item in value)
 
 
+def format_duration(milliseconds: int, compact: bool | None) -> str:
+    """
+    Format a duration in milliseconds into a human-readable string.
+
+    Examples:
+        format_duration(350)
+            -> "350 ms"
+
+        format_duration(9213)
+            -> "9.2 s"
+
+        format_duration(75432)
+            -> "1m 15s"
+
+        format_duration(3723000)
+            -> "1h 2m 3s"
+
+        format_duration(10432174767)
+            -> "120d 18h"
+
+        format_duration(10432174767, compact=True)
+            -> "120d"
+    """
+    if milliseconds < 0:
+        return f"-{format_duration(abs(milliseconds), compact=compact)}"
+
+    if milliseconds < 1000:
+        return f"{milliseconds:,} ms"
+
+    td = timedelta(milliseconds=milliseconds)
+    total_seconds = int(td.total_seconds())
+
+    days, remainder = divmod(total_seconds, 86400)
+    hours, remainder = divmod(remainder, 3600)
+    minutes, seconds = divmod(remainder, 60)
+
+    if compact:
+        if days:
+            return f"{days}d"
+
+        if hours:
+            return f"{hours}h"
+
+        if minutes:
+            return f"{minutes}m"
+
+        return f"{milliseconds / 1000:.1f}s"
+
+    if days:
+        return f"{days}d {hours}h {minutes}m"
+
+    if hours:
+        return f"{hours}h {minutes}m {seconds}s"
+
+    if minutes:
+        return f"{minutes}m {seconds}s"
+
+    return f"{milliseconds / 1000:.1f}s"
+
+
 def format_value2(value, fmt: FieldType | None, display_field: DisplayField):
     if value is None:
-        return ""
+        if display_field.empty_value is None:
+            return ""
+        else:
+            return display_field.empty_value
 
     if fmt is None:
         return value
@@ -159,42 +222,18 @@ def format_value2(value, fmt: FieldType | None, display_field: DisplayField):
             preview_allow_zero=display_field.preview_allow_zero,
         )
 
+    if fmt is FieldType.DURATION:
+        return format_duration(
+            value,
+            compact=display_field.duration_compact
+        )
+
     formatter = FORMATTERS2.get(fmt)
 
     if formatter is None:
         return value
 
     return formatter(value)
-
-
-def format_duration(milliseconds: int) -> str:
-    """
-    Format a duration in milliseconds into a human-readable string.
-
-    Examples:
-        350        -> "350 ms"
-        9213       -> "9.2 s"
-        16411      -> "16.4 s"
-        75432      -> "1m 15s"
-        3723000    -> "1h 2m 3s"
-    """
-    if milliseconds < 1000:
-        return f"{milliseconds:,} ms"
-
-    td = timedelta(milliseconds=milliseconds)
-
-    total_seconds = int(td.total_seconds())
-
-    hours, remainder = divmod(total_seconds, 3600)
-    minutes, seconds = divmod(remainder, 60)
-
-    if hours:
-        return f"{hours}h {minutes}m {seconds}s"
-
-    if minutes:
-        return f"{minutes}m {seconds}s"
-
-    return f"{milliseconds / 1000:.1f} s"
 
 
 def resolve_label(field: DisplayField) -> str | None:
@@ -218,5 +257,4 @@ FORMATTERS2: dict[FieldType, Formatter] = {
     FieldType.SIZE: format_size,
     FieldType.DATETIME: format_datetime,
     FieldType.LIST: format_list,
-    FieldType.DURATION: format_duration,
 }

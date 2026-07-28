@@ -82,6 +82,11 @@ def render_fields(
     rows = []
 
     for field in display_schema.fields:
+
+        if field.blank_field:
+            rows.append(("", ""))
+            continue
+
         path = field.path
 
         if field.label is AUTO_LABEL:
@@ -114,8 +119,18 @@ def render_object(rows):
     print(rows)
 
 
-def render_heading(title: str, skip_newline: bool = False):
+def render_heading(title: str, skip_newline: bool = False, skip_underline: bool = False):
     if not skip_newline:
         print()
     print(title)
-    print("-" * len(title))
+    if not skip_underline:
+        print("-" * len(title))
+
+
+def render_context(context: dict[str, Any] | None):
+    if not context:
+        return
+    sources = context.get("sources", None)
+    if sources and len(sources) > 0:
+        print()
+        print(f"(Data Sources: {", ".join(source.label for source in sources)})")

@@ -1,5 +1,5 @@
 #from eskit.render.projection import normalize_projection, project
-from eskit.render.generic import render_fields, render_heading, render_table
+from eskit.render.generic import render_fields, render_heading, render_table, render_context
 from eskit.render.display_fields import DisplayField, DisplaySchema
 from eskit.projection import project
 from eskit.resource.host import HOST_SCHEMA, SSH_SCHEMA, ELASTIC_SCHEMA
@@ -34,7 +34,7 @@ ARCHIVES_DISPLAY = DisplaySchema(
 
     ])
 
-def render_host_show(host: dict):
+def render_host_show(host: dict, context = None):
     render_heading("Host Configuration")
 
     #
@@ -81,3 +81,5 @@ def render_host_show(host: dict):
         ARCHIVES_DISPLAY,
         ARCHIVE_SCHEMA
     )
+
+    render_context(context)
