@@ -20,6 +20,7 @@ from eskit.utils.config import load_config
 from eskit.config.types import Config
 from eskit.error import ESKitError, ConfigNotFoundError, CurrentHostNotFoundError
 from eskit.cache.store import check_cache_version
+from eskit.command_description import describe_parser
 
 DEFAULT_CONFIG = ".eskit/config.json"
 CACHE_ROOT = Path(".eskit")
@@ -1187,6 +1188,28 @@ def cmd_show_ilm(args):
     return ExitCode.FAILURE
 
 
+def cmd_ai(args):
+
+    command_json = describe_parser(build_parser())
+
+    # with open("argparse.dump", "w", encoding="UTF-8") as f:
+    #     json.dump(command_json, f, indent=2)
+    # with open("argparse-no-indent.dump", "w", encoding="UTF-8") as f:
+    #     json.dump(command_json, f)
+    # print("command_json:", json.dumps(command_json, indent=2))
+
+    from eskit.ai.helper import ask
+
+    response = ask(
+        question=args.question,
+        command_description=command_json,
+    )
+
+    print(response)
+
+    return ExitCode.SUCCESS
+
+
 def cmd_root(args):
     if args.version:
         print(__version__)
@@ -1199,110 +1222,11 @@ def serialize_default(value):
         return value.__name__
     return value
 
-INTERNAL_DEFAULTS = {"function"}
-
-def build_command_json(parser):
-    
-    metadata = {
-        key: serialize_default(value)
-        for key, value in parser._defaults.items()
-        if key not in INTERNAL_DEFAULTS
-    }
-    
-    result = {
-        "program": parser.prog,
-        "description": parser.description,
-        "arguments": [],
-        "commands": {},
-    }
-    
-    if metadata:
-        result["metadata"] = metadata
-
-    for action in parser._actions:
-        # Skip the automatically generated -h / --help
-        if isinstance(action, argparse._HelpAction):
-            continue
-
-        # Subcommands
-        if isinstance(action, argparse._SubParsersAction):
-            for name, subparser in action.choices.items():
-                result["commands"][name] = build_command_json(subparser)
-            continue
-
-        # Determine a provider-neutral type
-        if isinstance(
-            action,
-            (argparse._StoreTrueAction, argparse._StoreFalseAction),
-        ):
-            argument_type = "boolean"
-        elif action.type is None:
-            argument_type = "string"
-        elif hasattr(action.type, "__name__"):
-            argument_type = action.type.__name__
-        else:
-            argument_type = str(action.type)
-
-        argument = {
-            "flags": action.option_strings,
-            "name": action.dest,
-            "type": argument_type,
-            "required": action.required,
-            "default": action.default,
-            "choices": list(action.choices) if action.choices else None,
-            "nargs": action.nargs,
-            "description": action.help,
-        }
-
-        result["arguments"].append(argument)
-
-    return result
-
-def describe_parser(parser):
-    result = {
-        "program": parser.prog,
-        "description": parser.description,
-        "defaults": {
-            key: serialize_default(value) for key, value in parser._defaults.items()
-        },
-        "arguments": [],
-        "subcommands": {},
-    }
-
-    for action in parser._actions:
-        # Skip the automatically generated -h / --help
-        if isinstance(action, argparse._HelpAction):
-            continue
-
-        # Subparsers
-        if isinstance(action, argparse._SubParsersAction):
-            for name, subparser in action.choices.items():
-                result["subcommands"][name] = describe_parser(subparser)
-            continue
-
-        # Normal arguments/options
-        argument = {
-            "flags": action.option_strings,
-            "dest": action.dest,
-            "required": action.required,
-            "default": action.default,
-            "type": (
-                action.type.__name__
-                if hasattr(action.type, "__name__")
-                else str(action.type)
-            ),
-            "choices": list(action.choices) if action.choices else None,
-            "nargs": action.nargs,
-            "help": action.help,
-        }
-
-        result["arguments"].append(argument)
-
-    return result
 
 def set_metadata(parser, **metadata):
     parser._eskit_metadata = metadata
     return parser
+
 
 def build_parser():
     p = argparse.ArgumentParser(
@@ -1353,17 +1277,16 @@ def build_parser():
         action="store_true",
         help="Used to confirm to execute a request/command that would modify resources on push-protected host",
     )
-    
-    set_metadata(mutating_parser, risk="write")
-    
+
     # Destructive Operation common
     destructive_command_parser = argparse.ArgumentParser(add_help=False)
     destructive_command_parser.add_argument(
-        "--force", action="store_true", help="Force to execute delete request/command"
+        "--force",
+        action="store_true",
+        help=(
+            "Administrative override for safety checks. Use only when the user explicitly requests --force. Do not use it as a substitute for user confirmation."
+        ),
     )
-    
-    set_metadata(destructive_command_parser, risk="destructive")
-
 
     # common viewer
     viewer_command_parser = argparse.ArgumentParser(add_help=False)
@@ -1380,7 +1303,6 @@ def build_parser():
         help="Fields to retrieve the data in a dictionary. e.g.  settings.index.provided_name as settings['index']['provided_name']",
     )
     viewer_command_parser.add_argument("--flat", action="store_true")
-    set_metadata(viewer_command_parser, risk="read")
 
     sub = p.add_subparsers()
 
@@ -1410,6 +1332,11 @@ def build_parser():
     )
     host_show_parser.set_defaults(function=cmd_show_host)
 
+    set_metadata(
+        host_show_parser,
+        risk="read",
+    )
+
     host_set_parser = host_parser_sub.add_parser(
         "set",
         parents=[output_parser],
@@ -1419,8 +1346,6 @@ def build_parser():
     host_set_parser.add_argument("host", help="Host name", type=str)
     host_set_parser.set_defaults(function=cmd_set_host)
     set_metadata(cmd_set_host, risk="write")
-
-    
 
     host_get_parser = host_parser_sub.add_parser(
         "get",
@@ -1444,7 +1369,7 @@ def build_parser():
         "kind",
         choices=["es", "archive"],
         nargs="*",
-        help="Kind of cache to pull. es - Elasticsearch Cache, archive - Archive Cache.",
+        help="Optional kind of cache to pull. es - Elasticsearch Cache, archive - Archive Cache. If omitted, all types are pulled.",
         type=str,
     )
     pull.set_defaults(function=cmd_pull)
@@ -1459,6 +1384,11 @@ def build_parser():
     )
     cat.add_argument("kind", choices=["repo", "snap", "index", "ilm"], type=str)
     cat.set_defaults(function=cmd_cat2)
+
+    set_metadata(
+        cat,
+        risk="read",
+    )
 
     # Repo sub command
     common_repo_parser = argparse.ArgumentParser(add_help=False)
@@ -1488,6 +1418,11 @@ def build_parser():
     )
     repo_show_parser.set_defaults(function=cmd_repo_show2)
 
+    set_metadata(
+        repo_show_parser,
+        risk="read",
+    )
+
     repo_create = repo_sub.add_parser(
         "create",
         parents=[common_parser, common_repo_parser, mutating_parser, output_parser],
@@ -1505,6 +1440,11 @@ def build_parser():
     )
     repo_create.set_defaults(function=cmd_create_repo)
 
+    set_metadata(
+        repo_create,
+        risk="write",
+    )
+
     repo_delete = repo_sub.add_parser(
         "delete",
         parents=[
@@ -1517,6 +1457,12 @@ def build_parser():
         description="Delete repository.",
     )
     repo_delete.set_defaults(function=cmd_delete_repo)
+
+    set_metadata(
+        repo_delete,
+        risk="destructive",
+        confirmation=("The user must explicitly confirm the action before execution."),
+    )
 
     # Snapshot Sub Commands
     snap = sub.add_parser(
@@ -1567,6 +1513,11 @@ def build_parser():
     )
     snap_create.set_defaults(function=cmd_create_snapshot)
 
+    set_metadata(
+        snap_create,
+        risk="write",
+    )
+
     snap_delete = snap_sub.add_parser(
         "delete",
         parents=[
@@ -1580,6 +1531,12 @@ def build_parser():
         description="Delete a snapshot.",
     )
     snap_delete.set_defaults(function=cmd_delete_snapshot)
+
+    set_metadata(
+        snap_delete,
+        risk="destructive",
+        confirmation=("The user must explicitly confirm the action before execution."),
+    )
 
     snap_restore = snap_sub.add_parser(
         "restore",
@@ -1608,6 +1565,8 @@ def build_parser():
     )
     snap_restore.set_defaults(function=cmd_restore_snapshot)
 
+    set_metadata(snap_restore, risk="write")
+
     snap_show_parser = snap_sub.add_parser(
         "show",
         parents=[
@@ -1620,6 +1579,11 @@ def build_parser():
         description="Show a snapshot details.",
     )
     snap_show_parser.set_defaults(function=cmd_snap_show)
+
+    set_metadata(
+        snap_show_parser,
+        risk="read",
+    )
 
     # Index commands
     common_index_parser = argparse.ArgumentParser(add_help=False)
@@ -1649,6 +1613,12 @@ def build_parser():
     )
     index_delete.set_defaults(function=cmd_delete_index)
 
+    set_metadata(
+        index_delete,
+        risk="destructive",
+        confirmation=("The user must explicitly confirm the action before execution."),
+    )
+
     index_create = index_sub.add_parser(
         "create",
         parents=[
@@ -1663,6 +1633,11 @@ def build_parser():
     )
     index_create.set_defaults(function=cmd_create_index)
 
+    set_metadata(
+        index_create,
+        risk="write",
+    )
+
     index_show = index_sub.add_parser(
         "show",
         parents=[
@@ -1676,6 +1651,11 @@ def build_parser():
     )
     index_show.set_defaults(function=cmd_show_index)
 
+    set_metadata(
+        index_show,
+        risk="read",
+    )
+
     index_status = index_sub.add_parser(
         "status",
         parents=[
@@ -1688,6 +1668,11 @@ def build_parser():
         description="Show a recovery status of an index.",
     )
     index_status.set_defaults(function=cmd_restore_status)
+
+    set_metadata(
+        index_status,
+        risk="read",
+    )
 
     # Reindex Commands
     reindex = sub.add_parser(
@@ -1704,6 +1689,11 @@ def build_parser():
     reindex.add_argument("dst", help="destination index", type=str)
     reindex.set_defaults(function=cmd_reindex)
 
+    set_metadata(
+        reindex,
+        risk="write",
+    )
+
     reindex_mapping = sub.add_parser(
         "mapping",
         help="Shows mappings in the config",
@@ -1711,6 +1701,11 @@ def build_parser():
         description="Shows mappings in the config.",
     )
     reindex_mapping.set_defaults(function=cmd_reindex_mapping)
+
+    set_metadata(
+        reindex_mapping,
+        risk="read",
+    )
 
     task = sub.add_parser(
         "task",
@@ -1747,6 +1742,11 @@ def build_parser():
         help="Show local jobs in .eskit/jobs generated by archive commands.",
     )
     job_list.set_defaults(function=cmd_list_jobs)
+
+    set_metadata(
+        job_list,
+        risk="read",
+    )
 
     job_show = job_sub.add_parser(
         "show",
@@ -1803,6 +1803,11 @@ def build_parser():
     )
     archive_list_parser.set_defaults(function=cmd_list_archives)
 
+    set_metadata(
+        archive_list_parser,
+        risk="read",
+    )
+
     archive_pull_parser = archive_sub.add_parser(
         "pull",
         parents=[
@@ -1816,6 +1821,11 @@ def build_parser():
         description="Pull an data from the source to local destination defined in the config. This is incremental.",
     )
     archive_pull_parser.set_defaults(function=cmd_pull_archive)
+
+    set_metadata(
+        archive_pull_parser,
+        risk="write",
+    )
 
     archive_sync_parser = archive_sub.add_parser(
         "sync",
@@ -1831,6 +1841,7 @@ def build_parser():
     )
     archive_sync_parser.set_defaults(function=cmd_sync_archive, risk="destructive")
     set_metadata(archive_sync_parser, risk="destructive")
+
     archive_push_parser = archive_sub.add_parser(
         "push",
         parents=[
@@ -1850,6 +1861,11 @@ def build_parser():
     )
     archive_push_parser.set_defaults(function=cmd_push_archive)
 
+    set_metadata(
+        archive_push_parser,
+        risk="write",
+    )
+
     archive_show_parser = archive_sub.add_parser(
         "show",
         parents=[
@@ -1862,6 +1878,11 @@ def build_parser():
         description="Show an archive.",
     )
     archive_show_parser.set_defaults(function=cmd_show_archive)
+
+    set_metadata(
+        archive_show_parser,
+        risk="read",
+    )
 
     # ILM Command
 
@@ -1889,9 +1910,22 @@ def build_parser():
     )
     ilm_show_parser.set_defaults(function=cmd_show_ilm)
 
-    result = describe_parser(p)
+    set_metadata(
+        ilm_show_parser,
+        risk="read",
+    )
 
-    
+    ai_parser = sub.add_parser(
+        "ai",
+        parents=[
+            output_parser,
+        ],
+        help="AI commands.",
+        description="AI commands.",
+    )
+    ai_parser.add_argument("question", help="Question to ask to AI.")
+    ai_parser.set_defaults(function=cmd_ai)
+
     return p
 
 
@@ -1904,19 +1938,9 @@ def main():
     init(CACHE_ROOT)
 
     configure_logging(args.verbose, args.debug)
-    
-    from eskit.command_description import describe_parser
-    
-    result = describe_parser(p)
-    
-    with open("argparse.dump", "w", encoding="UTF-8") as f:
-            json.dump(result, f, indent=2)
-    
-    with open("argparse2.dump", "w", encoding="UTF-8") as f:
-        json.dump(result, f, indent=2)
-        
-    with open("argparse2-no-indent.dump", "w", encoding="UTF-8") as f:
-            json.dump(result, f)
-    
 
     return args.function(args)
+
+
+if __name__ == "__main__":
+    main()

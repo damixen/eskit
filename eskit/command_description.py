@@ -1,5 +1,5 @@
 import argparse
-from .cli import build_parser
+
 
 def serialize_default(value):
     if callable(value):
@@ -20,6 +20,29 @@ def normalize_type(action):
     return str(action.type)
 
 
+def get_required(action):
+    if not action.option_strings:
+        # Positional argument
+        return action.nargs not in ("?", "*")
+
+    return action.required
+
+
+def normalize_nargs(nargs):
+    if nargs is None:
+        return "one"
+    if nargs == "?":
+        return "zero_or_one"
+    if nargs == "*":
+        return "zero_or_more"
+    if nargs == "+":
+        return "one_or_more"
+    if isinstance(nargs, int):
+        return nargs
+
+    return str(nargs)
+
+
 def describe_parser(parser):
     result = {
         "program": parser.prog,
@@ -37,27 +60,23 @@ def describe_parser(parser):
                 result["commands"][name] = describe_parser(subparser)
             continue
 
-        result["arguments"].append({
-            "flags": action.option_strings,
-            "name": action.dest,
-            "type": normalize_type(action),
-            "required": action.required,
-            "default": serialize_default(action.default),
-            "choices": (
-                list(action.choices)
-                if action.choices is not None
-                else None
-            ),
-            "nargs": action.nargs,
-            "description": action.help,
-        })
+        result["arguments"].append(
+            {
+                "flags": action.option_strings,
+                "name": action.dest,
+                "type": normalize_type(action),
+                "required": get_required(action),
+                "default": serialize_default(action.default),
+                "choices": (
+                    list(action.choices) if action.choices is not None else None
+                ),
+                "nargs": normalize_nargs(action.nargs),
+                "description": action.help,
+            }
+        )
 
     metadata = getattr(parser, "_eskit_metadata", None)
     if metadata:
         result["metadata"] = metadata
 
     return result
-
-def build_command_description():
-    parser = build_parser()
-    return describe_parser(parser)

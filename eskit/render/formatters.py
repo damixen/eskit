@@ -85,6 +85,10 @@ def format_label(path_parts: tuple[str, ...]) -> str:
 
 
 def format_datetime(value: str) -> str:
+
+    if not value:
+        return value
+
     dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
 
     dt = dt.astimezone()
