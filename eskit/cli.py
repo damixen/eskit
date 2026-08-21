@@ -1194,15 +1194,15 @@ def cmd_ai(args):
 
     # with open("argparse.dump", "w", encoding="UTF-8") as f:
     #     json.dump(command_json, f, indent=2)
-    # with open("argparse-no-indent.dump", "w", encoding="UTF-8") as f:
-    #     json.dump(command_json, f)
+    if args.output_command_json:
+        with open(args.output_command_json, "w", encoding="UTF-8") as f:
+            json.dump(command_json, f)
     # print("command_json:", json.dumps(command_json, indent=2))
 
     from eskit.ai.helper import ask
 
     response = ask(
-        question=args.question,
-        command_description=command_json,
+        question=args.question, command_description=command_json, model=args.model
     )
 
     print(response)
@@ -1924,6 +1924,24 @@ def build_parser():
         description="AI commands.",
     )
     ai_parser.add_argument("question", help="Question to ask to AI.")
+    ai_parser.add_argument(
+        "--model",
+        help="Choose the LLM model to work with.",
+        default="claude-haiku-4-5-20251001",
+        choices=[
+            "claude-haiku-4-5-20251001",
+            "claude-sonnet-4-6",
+            "claude-sonnet-5",
+            "qwen3:4b",
+            "qwen3:8b",
+            "gemma3:4b",
+            "mistral:7b",
+            "qwen3:14b",
+        ],
+    )
+    ai_parser.add_argument(
+        "--output-command-json", help="A path to output command json."
+    )
     ai_parser.set_defaults(function=cmd_ai)
 
     return p

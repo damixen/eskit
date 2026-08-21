@@ -2,7 +2,7 @@
 .eskit
 /docker-compose.yml
 .venc
-
+internal*
 
 
 # Byte-compiled / optimized / DLL files

@@ -1,0 +1,3707 @@
+{
+    "program": "eskit",
+    "description": "a light-weight Elasticsearch toolkit for managing repo, snapshots, and index.",
+    "arguments": [
+        {
+            "flags": [
+                "--version"
+            ],
+            "name": "version",
+            "type": "boolean",
+            "required": false,
+            "default": false,
+            "choices": null,
+            "nargs": 0,
+            "description": "Show help"
+        }
+    ],
+    "commands": {
+        "init": {
+            "program": "eskit init",
+            "description": "Initializes ESKit",
+            "arguments": [
+                {
+                    "flags": [
+                        "-v",
+                        "--verbose"
+                    ],
+                    "name": "verbose",
+                    "type": "boolean",
+                    "required": false,
+                    "default": false,
+                    "choices": null,
+                    "nargs": 0,
+                    "description": "Enable verbose logging"
+                },
+                {
+                    "flags": [
+                        "-d",
+                        "--debug"
+                    ],
+                    "name": "debug",
+                    "type": "boolean",
+                    "required": false,
+                    "default": false,
+                    "choices": null,
+                    "nargs": 0,
+                    "description": "Enable debug logging"
+                },
+                {
+                    "flags": [
+                        "-j",
+                        "--json"
+                    ],
+                    "name": "json",
+                    "type": "boolean",
+                    "required": false,
+                    "default": false,
+                    "choices": null,
+                    "nargs": 0,
+                    "description": "Output in JSON format"
+                },
+                {
+                    "flags": [
+                        "--demo"
+                    ],
+                    "name": "demo",
+                    "type": "boolean",
+                    "required": false,
+                    "default": false,
+                    "choices": null,
+                    "nargs": 0,
+                    "description": "Initialize with demo data set."
+                }
+            ],
+            "commands": {}
+        },
+        "host": {
+            "program": "eskit host",
+            "description": "Host data related commands.",
+            "arguments": [],
+            "commands": {
+                "show": {
+                    "program": "eskit host show",
+                    "description": "Show available hosts in the config",
+                    "arguments": [
+                        {
+                            "flags": [
+                                "-c",
+                                "--config"
+                            ],
+                            "name": "config",
+                            "type": "str",
+                            "required": false,
+                            "default": ".eskit/config.json",
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Set config file. Optional as default value is .eskit/config.json"
+                        },
+                        {
+                            "flags": [
+                                "--host"
+                            ],
+                            "name": "host",
+                            "type": "str",
+                            "required": false,
+                            "default": null,
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Specify which host to operate. Optional if found in .current_host file."
+                        },
+                        {
+                            "flags": [
+                                "-v",
+                                "--verbose"
+                            ],
+                            "name": "verbose",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Enable verbose logging"
+                        },
+                        {
+                            "flags": [
+                                "-d",
+                                "--debug"
+                            ],
+                            "name": "debug",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Enable debug logging"
+                        },
+                        {
+                            "flags": [
+                                "-j",
+                                "--json"
+                            ],
+                            "name": "json",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Output in JSON format"
+                        },
+                        {
+                            "flags": [
+                                "--view"
+                            ],
+                            "name": "view",
+                            "type": "str",
+                            "required": false,
+                            "default": [],
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Name of view defined in the config."
+                        },
+                        {
+                            "flags": [
+                                "--fields"
+                            ],
+                            "name": "fields",
+                            "type": "str",
+                            "required": false,
+                            "default": null,
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Fields to retrieve the data in a dictionary. e.g.  settings.index.provided_name as settings['index']['provided_name']"
+                        },
+                        {
+                            "flags": [
+                                "--flat"
+                            ],
+                            "name": "flat",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": null
+                        }
+                    ],
+                    "commands": {},
+                    "metadata": {
+                        "risk": "read"
+                    }
+                },
+                "set": {
+                    "program": "eskit host set",
+                    "description": "Set the given host as current host",
+                    "arguments": [
+                        {
+                            "flags": [
+                                "-v",
+                                "--verbose"
+                            ],
+                            "name": "verbose",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Enable verbose logging"
+                        },
+                        {
+                            "flags": [
+                                "-d",
+                                "--debug"
+                            ],
+                            "name": "debug",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Enable debug logging"
+                        },
+                        {
+                            "flags": [
+                                "-j",
+                                "--json"
+                            ],
+                            "name": "json",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Output in JSON format"
+                        },
+                        {
+                            "flags": [],
+                            "name": "host",
+                            "type": "str",
+                            "required": true,
+                            "default": null,
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Host name"
+                        }
+                    ],
+                    "commands": {}
+                },
+                "get": {
+                    "program": "eskit host get",
+                    "description": "Get the current host",
+                    "arguments": [
+                        {
+                            "flags": [
+                                "-v",
+                                "--verbose"
+                            ],
+                            "name": "verbose",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Enable verbose logging"
+                        },
+                        {
+                            "flags": [
+                                "-d",
+                                "--debug"
+                            ],
+                            "name": "debug",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Enable debug logging"
+                        },
+                        {
+                            "flags": [
+                                "-j",
+                                "--json"
+                            ],
+                            "name": "json",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Output in JSON format"
+                        }
+                    ],
+                    "commands": {},
+                    "metadata": {
+                        "risk": "read"
+                    }
+                }
+            }
+        },
+        "pull": {
+            "program": "eskit pull",
+            "description": "Pulls resource data from the current host into cache.",
+            "arguments": [
+                {
+                    "flags": [
+                        "-c",
+                        "--config"
+                    ],
+                    "name": "config",
+                    "type": "str",
+                    "required": false,
+                    "default": ".eskit/config.json",
+                    "choices": null,
+                    "nargs": "one",
+                    "description": "Set config file. Optional as default value is .eskit/config.json"
+                },
+                {
+                    "flags": [
+                        "--host"
+                    ],
+                    "name": "host",
+                    "type": "str",
+                    "required": false,
+                    "default": null,
+                    "choices": null,
+                    "nargs": "one",
+                    "description": "Specify which host to operate. Optional if found in .current_host file."
+                },
+                {
+                    "flags": [
+                        "-v",
+                        "--verbose"
+                    ],
+                    "name": "verbose",
+                    "type": "boolean",
+                    "required": false,
+                    "default": false,
+                    "choices": null,
+                    "nargs": 0,
+                    "description": "Enable verbose logging"
+                },
+                {
+                    "flags": [
+                        "-d",
+                        "--debug"
+                    ],
+                    "name": "debug",
+                    "type": "boolean",
+                    "required": false,
+                    "default": false,
+                    "choices": null,
+                    "nargs": 0,
+                    "description": "Enable debug logging"
+                },
+                {
+                    "flags": [
+                        "-j",
+                        "--json"
+                    ],
+                    "name": "json",
+                    "type": "boolean",
+                    "required": false,
+                    "default": false,
+                    "choices": null,
+                    "nargs": 0,
+                    "description": "Output in JSON format"
+                },
+                {
+                    "flags": [],
+                    "name": "kind",
+                    "type": "str",
+                    "required": false,
+                    "default": null,
+                    "choices": [
+                        "es",
+                        "archive"
+                    ],
+                    "nargs": "zero_or_more",
+                    "description": "Optional kind of cache to pull. es - Elasticsearch Cache, archive - Archive Cache. If omitted, all types are pulled."
+                }
+            ],
+            "commands": {},
+            "metadata": {
+                "risk": "write"
+            }
+        },
+        "cat": {
+            "program": "eskit cat",
+            "description": "Show cached information.",
+            "arguments": [
+                {
+                    "flags": [
+                        "-c",
+                        "--config"
+                    ],
+                    "name": "config",
+                    "type": "str",
+                    "required": false,
+                    "default": ".eskit/config.json",
+                    "choices": null,
+                    "nargs": "one",
+                    "description": "Set config file. Optional as default value is .eskit/config.json"
+                },
+                {
+                    "flags": [
+                        "--host"
+                    ],
+                    "name": "host",
+                    "type": "str",
+                    "required": false,
+                    "default": null,
+                    "choices": null,
+                    "nargs": "one",
+                    "description": "Specify which host to operate. Optional if found in .current_host file."
+                },
+                {
+                    "flags": [
+                        "--view"
+                    ],
+                    "name": "view",
+                    "type": "str",
+                    "required": false,
+                    "default": [],
+                    "choices": null,
+                    "nargs": "one",
+                    "description": "Name of view defined in the config."
+                },
+                {
+                    "flags": [
+                        "--fields"
+                    ],
+                    "name": "fields",
+                    "type": "str",
+                    "required": false,
+                    "default": null,
+                    "choices": null,
+                    "nargs": "one",
+                    "description": "Fields to retrieve the data in a dictionary. e.g.  settings.index.provided_name as settings['index']['provided_name']"
+                },
+                {
+                    "flags": [
+                        "--flat"
+                    ],
+                    "name": "flat",
+                    "type": "boolean",
+                    "required": false,
+                    "default": false,
+                    "choices": null,
+                    "nargs": 0,
+                    "description": null
+                },
+                {
+                    "flags": [
+                        "-v",
+                        "--verbose"
+                    ],
+                    "name": "verbose",
+                    "type": "boolean",
+                    "required": false,
+                    "default": false,
+                    "choices": null,
+                    "nargs": 0,
+                    "description": "Enable verbose logging"
+                },
+                {
+                    "flags": [
+                        "-d",
+                        "--debug"
+                    ],
+                    "name": "debug",
+                    "type": "boolean",
+                    "required": false,
+                    "default": false,
+                    "choices": null,
+                    "nargs": 0,
+                    "description": "Enable debug logging"
+                },
+                {
+                    "flags": [
+                        "-j",
+                        "--json"
+                    ],
+                    "name": "json",
+                    "type": "boolean",
+                    "required": false,
+                    "default": false,
+                    "choices": null,
+                    "nargs": 0,
+                    "description": "Output in JSON format"
+                },
+                {
+                    "flags": [],
+                    "name": "kind",
+                    "type": "str",
+                    "required": true,
+                    "default": null,
+                    "choices": [
+                        "repo",
+                        "snap",
+                        "index",
+                        "ilm"
+                    ],
+                    "nargs": "one",
+                    "description": null
+                }
+            ],
+            "commands": {},
+            "metadata": {
+                "risk": "read"
+            }
+        },
+        "repo": {
+            "program": "eskit repo",
+            "description": "Repository commands.",
+            "arguments": [
+                {
+                    "flags": [
+                        "-c",
+                        "--config"
+                    ],
+                    "name": "config",
+                    "type": "str",
+                    "required": false,
+                    "default": ".eskit/config.json",
+                    "choices": null,
+                    "nargs": "one",
+                    "description": "Set config file. Optional as default value is .eskit/config.json"
+                },
+                {
+                    "flags": [
+                        "--host"
+                    ],
+                    "name": "host",
+                    "type": "str",
+                    "required": false,
+                    "default": null,
+                    "choices": null,
+                    "nargs": "one",
+                    "description": "Specify which host to operate. Optional if found in .current_host file."
+                },
+                {
+                    "flags": [
+                        "-v",
+                        "--verbose"
+                    ],
+                    "name": "verbose",
+                    "type": "boolean",
+                    "required": false,
+                    "default": false,
+                    "choices": null,
+                    "nargs": 0,
+                    "description": "Enable verbose logging"
+                },
+                {
+                    "flags": [
+                        "-d",
+                        "--debug"
+                    ],
+                    "name": "debug",
+                    "type": "boolean",
+                    "required": false,
+                    "default": false,
+                    "choices": null,
+                    "nargs": 0,
+                    "description": "Enable debug logging"
+                },
+                {
+                    "flags": [
+                        "-j",
+                        "--json"
+                    ],
+                    "name": "json",
+                    "type": "boolean",
+                    "required": false,
+                    "default": false,
+                    "choices": null,
+                    "nargs": 0,
+                    "description": "Output in JSON format"
+                }
+            ],
+            "commands": {
+                "show": {
+                    "program": "eskit repo show",
+                    "description": "Show repository details.",
+                    "arguments": [
+                        {
+                            "flags": [
+                                "-c",
+                                "--config"
+                            ],
+                            "name": "config",
+                            "type": "str",
+                            "required": false,
+                            "default": ".eskit/config.json",
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Set config file. Optional as default value is .eskit/config.json"
+                        },
+                        {
+                            "flags": [
+                                "--host"
+                            ],
+                            "name": "host",
+                            "type": "str",
+                            "required": false,
+                            "default": null,
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Specify which host to operate. Optional if found in .current_host file."
+                        },
+                        {
+                            "flags": [],
+                            "name": "name",
+                            "type": "str",
+                            "required": true,
+                            "default": null,
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Name of repo or snapshot. <repo> or <repo>/<snapshot>"
+                        },
+                        {
+                            "flags": [
+                                "--view"
+                            ],
+                            "name": "view",
+                            "type": "str",
+                            "required": false,
+                            "default": [],
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Name of view defined in the config."
+                        },
+                        {
+                            "flags": [
+                                "--fields"
+                            ],
+                            "name": "fields",
+                            "type": "str",
+                            "required": false,
+                            "default": null,
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Fields to retrieve the data in a dictionary. e.g.  settings.index.provided_name as settings['index']['provided_name']"
+                        },
+                        {
+                            "flags": [
+                                "--flat"
+                            ],
+                            "name": "flat",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": null
+                        },
+                        {
+                            "flags": [
+                                "-v",
+                                "--verbose"
+                            ],
+                            "name": "verbose",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Enable verbose logging"
+                        },
+                        {
+                            "flags": [
+                                "-d",
+                                "--debug"
+                            ],
+                            "name": "debug",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Enable debug logging"
+                        },
+                        {
+                            "flags": [
+                                "-j",
+                                "--json"
+                            ],
+                            "name": "json",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Output in JSON format"
+                        }
+                    ],
+                    "commands": {},
+                    "metadata": {
+                        "risk": "read"
+                    }
+                },
+                "create": {
+                    "program": "eskit repo create",
+                    "description": "Create repository.",
+                    "arguments": [
+                        {
+                            "flags": [
+                                "-c",
+                                "--config"
+                            ],
+                            "name": "config",
+                            "type": "str",
+                            "required": false,
+                            "default": ".eskit/config.json",
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Set config file. Optional as default value is .eskit/config.json"
+                        },
+                        {
+                            "flags": [
+                                "--host"
+                            ],
+                            "name": "host",
+                            "type": "str",
+                            "required": false,
+                            "default": null,
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Specify which host to operate. Optional if found in .current_host file."
+                        },
+                        {
+                            "flags": [],
+                            "name": "name",
+                            "type": "str",
+                            "required": true,
+                            "default": null,
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Name of repo or snapshot. <repo> or <repo>/<snapshot>"
+                        },
+                        {
+                            "flags": [
+                                "-dry",
+                                "--dry-run"
+                            ],
+                            "name": "dry_run",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Shows only request/command w/o executing it"
+                        },
+                        {
+                            "flags": [
+                                "--push"
+                            ],
+                            "name": "push",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Used to confirm to execute a request/command that would modify resources on push-protected host"
+                        },
+                        {
+                            "flags": [
+                                "-v",
+                                "--verbose"
+                            ],
+                            "name": "verbose",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Enable verbose logging"
+                        },
+                        {
+                            "flags": [
+                                "-d",
+                                "--debug"
+                            ],
+                            "name": "debug",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Enable debug logging"
+                        },
+                        {
+                            "flags": [
+                                "-j",
+                                "--json"
+                            ],
+                            "name": "json",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Output in JSON format"
+                        },
+                        {
+                            "flags": [
+                                "--type"
+                            ],
+                            "name": "type",
+                            "type": "str",
+                            "required": false,
+                            "default": "fs",
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Type of repository. e.g. fs"
+                        },
+                        {
+                            "flags": [
+                                "--location"
+                            ],
+                            "name": "location",
+                            "type": "str",
+                            "required": true,
+                            "default": null,
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Location of the repository to be created. A path to a folder."
+                        }
+                    ],
+                    "commands": {},
+                    "metadata": {
+                        "risk": "write"
+                    }
+                },
+                "delete": {
+                    "program": "eskit repo delete",
+                    "description": "Delete repository.",
+                    "arguments": [
+                        {
+                            "flags": [
+                                "-c",
+                                "--config"
+                            ],
+                            "name": "config",
+                            "type": "str",
+                            "required": false,
+                            "default": ".eskit/config.json",
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Set config file. Optional as default value is .eskit/config.json"
+                        },
+                        {
+                            "flags": [
+                                "--host"
+                            ],
+                            "name": "host",
+                            "type": "str",
+                            "required": false,
+                            "default": null,
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Specify which host to operate. Optional if found in .current_host file."
+                        },
+                        {
+                            "flags": [],
+                            "name": "name",
+                            "type": "str",
+                            "required": true,
+                            "default": null,
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Name of repo or snapshot. <repo> or <repo>/<snapshot>"
+                        },
+                        {
+                            "flags": [
+                                "-dry",
+                                "--dry-run"
+                            ],
+                            "name": "dry_run",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Shows only request/command w/o executing it"
+                        },
+                        {
+                            "flags": [
+                                "--push"
+                            ],
+                            "name": "push",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Used to confirm to execute a request/command that would modify resources on push-protected host"
+                        },
+                        {
+                            "flags": [
+                                "--force"
+                            ],
+                            "name": "force",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Administrative override for safety checks. Use only when the user explicitly requests --force. Do not use it as a substitute for user confirmation."
+                        }
+                    ],
+                    "commands": {},
+                    "metadata": {
+                        "risk": "destructive",
+                        "confirmation": "The user must explicitly confirm the action before execution."
+                    }
+                }
+            }
+        },
+        "snap": {
+            "program": "eskit snap",
+            "description": "Snapshot commands",
+            "arguments": [
+                {
+                    "flags": [
+                        "-c",
+                        "--config"
+                    ],
+                    "name": "config",
+                    "type": "str",
+                    "required": false,
+                    "default": ".eskit/config.json",
+                    "choices": null,
+                    "nargs": "one",
+                    "description": "Set config file. Optional as default value is .eskit/config.json"
+                },
+                {
+                    "flags": [
+                        "--host"
+                    ],
+                    "name": "host",
+                    "type": "str",
+                    "required": false,
+                    "default": null,
+                    "choices": null,
+                    "nargs": "one",
+                    "description": "Specify which host to operate. Optional if found in .current_host file."
+                },
+                {
+                    "flags": [
+                        "-v",
+                        "--verbose"
+                    ],
+                    "name": "verbose",
+                    "type": "boolean",
+                    "required": false,
+                    "default": false,
+                    "choices": null,
+                    "nargs": 0,
+                    "description": "Enable verbose logging"
+                },
+                {
+                    "flags": [
+                        "-d",
+                        "--debug"
+                    ],
+                    "name": "debug",
+                    "type": "boolean",
+                    "required": false,
+                    "default": false,
+                    "choices": null,
+                    "nargs": 0,
+                    "description": "Enable debug logging"
+                },
+                {
+                    "flags": [
+                        "-j",
+                        "--json"
+                    ],
+                    "name": "json",
+                    "type": "boolean",
+                    "required": false,
+                    "default": false,
+                    "choices": null,
+                    "nargs": 0,
+                    "description": "Output in JSON format"
+                }
+            ],
+            "commands": {
+                "create": {
+                    "program": "eskit snap create",
+                    "description": "Create a snapshot.",
+                    "arguments": [
+                        {
+                            "flags": [
+                                "-c",
+                                "--config"
+                            ],
+                            "name": "config",
+                            "type": "str",
+                            "required": false,
+                            "default": ".eskit/config.json",
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Set config file. Optional as default value is .eskit/config.json"
+                        },
+                        {
+                            "flags": [
+                                "--host"
+                            ],
+                            "name": "host",
+                            "type": "str",
+                            "required": false,
+                            "default": null,
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Specify which host to operate. Optional if found in .current_host file."
+                        },
+                        {
+                            "flags": [],
+                            "name": "name",
+                            "type": "str",
+                            "required": true,
+                            "default": null,
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Name to snapshot. must be <repo>/<snapshot>"
+                        },
+                        {
+                            "flags": [
+                                "--index"
+                            ],
+                            "name": "index",
+                            "type": "str",
+                            "required": false,
+                            "default": null,
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Index to add to the snapshot. * is allowed as a wildcard. Multiple indices allowed by comma separated."
+                        },
+                        {
+                            "flags": [
+                                "--include_global_state"
+                            ],
+                            "name": "include_global_state",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": null
+                        },
+                        {
+                            "flags": [
+                                "--ignore_unavailable"
+                            ],
+                            "name": "ignore_unavailable",
+                            "type": "bool",
+                            "required": false,
+                            "default": true,
+                            "choices": null,
+                            "nargs": "one",
+                            "description": null
+                        },
+                        {
+                            "flags": [
+                                "-dry",
+                                "--dry-run"
+                            ],
+                            "name": "dry_run",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Shows only request/command w/o executing it"
+                        },
+                        {
+                            "flags": [
+                                "--push"
+                            ],
+                            "name": "push",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Used to confirm to execute a request/command that would modify resources on push-protected host"
+                        },
+                        {
+                            "flags": [
+                                "-v",
+                                "--verbose"
+                            ],
+                            "name": "verbose",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Enable verbose logging"
+                        },
+                        {
+                            "flags": [
+                                "-d",
+                                "--debug"
+                            ],
+                            "name": "debug",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Enable debug logging"
+                        },
+                        {
+                            "flags": [
+                                "-j",
+                                "--json"
+                            ],
+                            "name": "json",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Output in JSON format"
+                        },
+                        {
+                            "flags": [
+                                "--wait"
+                            ],
+                            "name": "wait",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Wait for snapshot creation to be completed."
+                        }
+                    ],
+                    "commands": {},
+                    "metadata": {
+                        "risk": "write"
+                    }
+                },
+                "delete": {
+                    "program": "eskit snap delete",
+                    "description": "Delete a snapshot.",
+                    "arguments": [
+                        {
+                            "flags": [
+                                "-c",
+                                "--config"
+                            ],
+                            "name": "config",
+                            "type": "str",
+                            "required": false,
+                            "default": ".eskit/config.json",
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Set config file. Optional as default value is .eskit/config.json"
+                        },
+                        {
+                            "flags": [
+                                "--host"
+                            ],
+                            "name": "host",
+                            "type": "str",
+                            "required": false,
+                            "default": null,
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Specify which host to operate. Optional if found in .current_host file."
+                        },
+                        {
+                            "flags": [],
+                            "name": "name",
+                            "type": "str",
+                            "required": true,
+                            "default": null,
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Name to snapshot. must be <repo>/<snapshot>"
+                        },
+                        {
+                            "flags": [
+                                "-dry",
+                                "--dry-run"
+                            ],
+                            "name": "dry_run",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Shows only request/command w/o executing it"
+                        },
+                        {
+                            "flags": [
+                                "--push"
+                            ],
+                            "name": "push",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Used to confirm to execute a request/command that would modify resources on push-protected host"
+                        },
+                        {
+                            "flags": [
+                                "--force"
+                            ],
+                            "name": "force",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Administrative override for safety checks. Use only when the user explicitly requests --force. Do not use it as a substitute for user confirmation."
+                        },
+                        {
+                            "flags": [
+                                "-v",
+                                "--verbose"
+                            ],
+                            "name": "verbose",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Enable verbose logging"
+                        },
+                        {
+                            "flags": [
+                                "-d",
+                                "--debug"
+                            ],
+                            "name": "debug",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Enable debug logging"
+                        },
+                        {
+                            "flags": [
+                                "-j",
+                                "--json"
+                            ],
+                            "name": "json",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Output in JSON format"
+                        }
+                    ],
+                    "commands": {},
+                    "metadata": {
+                        "risk": "destructive",
+                        "confirmation": "The user must explicitly confirm the action before execution."
+                    }
+                },
+                "restore": {
+                    "program": "eskit snap restore",
+                    "description": "Restore a snapshot.",
+                    "arguments": [
+                        {
+                            "flags": [
+                                "-c",
+                                "--config"
+                            ],
+                            "name": "config",
+                            "type": "str",
+                            "required": false,
+                            "default": ".eskit/config.json",
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Set config file. Optional as default value is .eskit/config.json"
+                        },
+                        {
+                            "flags": [
+                                "--host"
+                            ],
+                            "name": "host",
+                            "type": "str",
+                            "required": false,
+                            "default": null,
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Specify which host to operate. Optional if found in .current_host file."
+                        },
+                        {
+                            "flags": [],
+                            "name": "name",
+                            "type": "str",
+                            "required": true,
+                            "default": null,
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Name to snapshot. must be <repo>/<snapshot>"
+                        },
+                        {
+                            "flags": [
+                                "--index"
+                            ],
+                            "name": "index",
+                            "type": "str",
+                            "required": false,
+                            "default": null,
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Index to add to the snapshot. * is allowed as a wildcard. Multiple indices allowed by comma separated."
+                        },
+                        {
+                            "flags": [
+                                "--include_global_state"
+                            ],
+                            "name": "include_global_state",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": null
+                        },
+                        {
+                            "flags": [
+                                "--ignore_unavailable"
+                            ],
+                            "name": "ignore_unavailable",
+                            "type": "bool",
+                            "required": false,
+                            "default": true,
+                            "choices": null,
+                            "nargs": "one",
+                            "description": null
+                        },
+                        {
+                            "flags": [
+                                "-dry",
+                                "--dry-run"
+                            ],
+                            "name": "dry_run",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Shows only request/command w/o executing it"
+                        },
+                        {
+                            "flags": [
+                                "--push"
+                            ],
+                            "name": "push",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Used to confirm to execute a request/command that would modify resources on push-protected host"
+                        },
+                        {
+                            "flags": [
+                                "-v",
+                                "--verbose"
+                            ],
+                            "name": "verbose",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Enable verbose logging"
+                        },
+                        {
+                            "flags": [
+                                "-d",
+                                "--debug"
+                            ],
+                            "name": "debug",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Enable debug logging"
+                        },
+                        {
+                            "flags": [
+                                "-j",
+                                "--json"
+                            ],
+                            "name": "json",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Output in JSON format"
+                        },
+                        {
+                            "flags": [
+                                "--wait"
+                            ],
+                            "name": "wait",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Wait until restoratio is done."
+                        },
+                        {
+                            "flags": [
+                                "--ilm"
+                            ],
+                            "name": "ilm",
+                            "type": "str",
+                            "required": false,
+                            "default": null,
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Override ILM policy."
+                        },
+                        {
+                            "flags": [
+                                "--remove-ilm"
+                            ],
+                            "name": "remove_ilm",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Remove the original ILM when restoring."
+                        }
+                    ],
+                    "commands": {},
+                    "metadata": {
+                        "risk": "write"
+                    }
+                },
+                "show": {
+                    "program": "eskit snap show",
+                    "description": "Show a snapshot details.",
+                    "arguments": [
+                        {
+                            "flags": [
+                                "-c",
+                                "--config"
+                            ],
+                            "name": "config",
+                            "type": "str",
+                            "required": false,
+                            "default": ".eskit/config.json",
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Set config file. Optional as default value is .eskit/config.json"
+                        },
+                        {
+                            "flags": [
+                                "--host"
+                            ],
+                            "name": "host",
+                            "type": "str",
+                            "required": false,
+                            "default": null,
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Specify which host to operate. Optional if found in .current_host file."
+                        },
+                        {
+                            "flags": [],
+                            "name": "name",
+                            "type": "str",
+                            "required": true,
+                            "default": null,
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Name to snapshot. must be <repo>/<snapshot>"
+                        },
+                        {
+                            "flags": [
+                                "--view"
+                            ],
+                            "name": "view",
+                            "type": "str",
+                            "required": false,
+                            "default": [],
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Name of view defined in the config."
+                        },
+                        {
+                            "flags": [
+                                "--fields"
+                            ],
+                            "name": "fields",
+                            "type": "str",
+                            "required": false,
+                            "default": null,
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Fields to retrieve the data in a dictionary. e.g.  settings.index.provided_name as settings['index']['provided_name']"
+                        },
+                        {
+                            "flags": [
+                                "--flat"
+                            ],
+                            "name": "flat",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": null
+                        },
+                        {
+                            "flags": [
+                                "-v",
+                                "--verbose"
+                            ],
+                            "name": "verbose",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Enable verbose logging"
+                        },
+                        {
+                            "flags": [
+                                "-d",
+                                "--debug"
+                            ],
+                            "name": "debug",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Enable debug logging"
+                        },
+                        {
+                            "flags": [
+                                "-j",
+                                "--json"
+                            ],
+                            "name": "json",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Output in JSON format"
+                        }
+                    ],
+                    "commands": {},
+                    "metadata": {
+                        "risk": "read"
+                    }
+                }
+            }
+        },
+        "index": {
+            "program": "eskit index",
+            "description": "Index commands.",
+            "arguments": [],
+            "commands": {
+                "delete": {
+                    "program": "eskit index delete",
+                    "description": "Delete an index.",
+                    "arguments": [
+                        {
+                            "flags": [
+                                "-c",
+                                "--config"
+                            ],
+                            "name": "config",
+                            "type": "str",
+                            "required": false,
+                            "default": ".eskit/config.json",
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Set config file. Optional as default value is .eskit/config.json"
+                        },
+                        {
+                            "flags": [
+                                "--host"
+                            ],
+                            "name": "host",
+                            "type": "str",
+                            "required": false,
+                            "default": null,
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Specify which host to operate. Optional if found in .current_host file."
+                        },
+                        {
+                            "flags": [],
+                            "name": "index",
+                            "type": "str",
+                            "required": true,
+                            "default": null,
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Name of an index."
+                        },
+                        {
+                            "flags": [
+                                "-dry",
+                                "--dry-run"
+                            ],
+                            "name": "dry_run",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Shows only request/command w/o executing it"
+                        },
+                        {
+                            "flags": [
+                                "--push"
+                            ],
+                            "name": "push",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Used to confirm to execute a request/command that would modify resources on push-protected host"
+                        },
+                        {
+                            "flags": [
+                                "--force"
+                            ],
+                            "name": "force",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Administrative override for safety checks. Use only when the user explicitly requests --force. Do not use it as a substitute for user confirmation."
+                        },
+                        {
+                            "flags": [
+                                "-v",
+                                "--verbose"
+                            ],
+                            "name": "verbose",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Enable verbose logging"
+                        },
+                        {
+                            "flags": [
+                                "-d",
+                                "--debug"
+                            ],
+                            "name": "debug",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Enable debug logging"
+                        },
+                        {
+                            "flags": [
+                                "-j",
+                                "--json"
+                            ],
+                            "name": "json",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Output in JSON format"
+                        }
+                    ],
+                    "commands": {},
+                    "metadata": {
+                        "risk": "destructive",
+                        "confirmation": "The user must explicitly confirm the action before execution."
+                    }
+                },
+                "create": {
+                    "program": "eskit index create",
+                    "description": "Create an index.",
+                    "arguments": [
+                        {
+                            "flags": [
+                                "-c",
+                                "--config"
+                            ],
+                            "name": "config",
+                            "type": "str",
+                            "required": false,
+                            "default": ".eskit/config.json",
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Set config file. Optional as default value is .eskit/config.json"
+                        },
+                        {
+                            "flags": [
+                                "--host"
+                            ],
+                            "name": "host",
+                            "type": "str",
+                            "required": false,
+                            "default": null,
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Specify which host to operate. Optional if found in .current_host file."
+                        },
+                        {
+                            "flags": [],
+                            "name": "index",
+                            "type": "str",
+                            "required": true,
+                            "default": null,
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Name of an index."
+                        },
+                        {
+                            "flags": [
+                                "-m",
+                                "--mapping"
+                            ],
+                            "name": "mapping",
+                            "type": "str",
+                            "required": false,
+                            "default": null,
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Name of mapping in the config."
+                        },
+                        {
+                            "flags": [
+                                "-dry",
+                                "--dry-run"
+                            ],
+                            "name": "dry_run",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Shows only request/command w/o executing it"
+                        },
+                        {
+                            "flags": [
+                                "--push"
+                            ],
+                            "name": "push",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Used to confirm to execute a request/command that would modify resources on push-protected host"
+                        },
+                        {
+                            "flags": [
+                                "-v",
+                                "--verbose"
+                            ],
+                            "name": "verbose",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Enable verbose logging"
+                        },
+                        {
+                            "flags": [
+                                "-d",
+                                "--debug"
+                            ],
+                            "name": "debug",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Enable debug logging"
+                        },
+                        {
+                            "flags": [
+                                "-j",
+                                "--json"
+                            ],
+                            "name": "json",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Output in JSON format"
+                        }
+                    ],
+                    "commands": {},
+                    "metadata": {
+                        "risk": "write"
+                    }
+                },
+                "show": {
+                    "program": "eskit index show",
+                    "description": "Show an index.",
+                    "arguments": [
+                        {
+                            "flags": [
+                                "-c",
+                                "--config"
+                            ],
+                            "name": "config",
+                            "type": "str",
+                            "required": false,
+                            "default": ".eskit/config.json",
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Set config file. Optional as default value is .eskit/config.json"
+                        },
+                        {
+                            "flags": [
+                                "--host"
+                            ],
+                            "name": "host",
+                            "type": "str",
+                            "required": false,
+                            "default": null,
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Specify which host to operate. Optional if found in .current_host file."
+                        },
+                        {
+                            "flags": [],
+                            "name": "index",
+                            "type": "str",
+                            "required": true,
+                            "default": null,
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Name of an index."
+                        },
+                        {
+                            "flags": [
+                                "--view"
+                            ],
+                            "name": "view",
+                            "type": "str",
+                            "required": false,
+                            "default": [],
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Name of view defined in the config."
+                        },
+                        {
+                            "flags": [
+                                "--fields"
+                            ],
+                            "name": "fields",
+                            "type": "str",
+                            "required": false,
+                            "default": null,
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Fields to retrieve the data in a dictionary. e.g.  settings.index.provided_name as settings['index']['provided_name']"
+                        },
+                        {
+                            "flags": [
+                                "--flat"
+                            ],
+                            "name": "flat",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": null
+                        },
+                        {
+                            "flags": [
+                                "-v",
+                                "--verbose"
+                            ],
+                            "name": "verbose",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Enable verbose logging"
+                        },
+                        {
+                            "flags": [
+                                "-d",
+                                "--debug"
+                            ],
+                            "name": "debug",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Enable debug logging"
+                        },
+                        {
+                            "flags": [
+                                "-j",
+                                "--json"
+                            ],
+                            "name": "json",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Output in JSON format"
+                        }
+                    ],
+                    "commands": {},
+                    "metadata": {
+                        "risk": "read"
+                    }
+                },
+                "status": {
+                    "program": "eskit index status",
+                    "description": "Show a recovery status of an index.",
+                    "arguments": [
+                        {
+                            "flags": [
+                                "-c",
+                                "--config"
+                            ],
+                            "name": "config",
+                            "type": "str",
+                            "required": false,
+                            "default": ".eskit/config.json",
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Set config file. Optional as default value is .eskit/config.json"
+                        },
+                        {
+                            "flags": [
+                                "--host"
+                            ],
+                            "name": "host",
+                            "type": "str",
+                            "required": false,
+                            "default": null,
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Specify which host to operate. Optional if found in .current_host file."
+                        },
+                        {
+                            "flags": [],
+                            "name": "index",
+                            "type": "str",
+                            "required": true,
+                            "default": null,
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Name of an index."
+                        },
+                        {
+                            "flags": [
+                                "--view"
+                            ],
+                            "name": "view",
+                            "type": "str",
+                            "required": false,
+                            "default": [],
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Name of view defined in the config."
+                        },
+                        {
+                            "flags": [
+                                "--fields"
+                            ],
+                            "name": "fields",
+                            "type": "str",
+                            "required": false,
+                            "default": null,
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Fields to retrieve the data in a dictionary. e.g.  settings.index.provided_name as settings['index']['provided_name']"
+                        },
+                        {
+                            "flags": [
+                                "--flat"
+                            ],
+                            "name": "flat",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": null
+                        },
+                        {
+                            "flags": [
+                                "-v",
+                                "--verbose"
+                            ],
+                            "name": "verbose",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Enable verbose logging"
+                        },
+                        {
+                            "flags": [
+                                "-d",
+                                "--debug"
+                            ],
+                            "name": "debug",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Enable debug logging"
+                        },
+                        {
+                            "flags": [
+                                "-j",
+                                "--json"
+                            ],
+                            "name": "json",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Output in JSON format"
+                        }
+                    ],
+                    "commands": {},
+                    "metadata": {
+                        "risk": "read"
+                    }
+                }
+            }
+        },
+        "reindex": {
+            "program": "eskit reindex",
+            "description": "Reindex command.",
+            "arguments": [
+                {
+                    "flags": [
+                        "-c",
+                        "--config"
+                    ],
+                    "name": "config",
+                    "type": "str",
+                    "required": false,
+                    "default": ".eskit/config.json",
+                    "choices": null,
+                    "nargs": "one",
+                    "description": "Set config file. Optional as default value is .eskit/config.json"
+                },
+                {
+                    "flags": [
+                        "--host"
+                    ],
+                    "name": "host",
+                    "type": "str",
+                    "required": false,
+                    "default": null,
+                    "choices": null,
+                    "nargs": "one",
+                    "description": "Specify which host to operate. Optional if found in .current_host file."
+                },
+                {
+                    "flags": [
+                        "-m",
+                        "--mapping"
+                    ],
+                    "name": "mapping",
+                    "type": "str",
+                    "required": false,
+                    "default": null,
+                    "choices": null,
+                    "nargs": "one",
+                    "description": "Name of mapping in the config."
+                },
+                {
+                    "flags": [
+                        "-dry",
+                        "--dry-run"
+                    ],
+                    "name": "dry_run",
+                    "type": "boolean",
+                    "required": false,
+                    "default": false,
+                    "choices": null,
+                    "nargs": 0,
+                    "description": "Shows only request/command w/o executing it"
+                },
+                {
+                    "flags": [
+                        "--push"
+                    ],
+                    "name": "push",
+                    "type": "boolean",
+                    "required": false,
+                    "default": false,
+                    "choices": null,
+                    "nargs": 0,
+                    "description": "Used to confirm to execute a request/command that would modify resources on push-protected host"
+                },
+                {
+                    "flags": [
+                        "-v",
+                        "--verbose"
+                    ],
+                    "name": "verbose",
+                    "type": "boolean",
+                    "required": false,
+                    "default": false,
+                    "choices": null,
+                    "nargs": 0,
+                    "description": "Enable verbose logging"
+                },
+                {
+                    "flags": [
+                        "-d",
+                        "--debug"
+                    ],
+                    "name": "debug",
+                    "type": "boolean",
+                    "required": false,
+                    "default": false,
+                    "choices": null,
+                    "nargs": 0,
+                    "description": "Enable debug logging"
+                },
+                {
+                    "flags": [
+                        "-j",
+                        "--json"
+                    ],
+                    "name": "json",
+                    "type": "boolean",
+                    "required": false,
+                    "default": false,
+                    "choices": null,
+                    "nargs": 0,
+                    "description": "Output in JSON format"
+                },
+                {
+                    "flags": [],
+                    "name": "src",
+                    "type": "str",
+                    "required": true,
+                    "default": null,
+                    "choices": null,
+                    "nargs": "one",
+                    "description": "Source index. it can be multiple by comma separated or * wild card can be used"
+                },
+                {
+                    "flags": [],
+                    "name": "dst",
+                    "type": "str",
+                    "required": true,
+                    "default": null,
+                    "choices": null,
+                    "nargs": "one",
+                    "description": "destination index"
+                }
+            ],
+            "commands": {},
+            "metadata": {
+                "risk": "write"
+            }
+        },
+        "mapping": {
+            "program": "eskit mapping",
+            "description": "Shows mappings in the config.",
+            "arguments": [
+                {
+                    "flags": [
+                        "-c",
+                        "--config"
+                    ],
+                    "name": "config",
+                    "type": "str",
+                    "required": false,
+                    "default": ".eskit/config.json",
+                    "choices": null,
+                    "nargs": "one",
+                    "description": "Set config file. Optional as default value is .eskit/config.json"
+                },
+                {
+                    "flags": [
+                        "--host"
+                    ],
+                    "name": "host",
+                    "type": "str",
+                    "required": false,
+                    "default": null,
+                    "choices": null,
+                    "nargs": "one",
+                    "description": "Specify which host to operate. Optional if found in .current_host file."
+                },
+                {
+                    "flags": [
+                        "-v",
+                        "--verbose"
+                    ],
+                    "name": "verbose",
+                    "type": "boolean",
+                    "required": false,
+                    "default": false,
+                    "choices": null,
+                    "nargs": 0,
+                    "description": "Enable verbose logging"
+                },
+                {
+                    "flags": [
+                        "-d",
+                        "--debug"
+                    ],
+                    "name": "debug",
+                    "type": "boolean",
+                    "required": false,
+                    "default": false,
+                    "choices": null,
+                    "nargs": 0,
+                    "description": "Enable debug logging"
+                },
+                {
+                    "flags": [
+                        "-j",
+                        "--json"
+                    ],
+                    "name": "json",
+                    "type": "boolean",
+                    "required": false,
+                    "default": false,
+                    "choices": null,
+                    "nargs": 0,
+                    "description": "Output in JSON format"
+                }
+            ],
+            "commands": {},
+            "metadata": {
+                "risk": "read"
+            }
+        },
+        "task": {
+            "program": "eskit task",
+            "description": "Elasticsearch Task Commands.",
+            "arguments": [],
+            "commands": {
+                "get": {
+                    "program": "eskit task get",
+                    "description": "Get task status on elasticsearch.",
+                    "arguments": [
+                        {
+                            "flags": [
+                                "-c",
+                                "--config"
+                            ],
+                            "name": "config",
+                            "type": "str",
+                            "required": false,
+                            "default": ".eskit/config.json",
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Set config file. Optional as default value is .eskit/config.json"
+                        },
+                        {
+                            "flags": [
+                                "--host"
+                            ],
+                            "name": "host",
+                            "type": "str",
+                            "required": false,
+                            "default": null,
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Specify which host to operate. Optional if found in .current_host file."
+                        },
+                        {
+                            "flags": [
+                                "-v",
+                                "--verbose"
+                            ],
+                            "name": "verbose",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Enable verbose logging"
+                        },
+                        {
+                            "flags": [
+                                "-d",
+                                "--debug"
+                            ],
+                            "name": "debug",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Enable debug logging"
+                        },
+                        {
+                            "flags": [
+                                "-j",
+                                "--json"
+                            ],
+                            "name": "json",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Output in JSON format"
+                        },
+                        {
+                            "flags": [],
+                            "name": "task_id",
+                            "type": "str",
+                            "required": true,
+                            "default": null,
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "elasticsearch task id"
+                        }
+                    ],
+                    "commands": {},
+                    "metadata": {
+                        "risk": "read"
+                    }
+                }
+            }
+        },
+        "job": {
+            "program": "eskit job",
+            "description": "Job related commands.",
+            "arguments": [],
+            "commands": {
+                "list": {
+                    "program": "eskit job list",
+                    "description": "List jobs.",
+                    "arguments": [
+                        {
+                            "flags": [
+                                "-c",
+                                "--config"
+                            ],
+                            "name": "config",
+                            "type": "str",
+                            "required": false,
+                            "default": ".eskit/config.json",
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Set config file. Optional as default value is .eskit/config.json"
+                        },
+                        {
+                            "flags": [
+                                "--host"
+                            ],
+                            "name": "host",
+                            "type": "str",
+                            "required": false,
+                            "default": null,
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Specify which host to operate. Optional if found in .current_host file."
+                        },
+                        {
+                            "flags": [
+                                "--view"
+                            ],
+                            "name": "view",
+                            "type": "str",
+                            "required": false,
+                            "default": [],
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Name of view defined in the config."
+                        },
+                        {
+                            "flags": [
+                                "--fields"
+                            ],
+                            "name": "fields",
+                            "type": "str",
+                            "required": false,
+                            "default": null,
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Fields to retrieve the data in a dictionary. e.g.  settings.index.provided_name as settings['index']['provided_name']"
+                        },
+                        {
+                            "flags": [
+                                "--flat"
+                            ],
+                            "name": "flat",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": null
+                        },
+                        {
+                            "flags": [
+                                "-v",
+                                "--verbose"
+                            ],
+                            "name": "verbose",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Enable verbose logging"
+                        },
+                        {
+                            "flags": [
+                                "-d",
+                                "--debug"
+                            ],
+                            "name": "debug",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Enable debug logging"
+                        },
+                        {
+                            "flags": [
+                                "-j",
+                                "--json"
+                            ],
+                            "name": "json",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Output in JSON format"
+                        },
+                        {
+                            "flags": [
+                                "--local"
+                            ],
+                            "name": "local",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Show local jobs in .eskit/jobs generated by archive commands."
+                        }
+                    ],
+                    "commands": {},
+                    "metadata": {
+                        "risk": "read"
+                    }
+                },
+                "show": {
+                    "program": "eskit job show",
+                    "description": "Show job details.",
+                    "arguments": [
+                        {
+                            "flags": [
+                                "-c",
+                                "--config"
+                            ],
+                            "name": "config",
+                            "type": "str",
+                            "required": false,
+                            "default": ".eskit/config.json",
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Set config file. Optional as default value is .eskit/config.json"
+                        },
+                        {
+                            "flags": [
+                                "--host"
+                            ],
+                            "name": "host",
+                            "type": "str",
+                            "required": false,
+                            "default": null,
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Specify which host to operate. Optional if found in .current_host file."
+                        },
+                        {
+                            "flags": [
+                                "--view"
+                            ],
+                            "name": "view",
+                            "type": "str",
+                            "required": false,
+                            "default": [],
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Name of view defined in the config."
+                        },
+                        {
+                            "flags": [
+                                "--fields"
+                            ],
+                            "name": "fields",
+                            "type": "str",
+                            "required": false,
+                            "default": null,
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Fields to retrieve the data in a dictionary. e.g.  settings.index.provided_name as settings['index']['provided_name']"
+                        },
+                        {
+                            "flags": [
+                                "--flat"
+                            ],
+                            "name": "flat",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": null
+                        },
+                        {
+                            "flags": [
+                                "-v",
+                                "--verbose"
+                            ],
+                            "name": "verbose",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Enable verbose logging"
+                        },
+                        {
+                            "flags": [
+                                "-d",
+                                "--debug"
+                            ],
+                            "name": "debug",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Enable debug logging"
+                        },
+                        {
+                            "flags": [
+                                "-j",
+                                "--json"
+                            ],
+                            "name": "json",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Output in JSON format"
+                        },
+                        {
+                            "flags": [],
+                            "name": "job_search_id",
+                            "type": "str",
+                            "required": true,
+                            "default": null,
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Job search id / job output file name in the jobs cache"
+                        }
+                    ],
+                    "commands": {}
+                }
+            }
+        },
+        "status": {
+            "program": "eskit status",
+            "description": "Show current ESKit status.",
+            "arguments": [
+                {
+                    "flags": [
+                        "-c",
+                        "--config"
+                    ],
+                    "name": "config",
+                    "type": "str",
+                    "required": false,
+                    "default": ".eskit/config.json",
+                    "choices": null,
+                    "nargs": "one",
+                    "description": "Set config file. Optional as default value is .eskit/config.json"
+                },
+                {
+                    "flags": [
+                        "--host"
+                    ],
+                    "name": "host",
+                    "type": "str",
+                    "required": false,
+                    "default": null,
+                    "choices": null,
+                    "nargs": "one",
+                    "description": "Specify which host to operate. Optional if found in .current_host file."
+                },
+                {
+                    "flags": [
+                        "-v",
+                        "--verbose"
+                    ],
+                    "name": "verbose",
+                    "type": "boolean",
+                    "required": false,
+                    "default": false,
+                    "choices": null,
+                    "nargs": 0,
+                    "description": "Enable verbose logging"
+                },
+                {
+                    "flags": [
+                        "-d",
+                        "--debug"
+                    ],
+                    "name": "debug",
+                    "type": "boolean",
+                    "required": false,
+                    "default": false,
+                    "choices": null,
+                    "nargs": 0,
+                    "description": "Enable debug logging"
+                },
+                {
+                    "flags": [
+                        "-j",
+                        "--json"
+                    ],
+                    "name": "json",
+                    "type": "boolean",
+                    "required": false,
+                    "default": false,
+                    "choices": null,
+                    "nargs": 0,
+                    "description": "Output in JSON format"
+                },
+                {
+                    "flags": [
+                        "--view"
+                    ],
+                    "name": "view",
+                    "type": "str",
+                    "required": false,
+                    "default": [],
+                    "choices": null,
+                    "nargs": "one",
+                    "description": "Name of view defined in the config."
+                },
+                {
+                    "flags": [
+                        "--fields"
+                    ],
+                    "name": "fields",
+                    "type": "str",
+                    "required": false,
+                    "default": null,
+                    "choices": null,
+                    "nargs": "one",
+                    "description": "Fields to retrieve the data in a dictionary. e.g.  settings.index.provided_name as settings['index']['provided_name']"
+                },
+                {
+                    "flags": [
+                        "--flat"
+                    ],
+                    "name": "flat",
+                    "type": "boolean",
+                    "required": false,
+                    "default": false,
+                    "choices": null,
+                    "nargs": 0,
+                    "description": null
+                }
+            ],
+            "commands": {}
+        },
+        "archive": {
+            "program": "eskit archive",
+            "description": "Archive commands.",
+            "arguments": [
+                {
+                    "flags": [
+                        "-c",
+                        "--config"
+                    ],
+                    "name": "config",
+                    "type": "str",
+                    "required": false,
+                    "default": ".eskit/config.json",
+                    "choices": null,
+                    "nargs": "one",
+                    "description": "Set config file. Optional as default value is .eskit/config.json"
+                },
+                {
+                    "flags": [
+                        "--host"
+                    ],
+                    "name": "host",
+                    "type": "str",
+                    "required": false,
+                    "default": null,
+                    "choices": null,
+                    "nargs": "one",
+                    "description": "Specify which host to operate. Optional if found in .current_host file."
+                },
+                {
+                    "flags": [
+                        "-v",
+                        "--verbose"
+                    ],
+                    "name": "verbose",
+                    "type": "boolean",
+                    "required": false,
+                    "default": false,
+                    "choices": null,
+                    "nargs": 0,
+                    "description": "Enable verbose logging"
+                },
+                {
+                    "flags": [
+                        "-d",
+                        "--debug"
+                    ],
+                    "name": "debug",
+                    "type": "boolean",
+                    "required": false,
+                    "default": false,
+                    "choices": null,
+                    "nargs": 0,
+                    "description": "Enable debug logging"
+                },
+                {
+                    "flags": [
+                        "-j",
+                        "--json"
+                    ],
+                    "name": "json",
+                    "type": "boolean",
+                    "required": false,
+                    "default": false,
+                    "choices": null,
+                    "nargs": 0,
+                    "description": "Output in JSON format"
+                }
+            ],
+            "commands": {
+                "list": {
+                    "program": "eskit archive list",
+                    "description": "List archives.",
+                    "arguments": [
+                        {
+                            "flags": [
+                                "-c",
+                                "--config"
+                            ],
+                            "name": "config",
+                            "type": "str",
+                            "required": false,
+                            "default": ".eskit/config.json",
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Set config file. Optional as default value is .eskit/config.json"
+                        },
+                        {
+                            "flags": [
+                                "--host"
+                            ],
+                            "name": "host",
+                            "type": "str",
+                            "required": false,
+                            "default": null,
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Specify which host to operate. Optional if found in .current_host file."
+                        },
+                        {
+                            "flags": [
+                                "--view"
+                            ],
+                            "name": "view",
+                            "type": "str",
+                            "required": false,
+                            "default": [],
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Name of view defined in the config."
+                        },
+                        {
+                            "flags": [
+                                "--fields"
+                            ],
+                            "name": "fields",
+                            "type": "str",
+                            "required": false,
+                            "default": null,
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Fields to retrieve the data in a dictionary. e.g.  settings.index.provided_name as settings['index']['provided_name']"
+                        },
+                        {
+                            "flags": [
+                                "--flat"
+                            ],
+                            "name": "flat",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": null
+                        },
+                        {
+                            "flags": [
+                                "-v",
+                                "--verbose"
+                            ],
+                            "name": "verbose",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Enable verbose logging"
+                        },
+                        {
+                            "flags": [
+                                "-d",
+                                "--debug"
+                            ],
+                            "name": "debug",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Enable debug logging"
+                        },
+                        {
+                            "flags": [
+                                "-j",
+                                "--json"
+                            ],
+                            "name": "json",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Output in JSON format"
+                        }
+                    ],
+                    "commands": {},
+                    "metadata": {
+                        "risk": "read"
+                    }
+                },
+                "pull": {
+                    "program": "eskit archive pull",
+                    "description": "Pull an data from the source to local destination defined in the config. This is incremental.",
+                    "arguments": [
+                        {
+                            "flags": [
+                                "-c",
+                                "--config"
+                            ],
+                            "name": "config",
+                            "type": "str",
+                            "required": false,
+                            "default": ".eskit/config.json",
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Set config file. Optional as default value is .eskit/config.json"
+                        },
+                        {
+                            "flags": [
+                                "--host"
+                            ],
+                            "name": "host",
+                            "type": "str",
+                            "required": false,
+                            "default": null,
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Specify which host to operate. Optional if found in .current_host file."
+                        },
+                        {
+                            "flags": [
+                                "-dry",
+                                "--dry-run"
+                            ],
+                            "name": "dry_run",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Shows only request/command w/o executing it"
+                        },
+                        {
+                            "flags": [
+                                "--push"
+                            ],
+                            "name": "push",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Used to confirm to execute a request/command that would modify resources on push-protected host"
+                        },
+                        {
+                            "flags": [],
+                            "name": "name",
+                            "type": "str",
+                            "required": true,
+                            "default": null,
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Name of the archive"
+                        },
+                        {
+                            "flags": [
+                                "--contents"
+                            ],
+                            "name": "contents",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Copy the contents of the archive directory into the destination, equivalent to using a trailing / on the rsync source path."
+                        },
+                        {
+                            "flags": [
+                                "--preview"
+                            ],
+                            "name": "preview",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Execute internal commands such as rsync with dry-run mode."
+                        },
+                        {
+                            "flags": [
+                                "-v",
+                                "--verbose"
+                            ],
+                            "name": "verbose",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Enable verbose logging"
+                        },
+                        {
+                            "flags": [
+                                "-d",
+                                "--debug"
+                            ],
+                            "name": "debug",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Enable debug logging"
+                        },
+                        {
+                            "flags": [
+                                "-j",
+                                "--json"
+                            ],
+                            "name": "json",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Output in JSON format"
+                        }
+                    ],
+                    "commands": {},
+                    "metadata": {
+                        "risk": "write"
+                    }
+                },
+                "sync": {
+                    "program": "eskit archive sync",
+                    "description": "Sync with a source host with mirroring.",
+                    "arguments": [
+                        {
+                            "flags": [
+                                "-c",
+                                "--config"
+                            ],
+                            "name": "config",
+                            "type": "str",
+                            "required": false,
+                            "default": ".eskit/config.json",
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Set config file. Optional as default value is .eskit/config.json"
+                        },
+                        {
+                            "flags": [
+                                "--host"
+                            ],
+                            "name": "host",
+                            "type": "str",
+                            "required": false,
+                            "default": null,
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Specify which host to operate. Optional if found in .current_host file."
+                        },
+                        {
+                            "flags": [
+                                "-dry",
+                                "--dry-run"
+                            ],
+                            "name": "dry_run",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Shows only request/command w/o executing it"
+                        },
+                        {
+                            "flags": [
+                                "--push"
+                            ],
+                            "name": "push",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Used to confirm to execute a request/command that would modify resources on push-protected host"
+                        },
+                        {
+                            "flags": [],
+                            "name": "name",
+                            "type": "str",
+                            "required": true,
+                            "default": null,
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Name of the archive"
+                        },
+                        {
+                            "flags": [
+                                "--contents"
+                            ],
+                            "name": "contents",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Copy the contents of the archive directory into the destination, equivalent to using a trailing / on the rsync source path."
+                        },
+                        {
+                            "flags": [
+                                "--preview"
+                            ],
+                            "name": "preview",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Execute internal commands such as rsync with dry-run mode."
+                        },
+                        {
+                            "flags": [
+                                "-v",
+                                "--verbose"
+                            ],
+                            "name": "verbose",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Enable verbose logging"
+                        },
+                        {
+                            "flags": [
+                                "-d",
+                                "--debug"
+                            ],
+                            "name": "debug",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Enable debug logging"
+                        },
+                        {
+                            "flags": [
+                                "-j",
+                                "--json"
+                            ],
+                            "name": "json",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Output in JSON format"
+                        }
+                    ],
+                    "commands": {},
+                    "metadata": {
+                        "risk": "destructive"
+                    }
+                },
+                "push": {
+                    "program": "eskit archive push",
+                    "description": "Sync with a destination host with mirroring.",
+                    "arguments": [
+                        {
+                            "flags": [
+                                "-c",
+                                "--config"
+                            ],
+                            "name": "config",
+                            "type": "str",
+                            "required": false,
+                            "default": ".eskit/config.json",
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Set config file. Optional as default value is .eskit/config.json"
+                        },
+                        {
+                            "flags": [
+                                "--host"
+                            ],
+                            "name": "host",
+                            "type": "str",
+                            "required": false,
+                            "default": null,
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Specify which host to operate. Optional if found in .current_host file."
+                        },
+                        {
+                            "flags": [
+                                "-dry",
+                                "--dry-run"
+                            ],
+                            "name": "dry_run",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Shows only request/command w/o executing it"
+                        },
+                        {
+                            "flags": [
+                                "--push"
+                            ],
+                            "name": "push",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Used to confirm to execute a request/command that would modify resources on push-protected host"
+                        },
+                        {
+                            "flags": [],
+                            "name": "name",
+                            "type": "str",
+                            "required": true,
+                            "default": null,
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Name of the archive"
+                        },
+                        {
+                            "flags": [
+                                "--contents"
+                            ],
+                            "name": "contents",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Copy the contents of the archive directory into the destination, equivalent to using a trailing / on the rsync source path."
+                        },
+                        {
+                            "flags": [
+                                "--preview"
+                            ],
+                            "name": "preview",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Execute internal commands such as rsync with dry-run mode."
+                        },
+                        {
+                            "flags": [
+                                "-v",
+                                "--verbose"
+                            ],
+                            "name": "verbose",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Enable verbose logging"
+                        },
+                        {
+                            "flags": [
+                                "-d",
+                                "--debug"
+                            ],
+                            "name": "debug",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Enable debug logging"
+                        },
+                        {
+                            "flags": [
+                                "-j",
+                                "--json"
+                            ],
+                            "name": "json",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Output in JSON format"
+                        },
+                        {
+                            "flags": [
+                                "--dst"
+                            ],
+                            "name": "dst",
+                            "type": "str",
+                            "required": true,
+                            "default": null,
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Destination host. <eskit_host>:<path> can be used to target remote host. e.g. Host1:/home/user/data."
+                        }
+                    ],
+                    "commands": {},
+                    "metadata": {
+                        "risk": "write"
+                    }
+                },
+                "show": {
+                    "program": "eskit archive show",
+                    "description": "Show an archive.",
+                    "arguments": [
+                        {
+                            "flags": [
+                                "-c",
+                                "--config"
+                            ],
+                            "name": "config",
+                            "type": "str",
+                            "required": false,
+                            "default": ".eskit/config.json",
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Set config file. Optional as default value is .eskit/config.json"
+                        },
+                        {
+                            "flags": [
+                                "--host"
+                            ],
+                            "name": "host",
+                            "type": "str",
+                            "required": false,
+                            "default": null,
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Specify which host to operate. Optional if found in .current_host file."
+                        },
+                        {
+                            "flags": [
+                                "--view"
+                            ],
+                            "name": "view",
+                            "type": "str",
+                            "required": false,
+                            "default": [],
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Name of view defined in the config."
+                        },
+                        {
+                            "flags": [
+                                "--fields"
+                            ],
+                            "name": "fields",
+                            "type": "str",
+                            "required": false,
+                            "default": null,
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Fields to retrieve the data in a dictionary. e.g.  settings.index.provided_name as settings['index']['provided_name']"
+                        },
+                        {
+                            "flags": [
+                                "--flat"
+                            ],
+                            "name": "flat",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": null
+                        },
+                        {
+                            "flags": [],
+                            "name": "name",
+                            "type": "str",
+                            "required": true,
+                            "default": null,
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Name of the archive"
+                        },
+                        {
+                            "flags": [
+                                "-v",
+                                "--verbose"
+                            ],
+                            "name": "verbose",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Enable verbose logging"
+                        },
+                        {
+                            "flags": [
+                                "-d",
+                                "--debug"
+                            ],
+                            "name": "debug",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Enable debug logging"
+                        },
+                        {
+                            "flags": [
+                                "-j",
+                                "--json"
+                            ],
+                            "name": "json",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Output in JSON format"
+                        }
+                    ],
+                    "commands": {},
+                    "metadata": {
+                        "risk": "read"
+                    }
+                }
+            }
+        },
+        "ilm": {
+            "program": "eskit ilm",
+            "description": "Index lifecycle management commands.",
+            "arguments": [
+                {
+                    "flags": [
+                        "-c",
+                        "--config"
+                    ],
+                    "name": "config",
+                    "type": "str",
+                    "required": false,
+                    "default": ".eskit/config.json",
+                    "choices": null,
+                    "nargs": "one",
+                    "description": "Set config file. Optional as default value is .eskit/config.json"
+                },
+                {
+                    "flags": [
+                        "--host"
+                    ],
+                    "name": "host",
+                    "type": "str",
+                    "required": false,
+                    "default": null,
+                    "choices": null,
+                    "nargs": "one",
+                    "description": "Specify which host to operate. Optional if found in .current_host file."
+                },
+                {
+                    "flags": [
+                        "-v",
+                        "--verbose"
+                    ],
+                    "name": "verbose",
+                    "type": "boolean",
+                    "required": false,
+                    "default": false,
+                    "choices": null,
+                    "nargs": 0,
+                    "description": "Enable verbose logging"
+                },
+                {
+                    "flags": [
+                        "-d",
+                        "--debug"
+                    ],
+                    "name": "debug",
+                    "type": "boolean",
+                    "required": false,
+                    "default": false,
+                    "choices": null,
+                    "nargs": 0,
+                    "description": "Enable debug logging"
+                },
+                {
+                    "flags": [
+                        "-j",
+                        "--json"
+                    ],
+                    "name": "json",
+                    "type": "boolean",
+                    "required": false,
+                    "default": false,
+                    "choices": null,
+                    "nargs": 0,
+                    "description": "Output in JSON format"
+                }
+            ],
+            "commands": {
+                "show": {
+                    "program": "eskit ilm show",
+                    "description": "Show lifecycle management commands.",
+                    "arguments": [
+                        {
+                            "flags": [
+                                "-c",
+                                "--config"
+                            ],
+                            "name": "config",
+                            "type": "str",
+                            "required": false,
+                            "default": ".eskit/config.json",
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Set config file. Optional as default value is .eskit/config.json"
+                        },
+                        {
+                            "flags": [
+                                "--host"
+                            ],
+                            "name": "host",
+                            "type": "str",
+                            "required": false,
+                            "default": null,
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Specify which host to operate. Optional if found in .current_host file."
+                        },
+                        {
+                            "flags": [
+                                "--view"
+                            ],
+                            "name": "view",
+                            "type": "str",
+                            "required": false,
+                            "default": [],
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Name of view defined in the config."
+                        },
+                        {
+                            "flags": [
+                                "--fields"
+                            ],
+                            "name": "fields",
+                            "type": "str",
+                            "required": false,
+                            "default": null,
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Fields to retrieve the data in a dictionary. e.g.  settings.index.provided_name as settings['index']['provided_name']"
+                        },
+                        {
+                            "flags": [
+                                "--flat"
+                            ],
+                            "name": "flat",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": null
+                        },
+                        {
+                            "flags": [],
+                            "name": "name",
+                            "type": "str",
+                            "required": true,
+                            "default": null,
+                            "choices": null,
+                            "nargs": "one",
+                            "description": "Name of the archive."
+                        },
+                        {
+                            "flags": [
+                                "-v",
+                                "--verbose"
+                            ],
+                            "name": "verbose",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Enable verbose logging"
+                        },
+                        {
+                            "flags": [
+                                "-d",
+                                "--debug"
+                            ],
+                            "name": "debug",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Enable debug logging"
+                        },
+                        {
+                            "flags": [
+                                "-j",
+                                "--json"
+                            ],
+                            "name": "json",
+                            "type": "boolean",
+                            "required": false,
+                            "default": false,
+                            "choices": null,
+                            "nargs": 0,
+                            "description": "Output in JSON format"
+                        }
+                    ],
+                    "commands": {},
+                    "metadata": {
+                        "risk": "read"
+                    }
+                }
+            }
+        },
+        "ai": {
+            "program": "eskit ai",
+            "description": "AI commands.",
+            "arguments": [
+                {
+                    "flags": [
+                        "-v",
+                        "--verbose"
+                    ],
+                    "name": "verbose",
+                    "type": "boolean",
+                    "required": false,
+                    "default": false,
+                    "choices": null,
+                    "nargs": 0,
+                    "description": "Enable verbose logging"
+                },
+                {
+                    "flags": [
+                        "-d",
+                        "--debug"
+                    ],
+                    "name": "debug",
+                    "type": "boolean",
+                    "required": false,
+                    "default": false,
+                    "choices": null,
+                    "nargs": 0,
+                    "description": "Enable debug logging"
+                },
+                {
+                    "flags": [
+                        "-j",
+                        "--json"
+                    ],
+                    "name": "json",
+                    "type": "boolean",
+                    "required": false,
+                    "default": false,
+                    "choices": null,
+                    "nargs": 0,
+                    "description": "Output in JSON format"
+                },
+                {
+                    "flags": [],
+                    "name": "question",
+                    "type": "str",
+                    "required": true,
+                    "default": null,
+                    "choices": null,
+                    "nargs": "one",
+                    "description": "Question to ask to AI."
+                },
+                {
+                    "flags": [
+                        "--model"
+                    ],
+                    "name": "model",
+                    "type": "str",
+                    "required": false,
+                    "default": "claude-haiku-4-5-20251001",
+                    "choices": [
+                        "claude-haiku-4-5-20251001",
+                        "claude-sonnet-4-6",
+                        "claude-sonnet-5",
+                        "qwen3:4b",
+                        "qwen3:8b",
+                        "gemma3:4b",
+                        "mistral:7b",
+                        "qwen3:14b"
+                    ],
+                    "nargs": "one",
+                    "description": "Choose the LLM model to work with."
+                },
+                {
+                    "flags": [
+                        "--output-command-json"
+                    ],
+                    "name": "output_command_json",
+                    "type": "str",
+                    "required": false,
+                    "default": null,
+                    "choices": null,
+                    "nargs": "one",
+                    "description": "A path to output command json."
+                }
+            ],
+            "commands": {}
+        }
+    }
+}

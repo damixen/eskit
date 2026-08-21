@@ -1,50 +1,21 @@
-import json
-import os
-from dotenv import load_dotenv 
-from anthropic import Anthropic
+from eskit.ai.helper_anthropic import ask as ask_claude
+from eskit.ai.helper_ollama import ask as ask_ollama
 
+MODEL_HANDLERS = {
+    "claude-sonnet-4-6": ask_claude,
+    "claude-sonnet-5": ask_claude,
+    "claude-haiku-4-5-20251001": ask_claude,
+    "qwen3:4b": ask_ollama,
+    "qwen3:8b": ask_ollama,
+    "qwen3:14b": ask_ollama,
+    "gemma3:4b": ask_ollama,
+    "mistral:7b": ask_ollama,
+}
 
-SYSTEM_PROMPT = """
-You are an AI assistant for ESKit.
+def ask(question, command_description, model):
+    handler = MODEL_HANDLERS.get(model)
 
-You help users understand how to use the ESKit command-line interface.
+    if handler is None:
+        raise ValueError(f"Unsupported model: {model}")
 
-The ESKit command description below is the authoritative source for
-available commands, arguments, options, and their meanings.
-
-When answering a question about how to perform an operation:
-- Explain the relevant command briefly.
-- Provide the complete ESKit command when possible.
-- Do not execute commands.
-- Do not invent commands or options that are not present in the command description.
-- Respect safety metadata and explain destructive operations when relevant.
-
-ESKit command description:
-
-"""
-
-
-def ask(question, command_description):
-
-    load_dotenv()
-
-    client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
-
-    prompt = SYSTEM_PROMPT + json.dumps(
-        command_description,
-        indent=2,
-    )
-
-    response = client.messages.create(
-        model="claude-sonnet-4-6",
-        max_tokens=500,
-        system=prompt,
-        messages=[
-            {
-                "role": "user",
-                "content": question,
-            }
-        ],
-    )
-
-    return response.content[0].text
+    return handler(question, command_description, model)
