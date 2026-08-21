@@ -19,9 +19,9 @@ def print_usage(response, model):
     output_tokens = response.usage.output_tokens
 
     print()
-    print("--- Usage ---")
-    print(f"Input tokens:  {input_tokens}")
-    print(f"Output tokens: {output_tokens}")
+    print("# Usage ---")
+    print(f"- **Input tokens:**  {input_tokens}")
+    print(f"- **Output tokens:** {output_tokens}")
 
     input_cost = (
         input_tokens / 1_000_000
@@ -32,6 +32,6 @@ def print_usage(response, model):
     ) * cost_map[model]["output"]
 
     print(
-        f"Estimated cost with model:{model}: ${input_cost + output_cost:.6f}"
+        f"- **Estimated cost with model:**{model}: ${input_cost + output_cost:.6f}"
     )
     print()

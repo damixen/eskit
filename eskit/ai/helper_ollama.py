@@ -25,8 +25,6 @@ def ask(question, command_description, model):
     if not question:
         return "no question asked."
 
-    print("model:", model)
-
     prompt = SYSTEM_PROMPT + json.dumps(
         command_description,
         indent=2,

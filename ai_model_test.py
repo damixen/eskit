@@ -109,12 +109,12 @@ def main():
             elapsed_time = time.perf_counter() - start_time
 
             output_file.write_text(
-                f"--- Test ---\n"
-                f"Model: {model}\n"
-                f"Question: {question}\n"
-                f"Elapsed time: {elapsed_time:.3f} seconds\n"
+                f"# Test\n"
+                f"- **Model:** {model}\n"
+                f"- **Question:** {question}\n"
+                f"- **Elapsed time:** {elapsed_time:.3f} seconds\n"
                 f"\n"
-                f"--- Response ---\n"
+                f"# Response\n"
                 f"{result.stdout}"
                 f"{result.stderr}",
                 encoding="utf-8",

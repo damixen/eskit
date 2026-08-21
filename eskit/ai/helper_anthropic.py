@@ -30,8 +30,6 @@ def ask(question, command_description, model):
     if not question:
         return "no question asked."
 
-    print("model:", model)
-
     load_dotenv()
 
     client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
