@@ -1,10 +1,11 @@
---- Test ---
-Model: qwen3:14b
-Question: How do I create a snapshot?
-Elapsed time: 56.451 seconds
+# Test
 
---- Response ---
-model: qwen3:14b
+- **Model:** qwen3:14b
+- **Question:** How do I create a snapshot?
+- **Elapsed time:** 56.451 seconds
+
+## Response
+
 To create a snapshot using the `eskit` CLI, use the following command:
 
 ```bash

@@ -1,9 +1,11 @@
-model: claude-sonnet-5
+# Test
 
---- Usage ---
-Input tokens:  29615
-Output tokens: 748
-Estimated cost with model:claude-sonnet-5: $0.066710
+- **Model:** claude-sonnet-5
+- **Input tokens:** 29615
+- **Output tokens:** 748
+- **Estimated cost:** $0.066710
+
+## Response
 
 To create a snapshot in ESKit, use the `eskit snap create` command.
 

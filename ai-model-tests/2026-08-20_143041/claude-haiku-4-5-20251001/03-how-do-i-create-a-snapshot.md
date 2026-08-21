@@ -1,9 +1,11 @@
-model: claude-haiku-4-5-20251001
+# Test
 
---- Usage ---
-Input tokens:  25597
-Output tokens: 381
-Estimated cost with model:claude-haiku-4-5-20251001: $0.027502
+- **Model:** claude-haiku-4-5-20251001
+- **Input tokens:** 25597
+- **Output tokens:** 381
+- **Estimated cost:** $0.027502
+
+## Response
 
 # Creating a Snapshot
 

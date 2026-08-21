@@ -1,10 +1,11 @@
---- Test ---
-Model: qwen3:4b
-Question: Compose a multi-step backup workflow.
-Elapsed time: 91.332 seconds
+# Test
 
---- Response ---
-model: qwen3:4b
+- **Model:** qwen3:4b
+- **Question:** Compose a multi-step backup workflow.
+- **Elapsed time:** 91.332 seconds
+
+## Response
+
 Here's a clear, actionable multi-step backup workflow using the `eskit` tool based on the provided JSON structure:
 
 ---

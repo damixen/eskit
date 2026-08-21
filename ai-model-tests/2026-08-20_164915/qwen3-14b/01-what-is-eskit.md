@@ -1,10 +1,11 @@
---- Test ---
-Model: qwen3:14b
-Question: What is ESKit?
-Elapsed time: 80.854 seconds
+# Test
 
---- Response ---
-model: qwen3:14b
+- **Model:** qwen3:14b
+- **Question:** What is ESKit?
+- **Elapsed time:** 80.854 seconds
+
+## Response
+
 ESKit is a command-line interface (CLI) tool designed to interact with **Elasticsearch** (ES) for managing archives, index lifecycle management (ILM), and AI-related tasks. It provides a structured way to perform operations such as:
 
 ### Key Features:

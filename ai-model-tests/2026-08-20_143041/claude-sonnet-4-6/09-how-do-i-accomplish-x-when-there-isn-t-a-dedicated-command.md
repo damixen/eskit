@@ -1,9 +1,11 @@
-model: claude-sonnet-4-6
+# Test
 
---- Usage ---
-Input tokens:  25603
-Output tokens: 119
-Estimated cost with model:claude-sonnet-4-6: $0.078594
+- **Model:** claude-sonnet-4-6
+- **Input tokens:** 25603
+- **Output tokens:** 119
+- **Estimated cost:** $0.078594
+
+## Response
 
 I'd be happy to help, but it looks like your message got cut off — **"X"** wasn't specified!
 

@@ -1,11 +1,12 @@
---- Test ---
-Model: mistral:7b
-Question: How do I create an index?
-Elapsed time: 18.117 seconds
+# Test
 
---- Response ---
-model: mistral:7b
- To create an index using the provided Elasticsearch command structure, you would use the `index` command under the `index` key. However, this structure does not appear to include a `create` command specifically for creating an index.
+- **Model:** mistral:7b
+- **Question:** How do I create an index?
+- **Elapsed time:** 18.117 seconds
+
+## Response
+
+To create an index using the provided Elasticsearch command structure, you would use the `index` command under the `index` key. However, this structure does not appear to include a `create` command specifically for creating an index.
 
 Instead, you can use the `put` command under the `indices` key to create a new index. Here's an example of how you might construct the command:
 

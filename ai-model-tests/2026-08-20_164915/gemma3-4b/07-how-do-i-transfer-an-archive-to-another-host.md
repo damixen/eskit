@@ -1,10 +1,11 @@
---- Test ---
-Model: gemma3:4b
-Question: How do I transfer an archive to another host?
-Elapsed time: 11.114 seconds
+# Test
 
---- Response ---
-model: gemma3:4b
+- **Model:** gemma3:4b
+- **Question:** How do I transfer an archive to another host?
+- **Elapsed time:** 11.114 seconds
+
+## Response
+
 Okay, let's break down how to transfer an archive to another host using the `eskit ilm` tool. Based on the provided documentation, here's the command you'd use and the considerations:
 
 **Command:**

@@ -1,9 +1,11 @@
-model: claude-haiku-4-5-20251001
+# Test
 
---- Usage ---
-Input tokens:  25596
-Output tokens: 311
-Estimated cost with model:claude-haiku-4-5-20251001: $0.027151
+- **Model:** claude-haiku-4-5-20251001
+- **Input tokens:** 25596
+- **Output tokens:** 311
+- **Estimated cost:** $0.027151
+
+## Response
 
 # Destructive Operations in ESKit
 

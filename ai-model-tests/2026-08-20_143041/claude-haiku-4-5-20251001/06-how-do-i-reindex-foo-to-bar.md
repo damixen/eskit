@@ -1,9 +1,11 @@
-model: claude-haiku-4-5-20251001
+# Test
 
---- Usage ---
-Input tokens:  25599
-Output tokens: 284
-Estimated cost with model:claude-haiku-4-5-20251001: $0.027019
+- **Model:** claude-haiku-4-5-20251001
+- **Input tokens:** 25599
+- **Output tokens:** 284
+- **Estimated cost:** $0.027019
+
+## Response
 
 To reindex from index `foo` to index `bar`, use the `eskit reindex` command:
 

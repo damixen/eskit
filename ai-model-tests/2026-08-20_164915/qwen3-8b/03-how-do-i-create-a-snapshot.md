@@ -1,10 +1,11 @@
---- Test ---
-Model: qwen3:8b
-Question: How do I create a snapshot?
-Elapsed time: 13.386 seconds
+# Test
 
---- Response ---
-model: qwen3:8b
+- **Model:** qwen3:8b
+- **Question:** How do I create a snapshot?
+- **Elapsed time:** 13.386 seconds
+
+## Response
+
 To create a snapshot using **eskit**, follow these steps:
 
 ### ✅ Command Syntax

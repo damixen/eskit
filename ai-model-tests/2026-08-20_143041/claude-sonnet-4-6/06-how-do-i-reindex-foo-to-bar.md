@@ -1,9 +1,11 @@
-model: claude-sonnet-4-6
+# Test
 
---- Usage ---
-Input tokens:  25599
-Output tokens: 218
-Estimated cost with model:claude-sonnet-4-6: $0.080067
+- **Model:** claude-sonnet-4-6
+- **Input tokens:** 25599
+- **Output tokens:** 218
+- **Estimated cost:** $0.080067
+
+## Response
 
 The `eskit reindex` command copies data from a source index to a destination index.
 

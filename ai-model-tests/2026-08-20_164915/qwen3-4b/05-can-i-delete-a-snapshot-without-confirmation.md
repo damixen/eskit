@@ -1,10 +1,11 @@
---- Test ---
-Model: qwen3:4b
-Question: Can I delete a snapshot without confirmation?
-Elapsed time: 30.108 seconds
+# Test
 
---- Response ---
-model: qwen3:4b
+- **Model:** qwen3:4b
+- **Question:** Can I delete a snapshot without confirmation?
+- **Elapsed time:** 30.108 seconds
+
+## Response
+
 Based on the provided `eskit` command structure, **there is no snapshot deletion command** in the tool. The JSON schema shows that the `ilm` (Index Lifecycle Management) and `index` commands only include `show` and `create` subcommands, respectively, but **no delete operations for snapshots** are defined. 
 
 ### Key Observations:

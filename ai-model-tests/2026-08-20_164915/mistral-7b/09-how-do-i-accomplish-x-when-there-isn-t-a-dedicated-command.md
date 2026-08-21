@@ -1,11 +1,12 @@
---- Test ---
-Model: mistral:7b
-Question: How do I accomplish X when there isn't a dedicated command?
-Elapsed time: 10.496 seconds
+# Test
 
---- Response ---
-model: mistral:7b
- In the provided command structure, there isn't a specific command for X. However, you can create a custom command by defining it under the appropriate module (eskit in this case) and its respective commands object.
+- **Model:** mistral:7b
+- **Question:** How do I accomplish X when there isn't a dedicated command?
+- **Elapsed time:** 10.496 seconds
+
+## Response
+
+In the provided command structure, there isn't a specific command for X. However, you can create a custom command by defining it under the appropriate module (eskit in this case) and its respective commands object.
 
 Here's an example of how you could add a custom command named `my-command` under the `eskit` module:
 

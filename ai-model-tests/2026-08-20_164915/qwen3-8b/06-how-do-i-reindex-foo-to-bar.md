@@ -1,10 +1,11 @@
---- Test ---
-Model: qwen3:8b
-Question: How do I reindex foo to bar?
-Elapsed time: 33.069 seconds
+# Test
 
---- Response ---
-model: qwen3:8b
+- **Model:** qwen3:8b
+- **Question:** How do I reindex foo to bar?
+- **Elapsed time:** 33.069 seconds
+
+## Response
+
 To reindex data from `foo` to `bar` using the `eskit` tool, you would typically use the `reindex` command. However, based on the provided JSON structure, the `reindex` command's arguments do not explicitly include a source index parameter. The `name` argument is required and likely refers to the destination index. Here's how you might proceed:
 
 ### Command Syntax

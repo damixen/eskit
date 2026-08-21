@@ -1,10 +1,11 @@
---- Test ---
-Model: qwen3:8b
-Question: Can I delete a snapshot without confirmation?
-Elapsed time: 13.407 seconds
+# Test
 
---- Response ---
-model: qwen3:8b
+- **Model:** qwen3:8b
+- **Question:** Can I delete a snapshot without confirmation?
+- **Elapsed time:** 13.407 seconds
+
+## Response
+
 Based on the provided tool configuration, there is no direct command listed for deleting a snapshot or archive. The available commands under the `snapshot` and `ilm` sections focus on **viewing** lifecycle management data (`show`) rather than deletion. 
 
 ### Key Observations:

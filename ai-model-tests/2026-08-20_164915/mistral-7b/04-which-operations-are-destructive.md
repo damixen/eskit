@@ -1,11 +1,12 @@
---- Test ---
-Model: mistral:7b
-Question: Which operations are destructive?
-Elapsed time: 4.046 seconds
+# Test
 
---- Response ---
-model: mistral:7b
- The given command structure does not specify any destructive operations directly. However, in the context of the given commands, the following operations might be considered destructive:
+- **Model:** mistral:7b
+- **Question:** Which operations are destructive?
+- **Elapsed time:** 4.046 seconds
+
+## Response
+
+The given command structure does not specify any destructive operations directly. However, in the context of the given commands, the following operations might be considered destructive:
 
 1. Deleting an archive using the "eskit ilm destroy" command.
 

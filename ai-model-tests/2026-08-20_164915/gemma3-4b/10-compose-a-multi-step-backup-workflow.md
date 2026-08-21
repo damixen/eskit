@@ -1,10 +1,11 @@
---- Test ---
-Model: gemma3:4b
-Question: Compose a multi-step backup workflow.
-Elapsed time: 17.420 seconds
+# Test
 
---- Response ---
-model: gemma3:4b
+- **Model:** gemma3:4b
+- **Question:** Compose a multi-step backup workflow.
+- **Elapsed time:** 17.420 seconds
+
+## Response
+
 Okay, here’s a multi-step backup workflow designed to be robust and adaptable. This workflow assumes a moderately complex environment and can be adjusted based on your specific needs and resources.
 
 **Workflow Title:** Automated & Tiered Backup System

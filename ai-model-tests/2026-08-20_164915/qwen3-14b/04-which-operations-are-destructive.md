@@ -1,10 +1,11 @@
---- Test ---
-Model: qwen3:14b
-Question: Which operations are destructive?
-Elapsed time: 57.234 seconds
+# Test
 
---- Response ---
-model: qwen3:14b
+- **Model:** qwen3:14b
+- **Question:** Which operations are destructive?
+- **Elapsed time:** 57.234 seconds
+
+## Response
+
 Based on the provided tool structure, **destructive operations** (those that modify or delete data) are indicated by the `metadata.risk` field set to `"write"`. Here are the destructive operations identified:
 
 ---

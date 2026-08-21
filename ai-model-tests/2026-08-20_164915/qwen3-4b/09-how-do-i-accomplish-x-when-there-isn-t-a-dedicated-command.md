@@ -1,10 +1,11 @@
---- Test ---
-Model: qwen3:4b
-Question: How do I accomplish X when there isn't a dedicated command?
-Elapsed time: 29.741 seconds
+# Test
 
---- Response ---
-model: qwen3:4b
+- **Model:** qwen3:4b
+- **Question:** How do I accomplish X when there isn't a dedicated command?
+- **Elapsed time:** 29.741 seconds
+
+## Response
+
 When there isn't a dedicated command in `eskit`, you can use the **`ai` command** to ask the AI for help generating the correct command. Here's how:
 
 ---

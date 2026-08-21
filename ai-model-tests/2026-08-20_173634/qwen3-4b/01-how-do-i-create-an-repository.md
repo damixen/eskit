@@ -1,10 +1,11 @@
---- Test ---
-Model: qwen3:4b
-Question: How do I create an repository?
-Elapsed time: 49.193 seconds
+# Test
 
---- Response ---
-model: qwen3:4b
+- **Model:** qwen3:4b
+- **Question:** How do I create an repository?
+- **Elapsed time:** 49.193 seconds
+
+## Response
+
 Based on the provided JSON schema for the `eskit` command-line tool, **there is no direct "repository" command** in the tool's structure. The tool focuses on Elasticsearch-related operations (indices, ILM, AI), but **"repository" is not a recognized subcommand** in the schema. 
 
 Here's what we know:

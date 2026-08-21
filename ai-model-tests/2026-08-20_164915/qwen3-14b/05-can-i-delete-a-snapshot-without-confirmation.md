@@ -1,10 +1,11 @@
---- Test ---
-Model: qwen3:14b
-Question: Can I delete a snapshot without confirmation?
-Elapsed time: 33.113 seconds
+# Test
 
---- Response ---
-model: qwen3:14b
+- **Model:** qwen3:14b
+- **Question:** Can I delete a snapshot without confirmation?
+- **Elapsed time:** 33.113 seconds
+
+## Response
+
 Yes, you can delete a snapshot without confirmation by using the `--force` flag. 
 
 **Example command:**

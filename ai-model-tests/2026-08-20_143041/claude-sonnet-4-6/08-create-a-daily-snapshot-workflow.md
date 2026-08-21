@@ -1,9 +1,11 @@
-model: claude-sonnet-4-6
+# Test
 
---- Usage ---
-Input tokens:  25596
-Output tokens: 697
-Estimated cost with model:claude-sonnet-4-6: $0.087243
+- **Model:** claude-sonnet-4-6
+- **Input tokens:** 25596
+- **Output tokens:** 697
+- **Estimated cost:** $0.087243
+
+## Response
 
 # Daily Snapshot Workflow with ESKit
 

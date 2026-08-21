@@ -1,10 +1,11 @@
---- Test ---
-Model: qwen3:4b
-Question: How do I reindex foo to bar?
-Elapsed time: 42.814 seconds
+# Test
 
---- Response ---
-model: qwen3:4b
+- **Model:** qwen3:4b
+- **Question:** How do I reindex foo to bar?
+- **Elapsed time:** 42.814 seconds
+
+## Response
+
 Based on the provided `eskit` command structure, there is **no reindex command** available under the `index` section. The `index` section explicitly shows `commands: {}` (an empty dictionary), meaning no subcommands like `reindex` are defined in this tool's current implementation. 
 
 ### Why?

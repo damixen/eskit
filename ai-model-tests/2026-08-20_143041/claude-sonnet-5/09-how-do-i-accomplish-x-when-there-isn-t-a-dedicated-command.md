@@ -1,9 +1,11 @@
-model: claude-sonnet-5
+# Test
 
---- Usage ---
-Input tokens:  29625
-Output tokens: 542
-Estimated cost with model:claude-sonnet-5: $0.064670
+- **Model:** claude-sonnet-5
+- **Input tokens:** 29625
+- **Output tokens:** 542
+- **Estimated cost:** $0.064670
+
+## Response
 
 Good question — I can only work with the commands ESKit actually provides, and I won't invent flags or subcommands that don't exist in the CLI. So let's figure this out together.
 

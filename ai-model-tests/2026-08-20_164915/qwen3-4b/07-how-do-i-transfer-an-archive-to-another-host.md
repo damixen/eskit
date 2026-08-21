@@ -1,10 +1,11 @@
---- Test ---
-Model: qwen3:4b
-Question: How do I transfer an archive to another host?
-Elapsed time: 59.103 seconds
+# Test
 
---- Response ---
-model: qwen3:4b
+- **Model:** qwen3:4b
+- **Question:** How do I transfer an archive to another host?
+- **Elapsed time:** 59.103 seconds
+
+## Response
+
 To transfer an archive to another host using the `eskit` CLI, you would specify the target host via the `--host` flag when executing the relevant command. However, based on the provided data, **the `ilm` (Index Lifecycle Management) commands only include a `show` command** (no explicit `transfer` or `move` command is listed). 
 
 ### Key Details:

@@ -1,11 +1,12 @@
---- Test ---
-Model: mistral:7b
-Question: How do I create a snapshot?
-Elapsed time: 6.649 seconds
+# Test
 
---- Response ---
-model: mistral:7b
- To create a snapshot using the provided command structure, you would use the `eskit ilm create` command. Here's an example of how to create a snapshot using the provided arguments:
+- **Model:** mistral:7b
+- **Question:** How do I create a snapshot?
+- **Elapsed time:** 6.649 seconds
+
+## Response
+
+To create a snapshot using the provided command structure, you would use the `eskit ilm create` command. Here's an example of how to create a snapshot using the provided arguments:
 
 ```bash
 eskit ilm create -c path/to/config.json -v -d -j \

@@ -1,10 +1,11 @@
---- Test ---
-Model: gemma3:4b
-Question: How do I create a snapshot?
-Elapsed time: 9.740 seconds
+# Test
 
---- Response ---
-model: gemma3:4b
+- **Model:** gemma3:4b
+- **Question:** How do I create a snapshot?
+- **Elapsed time:** 9.740 seconds
+
+## Response
+
 Okay, let's break down how to create a snapshot using the `eskit ilm` commands.  Based on the provided documentation, here’s the relevant command and its arguments:
 
 **Command:** `eskit ilm show`

@@ -1,10 +1,11 @@
---- Test ---
-Model: gemma3:4b
-Question: Create a daily snapshot workflow.
-Elapsed time: 22.013 seconds
+# Test
 
---- Response ---
-model: gemma3:4b
+- **Model:** gemma3:4b
+- **Question:** Create a daily snapshot workflow.
+- **Elapsed time:** 22.013 seconds
+
+## Response
+
 Okay, let's outline a daily snapshot workflow leveraging the information provided in the JSON schema. This workflow will focus on using the `ilm` and `ai` commands, primarily for monitoring and potentially generating reports on your index lifecycle management.
 
 **Workflow Name:** Daily Snapshot - ILM & AI Insights

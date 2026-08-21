@@ -1,10 +1,11 @@
---- Test ---
-Model: qwen3:8b
-Question: Create a daily snapshot workflow.
-Elapsed time: 42.938 seconds
+# Test
 
---- Response ---
-model: qwen3:8b
+- **Model:** qwen3:8b
+- **Question:** Create a daily snapshot workflow.
+- **Elapsed time:** 42.938 seconds
+
+## Response
+
 To create a **daily snapshot workflow** using the `eskit` CLI tool and Elasticsearch, follow these steps:
 
 ---

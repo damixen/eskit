@@ -1,9 +1,11 @@
-model: claude-sonnet-5
+# Test
 
---- Usage ---
-Input tokens:  29621
-Output tokens: 473
-Estimated cost with model:claude-sonnet-5: $0.063972
+- **Model:** claude-sonnet-5
+- **Input tokens:** 29621
+- **Output tokens:** 473
+- **Estimated cost:** $0.063972
+
+## Response
 
 No — deleting a snapshot is classified as a **destructive** operation, and ESKit's safety policy requires **explicit user confirmation before execution**, regardless of flags used.
 

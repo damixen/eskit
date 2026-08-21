@@ -1,9 +1,11 @@
-model: claude-sonnet-5
+# Test
 
---- Usage ---
-Input tokens:  29617
-Output tokens: 400
-Estimated cost with model:claude-sonnet-5: $0.063234
+- **Model:** claude-sonnet-5
+- **Input tokens:** 29617
+- **Output tokens:** 400
+- **Estimated cost:** $0.063234
+
+## Response
 
 To reindex data from one index to another, use the `eskit reindex` command with the source and destination index names as positional arguments.
 

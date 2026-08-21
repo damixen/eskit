@@ -1,11 +1,12 @@
---- Test ---
-Model: mistral:7b
-Question: How do I create an repository?
-Elapsed time: 11.336 seconds
+# Test
 
---- Response ---
-model: mistral:7b
- Based on the provided command structure, it seems that this is a CLI (Command Line Interface) for managing various tasks, but it does not explicitly have a command for creating a repository.
+- **Model:** mistral:7b
+- **Question:** How do I create an repository?
+- **Elapsed time:** 11.336 seconds
+
+## Response
+
+Based on the provided command structure, it seems that this is a CLI (Command Line Interface) for managing various tasks, but it does not explicitly have a command for creating a repository.
 
 However, you can infer that creating a repository would likely be related to managing Elasticsearch indexes, as the CLI has commands for that.
 

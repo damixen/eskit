@@ -1,10 +1,11 @@
---- Test ---
-Model: qwen3:14b
-Question: Create a daily snapshot workflow.
-Elapsed time: 148.137 seconds
+# Test
 
---- Response ---
-model: qwen3:14b
+- **Model:** qwen3:14b
+- **Question:** Create a daily snapshot workflow.
+- **Elapsed time:** 148.137 seconds
+
+## Response
+
 To create a **daily snapshot workflow** using `eskit`, follow these steps. This workflow assumes you have an Elasticsearch cluster configured with a snapshot repository (e.g., S3, FS, or other supported storage).
 
 ---

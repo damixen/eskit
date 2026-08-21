@@ -1,9 +1,11 @@
-model: claude-sonnet-4-6
+# Test
 
---- Usage ---
-Input tokens:  25595
-Output tokens: 329
-Estimated cost with model:claude-sonnet-4-6: $0.081720
+- **Model:** claude-sonnet-4-6
+- **Input tokens:** 25595
+- **Output tokens:** 329
+- **Estimated cost:** $0.081720
+
+## Response
 
 # What is ESKit?
 

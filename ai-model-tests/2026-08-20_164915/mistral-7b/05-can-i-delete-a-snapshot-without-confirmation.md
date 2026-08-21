@@ -1,11 +1,12 @@
---- Test ---
-Model: mistral:7b
-Question: Can I delete a snapshot without confirmation?
-Elapsed time: 6.060 seconds
+# Test
 
---- Response ---
-model: mistral:7b
- Based on the provided JSON, there is no command for deleting a snapshot directly within the given commands. However, if you have the necessary permissions and the correct configuration set up, you can delete a snapshot by using the Elasticsearch Index Lifecycle Management (ILM) policies.
+- **Model:** mistral:7b
+- **Question:** Can I delete a snapshot without confirmation?
+- **Elapsed time:** 6.060 seconds
+
+## Response
+
+Based on the provided JSON, there is no command for deleting a snapshot directly within the given commands. However, if you have the necessary permissions and the correct configuration set up, you can delete a snapshot by using the Elasticsearch Index Lifecycle Management (ILM) policies.
 
 To delete a snapshot, you would first need to create or modify an ILM policy with a rollover action that does not include a snapshot. Then, the policy will automatically delete the snapshot when it rolls over to a new phase.
 

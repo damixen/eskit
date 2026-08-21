@@ -1,10 +1,11 @@
---- Test ---
-Model: qwen3:4b
-Question: Which operations are destructive?
-Elapsed time: 65.523 seconds
+# Test
 
---- Response ---
-model: qwen3:4b
+- **Model:** qwen3:4b
+- **Question:** Which operations are destructive?
+- **Elapsed time:** 65.523 seconds
+
+## Response
+
 Based on the provided JSON structure for the `eskit` CLI tool, **no destructive operations are explicitly described**. Here's the reasoning:
 
 ### Key Observations from the JSON:

@@ -1,10 +1,11 @@
---- Test ---
-Model: gemma3:4b
-Question: How do I reindex foo to bar?
-Elapsed time: 9.325 seconds
+# Test
 
---- Response ---
-model: gemma3:4b
+- **Model:** gemma3:4b
+- **Question:** How do I reindex foo to bar?
+- **Elapsed time:** 9.325 seconds
+
+## Response
+
 Okay, let's break down how to reindex "foo" to "bar" using the `eskit ilm` command based on the provided documentation.  The key command is `eskit ilm show`.
 
 Here's the command you'll use, along with an explanation of the arguments:

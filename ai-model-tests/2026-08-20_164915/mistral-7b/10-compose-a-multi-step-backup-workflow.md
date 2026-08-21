@@ -1,11 +1,12 @@
---- Test ---
-Model: mistral:7b
-Question: Compose a multi-step backup workflow.
-Elapsed time: 11.129 seconds
+# Test
 
---- Response ---
-model: mistral:7b
- Based on the provided command structure, let's create a multi-step backup workflow using Elasticsearch Index Lifecycle Management (ILM) and Artificial Intelligence (AI) commands.
+- **Model:** mistral:7b
+- **Question:** Compose a multi-step backup workflow.
+- **Elapsed time:** 11.129 seconds
+
+## Response
+
+Based on the provided command structure, let's create a multi-step backup workflow using Elasticsearch Index Lifecycle Management (ILM) and Artificial Intelligence (AI) commands.
 
 1. First, we'll create a backup policy for our Elasticsearch index.
 

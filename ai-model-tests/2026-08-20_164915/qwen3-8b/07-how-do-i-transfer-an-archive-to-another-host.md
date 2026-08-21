@@ -1,10 +1,11 @@
---- Test ---
-Model: qwen3:8b
-Question: How do I transfer an archive to another host?
-Elapsed time: 37.111 seconds
+# Test
 
---- Response ---
-model: qwen3:8b
+- **Model:** qwen3:8b
+- **Question:** How do I transfer an archive to another host?
+- **Elapsed time:** 37.111 seconds
+
+## Response
+
 To transfer an archive to another host using `eskit`, follow these steps:
 
 ### ✅ Command Syntax

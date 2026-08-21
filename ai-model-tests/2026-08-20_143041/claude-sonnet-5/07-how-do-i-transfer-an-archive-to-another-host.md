@@ -1,9 +1,11 @@
-model: claude-sonnet-5
+# Test
 
---- Usage ---
-Input tokens:  29618
-Output tokens: 678
-Estimated cost with model:claude-sonnet-5: $0.066016
+- **Model:** claude-sonnet-5
+- **Input tokens:** 29618
+- **Output tokens:** 678
+- **Estimated cost:** $0.066016
+
+## Response
 
 To transfer an archive to another host, use the **`eskit archive push`** command. This syncs (mirrors) the local archive data to a destination host.
 

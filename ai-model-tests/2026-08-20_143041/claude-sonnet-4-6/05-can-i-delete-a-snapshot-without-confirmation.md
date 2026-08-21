@@ -1,9 +1,11 @@
-model: claude-sonnet-4-6
+# Test
 
---- Usage ---
-Input tokens:  25598
-Output tokens: 220
-Estimated cost with model:claude-sonnet-4-6: $0.080094
+- **Model:** claude-sonnet-4-6
+- **Input tokens:** 25598
+- **Output tokens:** 220
+- **Estimated cost:** $0.080094
+
+## Response
 
 Based on the ESKit command description, **`eskit snap delete` is marked as a destructive operation**, and its metadata explicitly states:
 

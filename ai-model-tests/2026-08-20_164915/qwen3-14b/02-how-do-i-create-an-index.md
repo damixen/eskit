@@ -1,10 +1,11 @@
---- Test ---
-Model: qwen3:14b
-Question: How do I create an index?
-Elapsed time: 63.972 seconds
+# Test
 
---- Response ---
-model: qwen3:14b
+- **Model:** qwen3:14b
+- **Question:** How do I create an index?
+- **Elapsed time:** 63.972 seconds
+
+## Response
+
 To create an index using `eskit`, use the following command structure:
 
 ```bash

@@ -1,10 +1,11 @@
---- Test ---
-Model: gemma3:4b
-Question: How do I create an repository?
-Elapsed time: 17.866 seconds
+# Test
 
---- Response ---
-model: gemma3:4b
+- **Model:** gemma3:4b
+- **Question:** How do I create an repository?
+- **Elapsed time:** 17.866 seconds
+
+## Response
+
 Okay, let's break down how to create a repository using the `eskit` commands. Based on the provided JSON structure, here's a breakdown of the steps and the relevant command:
 
 **1. Using the `eskit ilm` command**

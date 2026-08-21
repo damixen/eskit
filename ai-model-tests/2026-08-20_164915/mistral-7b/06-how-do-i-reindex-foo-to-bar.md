@@ -1,11 +1,12 @@
---- Test ---
-Model: mistral:7b
-Question: How do I reindex foo to bar?
-Elapsed time: 9.557 seconds
+# Test
 
---- Response ---
-model: mistral:7b
- To reindex a specific index from "foo" to "bar" using the provided JSON structure, you would typically use the `ilm` (Index Lifecycle Management) command with the `put` or `rollover` sub-command. However, there's no direct `reindex` command available in the provided JSON structure.
+- **Model:** mistral:7b
+- **Question:** How do I reindex foo to bar?
+- **Elapsed time:** 9.557 seconds
+
+## Response
+
+To reindex a specific index from "foo" to "bar" using the provided JSON structure, you would typically use the `ilm` (Index Lifecycle Management) command with the `put` or `rollover` sub-command. However, there's no direct `reindex` command available in the provided JSON structure.
 
 Here's an example of how you might achieve this using the `put` command:
 

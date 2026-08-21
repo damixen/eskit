@@ -1,10 +1,11 @@
---- Test ---
-Model: qwen3:14b
-Question: How do I transfer an archive to another host?
-Elapsed time: 58.897 seconds
+# Test
 
---- Response ---
-model: qwen3:14b
+- **Model:** qwen3:14b
+- **Question:** How do I transfer an archive to another host?
+- **Elapsed time:** 58.897 seconds
+
+## Response
+
 To transfer an archive to another host, use the `eskit archive move` command. This command requires specifying the target host and the archive name. Here's how to use it:
 
 ### Syntax

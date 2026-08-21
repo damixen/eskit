@@ -1,9 +1,11 @@
-model: claude-haiku-4-5-20251001
+# Test
 
---- Usage ---
-Input tokens:  25596
-Output tokens: 888
-Estimated cost with model:claude-haiku-4-5-20251001: $0.030036
+- **Model:** claude-haiku-4-5-20251001
+- **Input tokens:** 25596
+- **Output tokens:** 888
+- **Estimated cost:** $0.030036
+
+## Response
 
 # Creating a Daily Snapshot Workflow
 

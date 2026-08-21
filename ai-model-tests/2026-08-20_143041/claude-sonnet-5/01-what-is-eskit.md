@@ -1,9 +1,11 @@
-model: claude-sonnet-5
+# Test
 
---- Usage ---
-Input tokens:  29612
-Output tokens: 583
-Estimated cost with model:claude-sonnet-5: $0.065054
+- **Model:** claude-sonnet-5
+- **Input tokens:** 29612
+- **Output tokens:** 583
+- **Estimated cost:** $0.065054
+
+## Response
 
 ESKit is a light-weight command-line toolkit for managing Elasticsearch resources. Based on its command structure, it's designed to help with:
 

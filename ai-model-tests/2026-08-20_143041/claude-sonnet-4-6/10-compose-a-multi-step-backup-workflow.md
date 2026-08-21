@@ -1,9 +1,11 @@
-model: claude-sonnet-4-6
+# Test
 
---- Usage ---
-Input tokens:  25599
-Output tokens: 873
-Estimated cost with model:claude-sonnet-4-6: $0.089892
+- **Model:** claude-sonnet-4-6
+- **Input tokens:** 25599
+- **Output tokens:** 873
+- **Estimated cost:** $0.089892
+
+## Response
 
 # Multi-Step Backup Workflow with ESKit
 

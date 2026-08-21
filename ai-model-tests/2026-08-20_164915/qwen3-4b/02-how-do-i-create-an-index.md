@@ -1,10 +1,11 @@
---- Test ---
-Model: qwen3:4b
-Question: How do I create an index?
-Elapsed time: 42.556 seconds
+# Test
 
---- Response ---
-model: qwen3:4b
+- **Model:** qwen3:4b
+- **Question:** How do I create an index?
+- **Elapsed time:** 42.556 seconds
+
+## Response
+
 Based on the provided schema for the `eskit` command-line tool, the command to create a new index is:
 
 **`eskit index create <index-name>`**

@@ -1,9 +1,11 @@
-model: claude-sonnet-5
+# Test
 
---- Usage ---
-Input tokens:  29614
-Output tokens: 753
-Estimated cost with model:claude-sonnet-5: $0.066758
+- **Model:** claude-sonnet-5
+- **Input tokens:** 29614
+- **Output tokens:** 753
+- **Estimated cost:** $0.066758
+
+## Response
 
 Based on the ESKit command definitions, the following operations are marked with **destructive** risk:
 

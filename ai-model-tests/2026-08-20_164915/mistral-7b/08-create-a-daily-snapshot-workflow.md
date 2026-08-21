@@ -1,11 +1,12 @@
---- Test ---
-Model: mistral:7b
-Question: Create a daily snapshot workflow.
-Elapsed time: 11.732 seconds
+# Test
 
---- Response ---
-model: mistral:7b
- To create a daily snapshot workflow using the provided command structure, we can use the `eskit ilm create` command with specific arguments. Here's a step-by-step guide:
+- **Model:** mistral:7b
+- **Question:** Create a daily snapshot workflow.
+- **Elapsed time:** 11.732 seconds
+
+## Response
+
+To create a daily snapshot workflow using the provided command structure, we can use the `eskit ilm create` command with specific arguments. Here's a step-by-step guide:
 
 1. First, make sure you have the necessary configuration file (`.eskit/config.json`) set up with your Elasticsearch cluster details.
 

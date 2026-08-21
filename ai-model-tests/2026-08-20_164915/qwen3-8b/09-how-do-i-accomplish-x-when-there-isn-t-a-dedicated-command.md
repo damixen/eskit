@@ -1,10 +1,11 @@
---- Test ---
-Model: qwen3:8b
-Question: How do I accomplish X when there isn't a dedicated command?
-Elapsed time: 18.353 seconds
+# Test
 
---- Response ---
-model: qwen3:8b
+- **Model:** qwen3:8b
+- **Question:** How do I accomplish X when there isn't a dedicated command?
+- **Elapsed time:** 18.353 seconds
+
+## Response
+
 If there isn't a dedicated command for your task (X), you have a few options based on the available tool structure:
 
 ### 1. **Use the AI Command for General Guidance**

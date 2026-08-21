@@ -1,9 +1,11 @@
-model: claude-sonnet-5
+# Test
 
---- Usage ---
-Input tokens:  29619
-Output tokens: 731
-Estimated cost with model:claude-sonnet-5: $0.066548
+- **Model:** claude-sonnet-5
+- **Input tokens:** 29619
+- **Output tokens:** 731
+- **Estimated cost:** $0.066548
+
+## Response
 
 # Multi-Step Backup Workflow
 

@@ -1,10 +1,11 @@
---- Test ---
-Model: qwen3:4b
-Question: How do I create a snapshot?
-Elapsed time: 32.735 seconds
+# Test
 
---- Response ---
-model: qwen3:4b
+- **Model:** qwen3:4b
+- **Question:** How do I create a snapshot?
+- **Elapsed time:** 32.735 seconds
+
+## Response
+
 Based on the provided `eskit` command schema, **there is no explicit command to create a snapshot** in the current tool structure. Here's why:
 
 1. **Top-level commands** (`index`, `ilm`, `ai`) do not include a snapshot-related command:

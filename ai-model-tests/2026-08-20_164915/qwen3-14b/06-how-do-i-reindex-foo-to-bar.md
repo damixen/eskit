@@ -1,10 +1,11 @@
---- Test ---
-Model: qwen3:14b
-Question: How do I reindex foo to bar?
-Elapsed time: 37.199 seconds
+# Test
 
---- Response ---
-model: qwen3:14b
+- **Model:** qwen3:14b
+- **Question:** How do I reindex foo to bar?
+- **Elapsed time:** 37.199 seconds
+
+## Response
+
 To reindex from `foo` to `bar`, use the following command:
 
 ```bash

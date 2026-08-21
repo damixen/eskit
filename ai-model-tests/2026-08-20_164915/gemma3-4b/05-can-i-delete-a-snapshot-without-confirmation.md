@@ -1,10 +1,11 @@
---- Test ---
-Model: gemma3:4b
-Question: Can I delete a snapshot without confirmation?
-Elapsed time: 6.869 seconds
+# Test
 
---- Response ---
-model: gemma3:4b
+- **Model:** gemma3:4b
+- **Question:** Can I delete a snapshot without confirmation?
+- **Elapsed time:** 6.869 seconds
+
+## Response
+
 Based on the provided documentation, deleting a snapshot without confirmation is **not supported**. 
 
 Here's the relevant excerpt from the `ilm` command section:

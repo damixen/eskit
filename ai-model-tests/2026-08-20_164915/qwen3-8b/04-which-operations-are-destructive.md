@@ -1,10 +1,11 @@
---- Test ---
-Model: qwen3:8b
-Question: Which operations are destructive?
-Elapsed time: 9.572 seconds
+# Test
 
---- Response ---
-model: qwen3:8b
+- **Model:** qwen3:8b
+- **Question:** Which operations are destructive?
+- **Elapsed time:** 9.572 seconds
+
+## Response
+
 The destructive operation in the provided tool is:
 
 **`delete`** (under the `archive` command)

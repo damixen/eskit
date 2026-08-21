@@ -1,9 +1,11 @@
-model: claude-sonnet-5
+# Test
 
---- Usage ---
-Input tokens:  29612
-Output tokens: 468
-Estimated cost with model:claude-sonnet-5: $0.063904
+- **Model:** claude-sonnet-5
+- **Input tokens:** 29612
+- **Output tokens:** 468
+- **Estimated cost:** $0.063904
+
+## Response
 
 To create an index in ESKit, use the `eskit index create` command.
 

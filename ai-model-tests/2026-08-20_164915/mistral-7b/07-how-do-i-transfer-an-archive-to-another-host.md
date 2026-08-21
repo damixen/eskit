@@ -1,11 +1,12 @@
---- Test ---
-Model: mistral:7b
-Question: How do I transfer an archive to another host?
-Elapsed time: 7.962 seconds
+# Test
 
---- Response ---
-model: mistral:7b
- To transfer an archive to another host using the provided JSON format, you can use the `eskit ilm` command with the `transfer` subcommand. Here's an example of how you can use it:
+- **Model:** mistral:7b
+- **Question:** How do I transfer an archive to another host?
+- **Elapsed time:** 7.962 seconds
+
+## Response
+
+To transfer an archive to another host using the provided JSON format, you can use the `eskit ilm` command with the `transfer` subcommand. Here's an example of how you can use it:
 
 1. First, ensure you have the necessary configuration set up for both the source and destination hosts. This includes the Elasticsearch instance and the `.eskit/config.json` file.
 

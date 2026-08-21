@@ -1,10 +1,11 @@
---- Test ---
-Model: gemma3:4b
-Question: How do I accomplish X when there isn't a dedicated command?
-Elapsed time: 13.640 seconds
+# Test
 
---- Response ---
-model: gemma3:4b
+- **Model:** gemma3:4b
+- **Question:** How do I accomplish X when there isn't a dedicated command?
+- **Elapsed time:** 13.640 seconds
+
+## Response
+
 Okay, let's break down how to approach accomplishing tasks when there isn't a dedicated command within the provided `eskit` command structure.  This is a common scenario when working with evolving tools. Here's a breakdown of strategies and how to apply them, based on the information you've given:
 
 **1. Understand the Available Commands & Arguments:**

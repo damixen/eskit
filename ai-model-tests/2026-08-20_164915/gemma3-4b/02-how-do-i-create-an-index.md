@@ -1,10 +1,11 @@
---- Test ---
-Model: gemma3:4b
-Question: How do I create an index?
-Elapsed time: 10.709 seconds
+# Test
 
---- Response ---
-model: gemma3:4b
+- **Model:** gemma3:4b
+- **Question:** How do I create an index?
+- **Elapsed time:** 10.709 seconds
+
+## Response
+
 Okay, let's break down how to create an index using the `eskit ilm` command, based on the provided JSON schema.
 
 **The Core Command:**

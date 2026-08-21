@@ -1,9 +1,11 @@
-model: claude-sonnet-5
+# Test
 
---- Usage ---
-Input tokens:  29618
-Output tokens: 1349
-Estimated cost with model:claude-sonnet-5: $0.072726
+- **Model:** claude-sonnet-5
+- **Input tokens:** 29618
+- **Output tokens:** 1349
+- **Estimated cost:** $0.072726
+
+## Response
 
 Here's how to set up a daily snapshot workflow using ESKit's `snap` and `repo` commands. ESKit itself does not include a built-in scheduler, so the "daily" part is achieved by running the `eskit snap create` command on a recurring basis (e.g. via cron or a scheduled task), while ESKit handles the actual snapshot creation against Elasticsearch.
 

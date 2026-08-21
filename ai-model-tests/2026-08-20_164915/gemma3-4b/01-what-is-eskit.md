@@ -1,10 +1,11 @@
---- Test ---
-Model: gemma3:4b
-Question: What is ESKit?
-Elapsed time: 15.511 seconds
+# Test
 
---- Response ---
-model: gemma3:4b
+- **Model:** gemma3:4b
+- **Question:** What is ESKit?
+- **Elapsed time:** 15.511 seconds
+
+## Response
+
 Okay, let's break down what ESKit is based on the provided JSON data.
 
 **ESKit is a command-line tool (CLI) designed for managing Elasticsearch and Index Lifecycle Management (ILM) policies.**

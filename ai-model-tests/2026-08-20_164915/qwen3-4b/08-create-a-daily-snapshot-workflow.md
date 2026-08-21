@@ -1,10 +1,11 @@
---- Test ---
-Model: qwen3:4b
-Question: Create a daily snapshot workflow.
-Elapsed time: 46.229 seconds
+# Test
 
---- Response ---
-model: qwen3:4b
+- **Model:** qwen3:4b
+- **Question:** Create a daily snapshot workflow.
+- **Elapsed time:** 46.229 seconds
+
+## Response
+
 To create a **daily snapshot workflow** using the `eskit` CLI, you can schedule the `settings snapshot` command to run once a day (e.g., via a cron job). Here's how:
 
 ---

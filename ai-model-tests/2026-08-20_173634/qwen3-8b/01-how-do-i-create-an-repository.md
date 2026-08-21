@@ -1,10 +1,11 @@
---- Test ---
-Model: qwen3:8b
-Question: How do I create an repository?
-Elapsed time: 18.475 seconds
+# Test
 
---- Response ---
-model: qwen3:8b
+- **Model:** qwen3:8b
+- **Question:** How do I create an repository?
+- **Elapsed time:** 18.475 seconds
+
+## Response
+
 To create a repository using the **eskit** tool, you would use the `repository create` command. Here's how to do it:
 
 ### ✅ Required Parameters

@@ -1,9 +1,11 @@
-model: claude-haiku-4-5-20251001
+# Test
 
---- Usage ---
-Input tokens:  25599
-Output tokens: 961
-Estimated cost with model:claude-haiku-4-5-20251001: $0.030404
+- **Model:** claude-haiku-4-5-20251001
+- **Input tokens:** 25599
+- **Output tokens:** 961
+- **Estimated cost:** $0.030404
+
+## Response
 
 # Multi-Step Backup Workflow for ESKit
 

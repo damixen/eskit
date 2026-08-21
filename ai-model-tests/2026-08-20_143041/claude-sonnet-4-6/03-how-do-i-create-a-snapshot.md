@@ -1,9 +1,11 @@
-model: claude-sonnet-4-6
+# Test
 
---- Usage ---
-Input tokens:  25597
-Output tokens: 354
-Estimated cost with model:claude-sonnet-4-6: $0.082101
+- **Model:** claude-sonnet-4-6
+- **Input tokens:** 25597
+- **Output tokens:** 354
+- **Estimated cost:** $0.082101
+
+## Response
 
 ## Creating a Snapshot
 

@@ -1,10 +1,11 @@
---- Test ---
-Model: gemma3:4b
-Question: Which operations are destructive?
-Elapsed time: 4.524 seconds
+# Test
 
---- Response ---
-model: gemma3:4b
+- **Model:** gemma3:4b
+- **Question:** Which operations are destructive?
+- **Elapsed time:** 4.524 seconds
+
+## Response
+
 Based on the provided JSON data, here's a breakdown of the operations that are considered destructive:
 
 *   **`ilm` commands:**
