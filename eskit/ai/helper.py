@@ -12,10 +12,11 @@ MODEL_HANDLERS = {
     "mistral:7b": ask_ollama,
 }
 
-def ask(question, command_description, model):
+
+def ask(question, command_description, model, tools):
     handler = MODEL_HANDLERS.get(model)
 
     if handler is None:
         raise ValueError(f"Unsupported model: {model}")
 
-    return handler(question, command_description, model)
+    return handler(question, command_description, model, tools=tools, dump_json=False)

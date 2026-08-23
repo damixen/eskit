@@ -1,5 +1,6 @@
 import ollama
 import json
+from eskit.ai.response import LLMResponse
 
 SYSTEM_PROMPT = """
 You are an AI assistant for ESKit.
@@ -20,17 +21,18 @@ ESKit command description:
 
 """
 
-def ask(question, command_description, model):
+
+def ask(question, command_description, model, tools, dump_json):
 
     if not question:
-        return "no question asked."
+        return LLMResponse("no question asked.")
 
     prompt = SYSTEM_PROMPT + json.dumps(
         command_description,
         indent=2,
-        )
+    )
 
-    #print("prompt:", prompt)
+    # print("prompt:", prompt)
 
     response = ollama.chat(
         model=model,
@@ -45,5 +47,4 @@ def ask(question, command_description, model):
             },
         ],
     )
-
-    return response["message"]["content"]
+    return LLMResponse(response["message"]["content"])

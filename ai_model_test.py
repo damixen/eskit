@@ -30,6 +30,9 @@ QUESTIONS = [
     "How do I accomplish X when there isn't a dedicated command?",
     "Compose a multi-step backup workflow.",
     "How do I create an repository?",
+    "How can I see snapshot cache in eskit?",
+    "How can I see repository cache in eskit?",
+    "How can I see index cache in eskit?",
 ]
 
 

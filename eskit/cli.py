@@ -1190,7 +1190,17 @@ def cmd_show_ilm(args):
 
 def cmd_ai(args):
 
-    command_json = describe_parser(build_parser())
+    parser = build_parser()
+
+    command_json = describe_parser(parser)
+
+    from eskit.ai.tool import build_tool_definitions, tools_to_json
+
+    tools = build_tool_definitions(command_json)
+
+    if args.output_command_json:
+        with open("tools.json", "w", encoding="UTF-8") as f:
+            f.write(tools_to_json(tools))
 
     # with open("argparse.dump", "w", encoding="UTF-8") as f:
     #     json.dump(command_json, f, indent=2)
@@ -1202,10 +1212,25 @@ def cmd_ai(args):
     from eskit.ai.helper import ask
 
     response = ask(
-        question=args.question, command_description=command_json, model=args.model
+        question=args.question,
+        command_description=command_json,
+        model=args.model,
+        tools=tools,
     )
 
-    print(response)
+    if response.text:
+        print(response.text)
+        return
+
+    if response.tool_call:
+        from eskit.ai.tool import to_argparse
+
+        args = to_argparse(response.tool_call, command_json["commands"], tools)
+        #print("args:", args)
+
+        parsed_args = parser.parse_args(args)
+
+        return parsed_args.function(parsed_args)
 
     return ExitCode.SUCCESS
 
@@ -1490,7 +1515,7 @@ def build_parser():
         "--include_global_state", default=False, action="store_true"
     )
     common_snap_index_parser.add_argument(
-        "--ignore_unavailable", type=bool, default=True
+        "--ignore_unavailable", action="store_true", default=True
     )
 
     snap_create = snap_sub.add_parser(
@@ -1887,7 +1912,7 @@ def build_parser():
     # ILM Command
 
     ilm_common_parser = argparse.ArgumentParser(add_help=False)
-    ilm_common_parser.add_argument("name", help="Name of the archive.", type=str)
+    ilm_common_parser.add_argument("name", help="Name of the ilm.", type=str)
 
     ilm = sub.add_parser(
         "ilm",
