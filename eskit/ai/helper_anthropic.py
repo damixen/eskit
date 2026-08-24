@@ -65,18 +65,24 @@ def ask(question, command_description, model, tools, dump_json):
     # Final answer
     #
     if response.stop_reason != "tool_use":
-        return LLMResponse(text=response.content[0].text)
+        text_block = next(block for block in response.content if block.type == "text")
+        return LLMResponse(text=text_block.text)
 
     #
     # Claude wants a tool
     #
-
+    #print("response:", response)
     #print("response.content:", response.content)
 
     tool = next(block for block in response.content if block.type == "tool_use")
+    text_block = next(block for block in response.content if block.type == "text")
+    text = None
+    if text_block:
+        text = text_block.text
 
     return LLMResponse(
-        tool_call=ToolCall(id=tool.id, name=tool.name, arguments=tool.input)
+        tool_call=ToolCall(id=tool.id, name=tool.name, arguments=tool.input),
+        text=text,
     )
 
 

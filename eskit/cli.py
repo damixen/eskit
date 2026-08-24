@@ -1220,7 +1220,6 @@ def cmd_ai(args):
 
     if response.text:
         print(response.text)
-        return
 
     if response.tool_call:
         from eskit.ai.tool import to_argparse
@@ -1230,7 +1229,7 @@ def cmd_ai(args):
 
         parsed_args = parser.parse_args(args)
 
-        return parsed_args.function(parsed_args)
+        parsed_args.function(parsed_args)
 
     return ExitCode.SUCCESS
 
