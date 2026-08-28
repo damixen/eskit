@@ -10,11 +10,13 @@ logger = logging.getLogger(__name__)
 
 def get_current_host_name():
     if not (CURRENT_HOST_FILE).exists():
-        return
-
+        return Result.fail(ResultCode.NOT_FOUND, "current host file not found.")
+    host = ""
     with open(CURRENT_HOST_FILE, "r", encoding="utf-8") as f:
         for line in f:
-            return line
+            host = line
+
+    return Result.ok({"host": host})
 
 
 def check_host_name(host):

@@ -12,8 +12,6 @@ from eskit.log import configure_logging
 from eskit.exit_code import ExitCode
 from eskit.result import ResultCode, Result
 from eskit.resource_type import ResourceType
-from eskit.projection import build_field_list, normalize_projection
-from eskit.render.renderer import render
 from eskit.utils.paths import CACHE_ROOT, ensure_root, root_dir, DEMO_DIR
 from eskit.version import __cache_format_version__
 from eskit.utils.config import load_config
@@ -42,6 +40,8 @@ class CommandContext:
     config: Config
     host: str | None
     render: RenderOptions
+    command: str
+    dry_run: bool
 
 
 def print_dry_run():
@@ -71,20 +71,27 @@ def check_host_name(host):
     return
 
 
-def load_command_context(args) -> CommandContext:
+def load_command_context(args, skip_get_current_host=False) -> CommandContext:
 
+    config: Config = {
+        "hosts": [],
+        "views": {},
+        "reindex-configs": [],
+    }
     config_path = getattr(args, "config", None)
-    try:
-        config = load_config(config_path)
-    except FileNotFoundError as e:
-        raise ConfigNotFoundError(args.config) from e
-
-    host = args.host
-    if not host:
+    if config_path:
         try:
-            host = get_current_host()
+            config = load_config(config_path)
         except FileNotFoundError as e:
-            raise CurrentHostNotFoundError(str(CACHE_ROOT / CURRENT_HOST)) from e
+            raise ConfigNotFoundError(args.config) from e
+
+    host = getattr(args, "host", "")
+    if not skip_get_current_host:
+        if not host:
+            try:
+                host = get_current_host()
+            except FileNotFoundError as e:
+                raise CurrentHostNotFoundError(str(CACHE_ROOT / CURRENT_HOST)) from e
 
     output_format = "table"
     projection_supported = False
@@ -104,12 +111,16 @@ def load_command_context(args) -> CommandContext:
             "Warning: --fields and --view are only supported with --json and have been ignored."
         )
 
+    dry_run = getattr(args, "dry_run", False)
+
     context = CommandContext(
         config=config,
         host=host,
         render=RenderOptions(
             output_format=output_format, fields=fields, views=views, flat=flat
         ),
+        command=args.function.__name__,
+        dry_run=dry_run,
     )
 
     return context
@@ -122,26 +133,13 @@ def cmd_show_host(args):
         context = load_command_context(args)
     except ESKitError as e:
         logger.error("%s", e)
-        return ExitCode.FAILURE
+        return Result.fail(ResultCode.INTERNAL_ERROR, "Failed to load context.")
 
     result = get_host(context.host, context.config)
-    if result.success:
-        fields = build_field_list(
-            view_config=context.config["views"],
-            views=context.render.views,
-            fields=context.render.fields,
-        )
-        projection = normalize_projection(fields)
+    result.command_context = context
 
-        render(
-            result.value,
-            command="show_host_config",
-            output_format=context.render.output_format,
-            fields=projection,
-            flatten=context.render.flat,
-            context=result.context,
-        )
-        return ExitCode.SUCCESS
+    if result.code == ResultCode.SUCCESS:
+        return result
 
     if result.code == ResultCode.NOT_FOUND:
 
@@ -170,40 +168,46 @@ def cmd_show_host(args):
 
     else:
         logger.error("Failed to get host:%s", result.message)
-    return ExitCode.FAILURE
+
+    return result
 
 
 def cmd_set_host(args):
     from eskit.core.host import set_current_host_name
 
+    try:
+        context = load_command_context(args)
+    except ESKitError as e:
+        logger.error("%s", e)
+        return Result.fail(ResultCode.INTERNAL_ERROR, "Failed to load context.")
+
     host = args.host
     result = set_current_host_name(host)
+    result.command_context = context
 
     if result.success:
-        if args.json:
-            print(json.dumps(result.value, indent=2))
-        else:
-            if result.value:
-                host = result.value["host"]
-            print(f"Current host set to: {host}")
-        return ExitCode.SUCCESS
+        return result
 
     logger.error("Failed to set host:%s", result.message)
-    return ExitCode.FAILURE
+    return result
 
 
 def cmd_get_host(args):
-    host_name = get_current_host_name()
 
-    if host_name:
-        if args.json:
-            print(json.dumps({"name": host_name}, indent=2))
-        else:
-            print(f"Current host: {host_name}")
-        return ExitCode.SUCCESS
+    try:
+        context = load_command_context(args, skip_get_current_host=True)
+    except ESKitError as e:
+        logger.error("%s", e)
+        return Result.fail(ResultCode.INTERNAL_ERROR, "Failed to load context.")
+
+    result = get_current_host_name()
+    result.command_context = context
+
+    if result.success:
+        return result
 
     logger.error("No current host set.")
-    return ExitCode.FAILURE
+    return result
 
 
 def cmd_list_jobs(args):
@@ -213,30 +217,17 @@ def cmd_list_jobs(args):
         context = load_command_context(args)
     except ESKitError as e:
         logger.error("%s", e)
-        return ExitCode.FAILURE
+        return Result.fail(ResultCode.INTERNAL_ERROR, "Failed to load context.")
 
     result = get_list(context.host, args.local)
+    result.command_context = context
 
     if result.success:
-        fields = build_field_list(
-            view_config=context.config["views"],
-            views=context.render.views,
-            fields=context.render.fields,
-        )
-        projection = normalize_projection(fields)
-        render(
-            result.value,
-            command="list_jobs",
-            output_format=context.render.output_format,
-            fields=projection,
-            flatten=context.render.flat,
-            context=result.context,
-        )
         # print(json.dumps(result.value, indent=2))
-        return ExitCode.SUCCESS
+        return result
 
     logger.error("Failed to list jobs.")
-    return ExitCode.FAILURE
+    return result
 
 
 def cmd_read_job(args):
@@ -247,26 +238,13 @@ def cmd_read_job(args):
         context = load_command_context(args)
     except ESKitError as e:
         logger.error("%s", e)
-        return ExitCode.FAILURE
+        return Result.fail(ResultCode.INTERNAL_ERROR, "Failed to load context.")
 
     result = get(context.host, args.job_search_id)
+    result.command_context = context
 
     if result.success:
-        fields = build_field_list(
-            view_config=context.config["views"],
-            views=context.render.views,
-            fields=context.render.fields,
-        )
-        projection = normalize_projection(fields)
-        render(
-            result.value,
-            command="show_job",
-            output_format=context.render.output_format,
-            fields=projection,
-            flatten=context.render.flat,
-            context=result.context,
-        )
-        return ExitCode.SUCCESS
+        return result
 
     if result.code == ResultCode.NOT_FOUND:
         name = args.job_search_id
@@ -275,7 +253,7 @@ def cmd_read_job(args):
     else:
         logger.error("Failed to list jobs.")
 
-    return ExitCode.FAILURE
+    return result
 
 
 def cmd_status(args):
@@ -286,26 +264,12 @@ def cmd_status(args):
         context = load_command_context(args)
     except ESKitError as e:
         logger.error("%s", e)
-        return ExitCode.FAILURE
+        return Result.fail(ResultCode.INTERNAL_ERROR, "Failed to load context.")
 
     result = get_status(context.host, context.config)
-    if result.success:
-        fields = build_field_list(
-            view_config=context.config["views"],
-            views=context.render.views,
-            fields=context.render.fields,
-        )
-        projection = normalize_projection(fields)
-        render(
-            result.value,
-            command="status",
-            output_format=context.render.output_format,
-            fields=projection,
-            flatten=context.render.flat,
-            context=result.context,
-        )
+    result.command_context = context
 
-    return ExitCode.FAILURE
+    return result
 
 
 def cmd_pull(args):
@@ -315,16 +279,16 @@ def cmd_pull(args):
         context = load_command_context(args)
     except ESKitError as e:
         logger.error("%s", e)
-        return ExitCode.FAILURE
+        return Result.fail(ResultCode.INTERNAL_ERROR, "Failed to load context.")
 
     result = pull_metadata(context.config, context.host, args.kind)
+    result.command_context = context
 
     if result.success:
-        print("Pulled metadata successfully for the current host.")
-        return ExitCode.SUCCESS
+        return result
 
     logger.error("Failed to pull metadata for the current host.")
-    return ExitCode.FAILURE
+    return result
 
 
 def cmd_cat2(args):
@@ -334,7 +298,7 @@ def cmd_cat2(args):
         context = load_command_context(args)
     except ESKitError as e:
         logger.error("%s", e)
-        return ExitCode.FAILURE
+        return Result.fail(ResultCode.INTERNAL_ERROR, "Failed to load context.")
 
     if not check_cache_version(context.host):
         logger.warning(
@@ -342,6 +306,7 @@ def cmd_cat2(args):
         )
 
     result = get_metadata(context.host, args.kind)
+    result.command_context = context
 
     mapping = {
         "repo": "cat_repository",
@@ -350,24 +315,10 @@ def cmd_cat2(args):
         "ilm": "cat_ilm",
     }
     cmd = mapping[args.kind]
+    result.command_context.command = cmd
 
     if result.success:
-        fields = build_field_list(
-            view_config=context.config["views"],
-            views=context.render.views,
-            fields=context.render.fields,
-        )
-        projection = normalize_projection(fields)
-        render(
-            result.value,
-            command=cmd,
-            output_format=context.render.output_format,
-            fields=projection,
-            flatten=context.render.flat,
-            context=result.context,
-        )
-        # print(json.dumps(result.value, indent=2))
-        return ExitCode.SUCCESS
+        return result
 
     resource = ResourceType.CACHE
     name = context.host
@@ -378,7 +329,7 @@ def cmd_cat2(args):
         name,
     )
 
-    return ExitCode.FAILURE
+    return result
 
 
 def cmd_repo_show2(args):
@@ -391,36 +342,23 @@ def cmd_repo_show2(args):
         context = load_command_context(args)
     except ESKitError as e:
         logger.error("%s", e)
-        return ExitCode.FAILURE
+        return Result.fail(ResultCode.INTERNAL_ERROR, "Failed to load context.")
 
     result = get(context.host, name)
+    result.command_context = context
 
     if result.success:
-        fields = build_field_list(
-            view_config=context.config["views"],
-            views=context.render.views,
-            fields=context.render.fields,
-        )
-        projection = normalize_projection(fields)
-
         cmd = "show_repository"
 
         result_context = result.context
         if result_context and result_context["resource_type"] == ResourceType.SNAPSHOT:
             cmd = "show_snapshot"
 
-        render(
-            result.value,
-            command=cmd,
-            output_format=context.render.output_format,
-            fields=projection,
-            flatten=context.render.flat,
-            context=result.context,
-        )
-        return ExitCode.SUCCESS
+        result.command_context.command = cmd
+        return result
 
     logger.error("Repository:%s not found.", name)
-    return ExitCode.FAILURE
+    return result
 
 
 def cmd_snap_show(args):
@@ -430,7 +368,10 @@ def cmd_snap_show(args):
 
     if not (repo and snap):
         logger.error("Snapshot name needs to be in format of <repository>/<snapshot>.")
-        return ExitCode.FAILURE
+        return Result.fail(
+            ResultCode.INVALID_ARGUMENT,
+            "Snapshot name needs to be in format of <repository>/<snapshot>.",
+        )
 
     return cmd_repo_show2(args)
 
@@ -448,28 +389,19 @@ def cmd_delete_repo(args):
         context = load_command_context(args)
     except ESKitError as e:
         logger.error("%s", e)
-        return ExitCode.FAILURE
+        return Result.fail(ResultCode.INTERNAL_ERROR, "Failed to load context.")
 
     result = delete(context.config, context.host, name, dry_run, push, force)
+    result.command_context = context
 
     if result.success:
-        if not dry_run or (result.value and result.value["executed"]):
-            print("Ropository deleted successfully.")
-        else:
-            print_dry_run()
-            print_host(context.host)
-            print(json.dumps(result.value, indent=2))
-        return ExitCode.SUCCESS
-
-    if result.code == ResultCode.CANCELED:
-        print("Canceled.")
-        return ExitCode.CANCELED
+        return result
 
     if result.code == ResultCode.NOT_FOUND:
         logger.error("Repository:%s not found.", name)
     else:
         logger.error("Failed to delete repository:%s.", name)
-    return ExitCode.FAILURE
+    return result
 
 
 def cmd_create_repo(args):
@@ -486,25 +418,21 @@ def cmd_create_repo(args):
         context = load_command_context(args)
     except ESKitError as e:
         logger.error("%s", e)
-        return ExitCode.FAILURE
+        return Result.fail(ResultCode.INTERNAL_ERROR, "Failed to load context.")
 
     result = create(
         context.config, context.host, name, repo_type, location, dry_run, push
     )
+    result.command_context = context
+
     if result.success:
-        if not dry_run or (result.value and result.value["executed"]):
-            print("Ropository created successfully.")
-        else:
-            print_dry_run()
-            print_host(context.host)
-            print(json.dumps(result.value, indent=2))
-        return ExitCode.SUCCESS
+        return result
 
     if result.code == ResultCode.ALREADY_EXISTS:
         logger.error("Repository:%s already exists.", name)
     else:
         logger.error("Failed to create repository:%s", name)
-    return ExitCode.FAILURE
+    return result
 
 
 def cmd_reindex_mapping(args):
@@ -512,8 +440,12 @@ def cmd_reindex_mapping(args):
         context = load_command_context(args)
     except ESKitError as e:
         logger.error("%s", e)
-        return ExitCode.FAILURE
-    print(json.dumps(context.config["reindex_configs"], indent=2))
+        return Result.fail(ResultCode.INTERNAL_ERROR, "Failed to load context.")
+
+    result = Result.ok(context.config["reindex-configs"])
+    result.command_context = context
+
+    return result
 
 
 def cmd_create_snapshot(args):
@@ -524,7 +456,8 @@ def cmd_create_snapshot(args):
         context = load_command_context(args)
     except ESKitError as e:
         logger.error("%s", e)
-        return ExitCode.FAILURE
+        return Result.fail(ResultCode.INTERNAL_ERROR, "Failed to load context.")
+
     name = args.name
     result = create(
         context.config,
@@ -537,24 +470,10 @@ def cmd_create_snapshot(args):
         args.push,
         args.wait,
     )
-    host_name = args.host
-    dry_run = args.dry_run
+    result.command_context = context
+
     if result.success:
-        if not dry_run or (result.value and result.value["executed"]):
-            if args.wait:
-                print("Snapshot creation completed successfully.")
-            else:
-                print("Snapshot creation started successfully.")
-            print(
-                "Please check status of the snapshot by updating the cache with eskit pull."
-            )
-        else:
-            print_dry_run()
-            if host_name is None:
-                host_name = get_current_host_name()
-            print_host(host_name)
-            print(json.dumps(result.value, indent=2))
-        return ExitCode.SUCCESS
+        return result
 
     if result.code == ResultCode.INVALID_ARGUMENT:
         argument = result.get_argument()
@@ -570,7 +489,7 @@ def cmd_create_snapshot(args):
     elif result.code == ResultCode.ALREADY_EXISTS:
         logger.error("Snapshot:%s already exists.", name)
 
-    return ExitCode.FAILURE
+    return result
 
 
 def cmd_delete_snapshot(args):
@@ -581,27 +500,16 @@ def cmd_delete_snapshot(args):
         context = load_command_context(args)
     except ESKitError as e:
         logger.error("%s", e)
-        return ExitCode.FAILURE
+        return Result.fail(ResultCode.INTERNAL_ERROR, "Failed to load context.")
+
     name = args.name
     result = delete(
         context.config, context.host, name, args.dry_run, args.push, args.force
     )
-    host_name = args.host
-    dry_run = args.dry_run
-    if result.success:
-        if not dry_run or (result.value and result.value["executed"]):
-            print("Snapshot deleted.")
-        else:
-            print_dry_run()
-            if host_name is None:
-                host_name = get_current_host_name()
-            print_host(host_name)
-            print(json.dumps(result.value, indent=2))
-        return ExitCode.SUCCESS
+    result.command_context = context
 
-    if result.code == ResultCode.CANCELED:
-        print("Canceled.")
-        return ExitCode.CANCELED
+    if result.success:
+        return result
 
     if result.code == ResultCode.NOT_FOUND:
         logger.error("Snapshot:%s not found.", name)
@@ -611,7 +519,7 @@ def cmd_delete_snapshot(args):
     logger.error(
         "Please make sure the snapshot name include repository name. <repository>/<name>."
     )
-    return ExitCode.FAILURE
+    return result
 
 
 def cmd_restore_snapshot(args):
@@ -622,9 +530,8 @@ def cmd_restore_snapshot(args):
         context = load_command_context(args)
     except ESKitError as e:
         logger.error("%s", e)
-        return ExitCode.FAILURE
-    host_name = args.host
-    dry_run = args.dry_run
+        return Result.fail(ResultCode.INTERNAL_ERROR, "Failed to load context.")
+
     name = args.name
 
     result = restore(
@@ -638,24 +545,13 @@ def cmd_restore_snapshot(args):
         args.remove_ilm,
         args.wait,
     )
+    result.command_context = context
 
     if result.success:
-        if not dry_run or (result.value and result.value["executed"]):
-            if args.wait:
-                print("Restore completed.")
-            else:
-                print("Restore started.")
-            print(
-                "Please check the status of restore index by updating the cache with eskit pull."
-            )
-        else:
-            print_dry_run()
-            print_host(host_name)
-            print(json.dumps(result.value, indent=2))
-        return ExitCode.SUCCESS
+        return result
 
     logger.error("Failed to restore snapshot:%s", name)
-    return ExitCode.FAILURE
+    return result
 
 
 def cmd_restore_status(args):
@@ -666,27 +562,18 @@ def cmd_restore_status(args):
         context = load_command_context(args)
     except ESKitError as e:
         logger.error("%s", e)
-        return ExitCode.FAILURE
+        return Result.fail(ResultCode.INTERNAL_ERROR, "Failed to load context.")
+
     index = args.index
     result = status(context.config, context.host, index)
+    result.command_context = context
 
     if result.success:
-        fields = build_field_list(
-            view_config=context.config["views"],
-            views=context.render.views,
-            fields=context.render.fields,
-        )
-        projection = normalize_projection(fields)
-        render(
-            value=result.value,
-            command="status_index",
-            output_format=context.render.output_format,
-            fields=projection,
-            flatten=context.render.flat,
-            context=result.context,
-        )
+        return result
     else:
         logger.error("Failed to get restore status for index:%s", index)
+
+    return result
 
 
 def cmd_delete_index(args):
@@ -697,35 +584,24 @@ def cmd_delete_index(args):
         context = load_command_context(args)
     except ESKitError as e:
         logger.error("%s", e)
-        return ExitCode.FAILURE
+        return Result.fail(ResultCode.INTERNAL_ERROR, "Failed to load context.")
 
-    host_name = args.host
-    dry_run = args.dry_run
     index = args.index
 
     result = delete(
         context.config, context.host, args.index, args.dry_run, args.push, args.force
     )
+    result.command_context = context
 
     if result.success:
-        if not dry_run or (result.value and result.value["executed"]):
-            print(f"Index:{index} deleted.")
-        else:
-            print_dry_run()
-            print_host(host_name)
-            print(json.dumps(result.value, indent=2))
-        return ExitCode.SUCCESS
-
-    if result.code == ResultCode.CANCELED:
-        print("Canceled.")
-        return ExitCode.CANCELED
+        return result
 
     if result.code == ResultCode.NOT_FOUND:
         logger.error("Index:%s not found.", index)
     else:
         logger.error("Failed to delete index:%s", index)
 
-    return ExitCode.FAILURE
+    return result
 
 
 def cmd_create_index(args):
@@ -736,29 +612,22 @@ def cmd_create_index(args):
         context = load_command_context(args)
     except ESKitError as e:
         logger.error("%s", e)
-        return ExitCode.FAILURE
+        return Result.fail(ResultCode.INTERNAL_ERROR, "Failed to load context.")
 
-    host_name = args.host
-    dry_run = args.dry_run
     index = args.index
 
     result = create(
         context.config, context.host, args.index, args.mapping, args.dry_run, args.push
     )
+    result.command_context = context
 
     if result.success:
-        if not dry_run or (result.value and result.value["executed"]):
-            print("Index created successfully.")
-        else:
-            print_dry_run()
-            print_host(host_name)
-            print(json.dumps(result.value, indent=2))
-        return ExitCode.SUCCESS
+        return result
 
     if result.code == ResultCode.ALREADY_EXISTS:
         logger.error("Index:%s already exists.", index)
 
-    return ExitCode.FAILURE
+    return result
 
 
 def cmd_show_index(args):
@@ -771,32 +640,19 @@ def cmd_show_index(args):
         context = load_command_context(args)
     except ESKitError as e:
         logger.error("%s", e)
-        return ExitCode.FAILURE
+        return Result.fail(ResultCode.INTERNAL_ERROR, "Failed to load context.")
 
     result = get(context.config, context.host, index)
+    result.command_context = context
 
     if result.success:
-        fields = build_field_list(
-            context.config["views"],
-            views=context.render.views,
-            fields=context.render.fields,
-        )
-        projection = normalize_projection(fields)
-        render(
-            result.value,
-            command="show_index",
-            output_format=context.render.output_format,
-            fields=projection,
-            flatten=context.render.flat,
-            context=result.context,
-        )
-        return ExitCode.SUCCESS
+        return result
 
     if result.code == ResultCode.NOT_FOUND:
         logger.error("Index:%s not found.", index)
 
     logger.error("Failed to get index:%s.", index)
-    return ExitCode.FAILURE
+    return result
 
 
 def cmd_reindex(args):
@@ -807,7 +663,7 @@ def cmd_reindex(args):
         context = load_command_context(args)
     except ESKitError as e:
         logger.error("%s", e)
-        return ExitCode.FAILURE
+        return Result.fail(ResultCode.INTERNAL_ERROR, "Failed to load context.")
 
     src_index = args.src
     dst_index = args.dst
@@ -820,18 +676,11 @@ def cmd_reindex(args):
         args.dry_run,
         args.push,
     )
+    result.command_context = context
 
     if result.success:
         logger.info("Reindex started successfully.")
-        render(
-            result.value,
-            command="show_job",
-            output_format=context.render.output_format,
-            fields=[],
-            flatten=False,
-            context=result.context,
-        )
-        return ExitCode.SUCCESS
+        return result
 
     if result.code == ResultCode.ALREADY_EXISTS:
         logger.error("Index:%s already exists.", dst_index)
@@ -842,7 +691,7 @@ def cmd_reindex(args):
         if result.value:
             print(json.dumps(result.value, indent=2))
 
-    return ExitCode.FAILURE
+    return result
 
 
 def cmd_get_task(args):
@@ -852,19 +701,26 @@ def cmd_get_task(args):
         context = load_command_context(args)
     except ESKitError as e:
         logger.error("%s", e)
-        return ExitCode.FAILURE
+        return Result.fail(ResultCode.INTERNAL_ERROR, "Failed to load context.")
 
     task_id = args.task_id
     result = get(context.config, context.host, task_id)
+    result.command_context = context
+
     if result.success:
-        print(json.dumps(result.value, indent=2))
-        return ExitCode.SUCCESS
+        return result
     else:
         logger.error("Task:%s not found.", task_id)
-        return ExitCode.FAILURE
+        return result
 
 
-def _init(is_demo):
+def _init(args, is_demo):
+
+    try:
+        context = load_command_context(args, skip_get_current_host=True)
+    except ESKitError as e:
+        logger.error("%s", e)
+        return Result.fail(ResultCode.INTERNAL_ERROR, "Failed to load context.")
 
     if CACHE_ROOT.exists():
         return Result.fail(
@@ -889,17 +745,19 @@ def _init(is_demo):
         )
         # print(f"demo/{__cache_format_version__} copied to .eskit folder.")
 
-    return Result.ok({"resource": ResourceType.CACHE, "name": config_path})
+    result = Result.ok(
+        value={"resource": ResourceType.CACHE, "name": config_path, "demo": is_demo},
+        command_context=context,
+    )
+
+    return result
 
 
 def cmd_init(args):
 
-    result = _init(args.demo)
+    result = _init(args, args.demo)
     if result.success:
-        print("ESKit initialized.")
-        if args.demo:
-            print("Demo folder copied.")
-        return ExitCode.SUCCESS
+        return result
 
     if result.code == ResultCode.ALREADY_EXISTS:
         logger.error(".eskit folder already exists.")
@@ -907,7 +765,7 @@ def cmd_init(args):
             logger.error("If you want to reset demo, please remove the folder first.")
     else:
         logger.error("Failed to initialize ESKit.")
-    return ExitCode.FAILURE
+    return result
 
 
 def cmd_list_archives(args):
@@ -918,29 +776,16 @@ def cmd_list_archives(args):
         context = load_command_context(args)
     except ESKitError as e:
         logger.error("%s", e)
-        return ExitCode.FAILURE
+        return Result.fail(ResultCode.INTERNAL_ERROR, "Failed to load context.")
 
     result = get_list(context.host)
+    result.command_context = context
 
     if result.success:
-        fields = build_field_list(
-            context.config["views"],
-            views=context.render.views,
-            fields=context.render.fields,
-        )
-        projection = normalize_projection(fields)
-        render(
-            result.value,
-            command="list_archives",
-            output_format=context.render.output_format,
-            fields=projection,
-            flatten=context.render.flat,
-            context=result.context,
-        )
-        return ExitCode.SUCCESS
+        return result
 
     logger.error("Failed to get archive list.")
-    return ExitCode.FAILURE
+    return result
 
 
 def cmd_pull_archive(args):
@@ -950,9 +795,8 @@ def cmd_pull_archive(args):
         context = load_command_context(args)
     except ESKitError as e:
         logger.error("%s", e)
-        return ExitCode.FAILURE
+        return Result.fail(ResultCode.INTERNAL_ERROR, "Failed to load context.")
 
-    host_name = args.host
     dry_run = args.dry_run
     preview = args.preview
     name = args.name
@@ -968,37 +812,17 @@ def cmd_pull_archive(args):
         False,
         preview,
     )
+    result.command_context = context
 
     if result.success:
-
-        if not (dry_run or preview) or (result.value and result.value.get("executed")):
-            pass
-        else:
-            if host_name is None:
-                host_name = get_current_host_name()
-            if dry_run:
-                print_dry_run()
-                print_host(host_name)
-            if preview:
-                print_preview()
-                print_host(host_name)
-
-        render(
-            result.value,
-            command="show_job",
-            output_format=context.render.output_format,
-            fields=[],
-            flatten=False,
-            context=result.context,
-        )
-        return ExitCode.SUCCESS
+        return result
 
     if result.code == ResultCode.NOT_FOUND:
         logger.error("Archive:%s not found.", name)
     else:
         logger.error("Failed to pull archive:%s", result.message)
 
-    return ExitCode.FAILURE
+    return result
 
 
 def cmd_sync_archive(args):
@@ -1008,7 +832,7 @@ def cmd_sync_archive(args):
         context = load_command_context(args)
     except ESKitError as e:
         logger.error("%s", e)
-        return ExitCode.FAILURE
+        return Result.fail(ResultCode.INTERNAL_ERROR, "Failed to load context.")
 
     host_name = context.host
     dry_run = args.dry_run
@@ -1026,34 +850,17 @@ def cmd_sync_archive(args):
         True,
         preview,
     )
+    result.command_context = context
 
     if result.success:
-        if not (dry_run or preview) or (result.value and result.value.get("executed")):
-            pass
-        else:
-            if dry_run:
-                print_dry_run()
-                print_host(host_name)
-            if preview:
-                print_preview()
-                print_host(host_name)
-
-        render(
-            result.value,
-            command="show_job",
-            output_format=context.render.output_format,
-            fields=[],
-            flatten=False,
-            context=result.context,
-        )
-        return ExitCode.SUCCESS
+        return result
 
     if result.code == ResultCode.NOT_FOUND:
         logger.error("Archive:%s not found.", name)
     else:
         logger.error("Failed to sync archive:%s", result.message)
 
-    return ExitCode.FAILURE
+    return result
 
 
 def cmd_push_archive(args):
@@ -1063,7 +870,7 @@ def cmd_push_archive(args):
         context = load_command_context(args)
     except ESKitError as e:
         logger.error("%s", e)
-        return ExitCode.FAILURE
+        return Result.fail(ResultCode.INTERNAL_ERROR, "Failed to load context.")
 
     result = push(
         context.config,
@@ -1074,40 +881,18 @@ def cmd_push_archive(args):
         args.dry_run,
         args.preview,
     )
-    host_name = args.host
-    dry_run = args.dry_run
-    preview = args.preview
+    result.command_context = context
+
     name = args.name
     if result.success:
-
-        if not (dry_run or preview) or (result.value and result.value.get("executed")):
-            pass
-        else:
-            if host_name is None:
-                host_name = get_current_host_name()
-            if dry_run:
-                print_dry_run()
-                print_host(host_name)
-            if preview:
-                print_preview()
-                print_host(host_name)
-
-        render(
-            result.value,
-            command="show_job",
-            output_format=context.render.output_format,
-            fields=[],
-            flatten=False,
-            context=result.context,
-        )
-        return ExitCode.SUCCESS
+        return result
 
     if result.code == ResultCode.NOT_FOUND:
         logger.error("Archive:%s not found.", name)
     else:
         logger.error("Failed to push archive:%s", result.message)
 
-    return ExitCode.FAILURE
+    return result
 
 
 def cmd_show_archive(args):
@@ -1117,33 +902,20 @@ def cmd_show_archive(args):
         context = load_command_context(args)
     except ESKitError as e:
         logger.error("%s", e)
-        return ExitCode.FAILURE
+        return Result.fail(ResultCode.INTERNAL_ERROR, "Failed to load context.")
 
     archive_name = args.name
     result = get(context.host, archive_name)
+    result.command_context = context
 
     if result.success:
-        fields = build_field_list(
-            context.config["views"],
-            views=context.render.views,
-            fields=context.render.fields,
-        )
-        projection = normalize_projection(fields)
-        render(
-            result.value,
-            command="show_archive",
-            output_format=context.render.output_format,
-            fields=projection,
-            flatten=context.render.flat,
-            context=result.context,
-        )
-        return ExitCode.SUCCESS
+        return result
 
     if result.code == ResultCode.NOT_FOUND:
         logger.error("Archive %s not found.", archive_name)
     else:
         logger.error("Failed to get archive:%s", result.message)
-    return ExitCode.FAILURE
+    return result
 
 
 def cmd_show_ilm(args):
@@ -1153,27 +925,14 @@ def cmd_show_ilm(args):
         context = load_command_context(args)
     except ESKitError as e:
         logger.error("%s", e)
-        return ExitCode.FAILURE
+        return Result.fail(ResultCode.INTERNAL_ERROR, "Failed to load context.")
 
     ilm_name = args.name
     result = get(context.host, ilm_name)
+    result.command_context = context
 
     if result.success:
-        fields = build_field_list(
-            context.config["views"],
-            views=context.render.views,
-            fields=context.render.fields,
-        )
-        projection = normalize_projection(fields)
-        render(
-            result.value,
-            command="show_ilm",
-            output_format=context.render.output_format,
-            fields=projection,
-            flatten=context.render.flat,
-            context=result.context,
-        )
-        return ExitCode.SUCCESS
+        return result
 
     if result.code == ResultCode.NOT_FOUND:
         result_ctx = result.context
@@ -1185,7 +944,7 @@ def cmd_show_ilm(args):
     else:
         logger.error("Failed to get archive:%s", result.message)
 
-    return ExitCode.FAILURE
+    return result
 
 
 def cmd_ai(args):
@@ -1225,7 +984,7 @@ def cmd_ai(args):
         from eskit.ai.tool import to_argparse
 
         args = to_argparse(response.tool_call, command_json["commands"], tools)
-        #print("args:", args)
+        # print("args:", args)
 
         parsed_args = parser.parse_args(args)
 
@@ -1981,7 +1740,23 @@ def main():
 
     configure_logging(args.verbose, args.debug)
 
-    return args.function(args)
+    result = args.function(args)
+
+    ai_mode = False
+
+    from eskit.render.renderer import render_result
+
+    if ai_mode:
+        pass
+    else:
+        render_result(args, result)
+        if result.code == ResultCode.CANCELED:
+            return ExitCode.CANCELED
+
+        if result.code != ResultCode.SUCCESS:
+            return ExitCode.FAILURE
+
+    return ExitCode.SUCCESS
 
 
 if __name__ == "__main__":

@@ -58,6 +58,8 @@ def create(
         return Result.ok(
             {
                 "executed": False,
+                "mode": "dry_run",
+                "host": host_name,
                 "command": {
                     "method": "PUT",
                     "url": url,
@@ -76,7 +78,18 @@ def create(
     finally:
         ssh.close()
 
-    return Result.ok()
+    return Result.ok(
+        {
+            "executed": True,
+            "wait": wait,
+            "host": host_name,
+            "command": {
+                "method": "PUT",
+                "url": url,
+                "body": body,
+            },
+        }
+    )
 
 
 def delete(config, host_name, spec, dry_run, push, force):
@@ -106,6 +119,8 @@ def delete(config, host_name, spec, dry_run, push, force):
         return Result.ok(
             {
                 "executed": False,
+                "mode": "dry_run",
+                "host": host_name,
                 "command": {"method": "DELETE", "url": f"/_snapshot/{repo}/{snap}"},
             }
         )
@@ -120,7 +135,13 @@ def delete(config, host_name, spec, dry_run, push, force):
     finally:
         ssh.close()
 
-    return Result.ok()
+    return Result.ok(
+        {
+            "executed": True,
+            "host": host_name,
+            "command": {"method": "DELETE", "url": f"/_snapshot/{repo}/{snap}"},
+        }
+    )
 
 
 def restore(config, host_name, spec, index, dry_run, push, ilm, remove_ilm, wait):
@@ -162,6 +183,8 @@ def restore(config, host_name, spec, index, dry_run, push, ilm, remove_ilm, wait
         return Result.ok(
             {
                 "executed": False,
+                "mode": "dry_run",
+                "host": host_name,
                 "command": {
                     "method": "POST",
                     "url": url,
@@ -179,7 +202,16 @@ def restore(config, host_name, spec, index, dry_run, push, ilm, remove_ilm, wait
     finally:
         ssh.close()
 
-    return Result.ok()
+    return Result.ok(
+        {
+            "executed": True,
+            "host": host_name,
+            "command": {
+                "method": "POST",
+                "url": url,
+            },
+        }
+    )
 
 
 # Internal

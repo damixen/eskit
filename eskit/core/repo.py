@@ -62,6 +62,8 @@ def create(config, host_name, name, repo_type, location, dry_run, push):
         return Result.ok(
             {
                 "executed": False,
+                "mode": "dry_run",
+                "host": host_name,
                 "command": {"method": "PUT", "url": f"/_snapshot/{name}", "body": body},
             }
         )
@@ -76,7 +78,13 @@ def create(config, host_name, name, repo_type, location, dry_run, push):
     finally:
         ssh.close()
 
-    return Result.ok()
+    return Result.ok(
+        {
+            "executed": True,
+            "host": host_name,
+            "command": {"method": "PUT", "url": f"/_snapshot/{name}", "body": body},
+        }
+    )
 
 
 def delete(config, host_name, name, dry_run, push, force):
@@ -99,6 +107,8 @@ def delete(config, host_name, name, dry_run, push, force):
         return Result.ok(
             {
                 "executed": False,
+                "mode": "dry_run",
+                "host": host_name,
                 "command": {"method": "DELETE", "url": f"/_snapshot/{name}"},
             }
         )
@@ -112,7 +122,13 @@ def delete(config, host_name, name, dry_run, push, force):
     finally:
         ssh.close()
 
-    return Result.ok()
+    return Result.ok(
+        {
+            "executed": True,
+            "host": host_name,
+            "command": {"method": "DELETE", "url": f"/_snapshot/{name}"},
+        }
+    )
 
 
 # Internal

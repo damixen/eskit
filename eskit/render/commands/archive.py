@@ -6,6 +6,7 @@ from eskit.render.generic import (
     render_heading,
     render_context,
 )
+from eskit.render.commands.job import render_show_job
 from eskit.render.display_fields import DisplayField, DisplaySchema
 
 ARCHIVE_DISPLAY = DisplaySchema(
@@ -139,3 +140,12 @@ def render_show_archive(archive, context=None):
     )
 
     render_context(context)
+
+def render_pull(result, context=None):
+    render_show_job(result, context)
+
+def render_push(result, context=None):
+    render_show_job(result, context)
+
+def render_sync(result, context=None):
+    render_show_job(result, context)

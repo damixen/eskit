@@ -14,11 +14,14 @@ class ReindexConfig(TypedDict):
     mappings: dict
 
 
-class Config(TypedDict):
-    hosts: list[HostConfig]
-    views: dict
-    reindex_configs: list[ReindexConfig]
-
+Config = TypedDict(
+    "Config",
+    {
+        "hosts": list[HostConfig],
+        "views": dict,
+        "reindex-configs": list[ReindexConfig],
+    },
+)
 
 class FileStat(TypedDict):
     name: str

@@ -7,6 +7,7 @@ from eskit.render.generic import (
     render_heading,
     render_context,
 )
+from eskit.render.commands.util import render_command_execution
 
 SNAPSHOT_DISPLAY = DisplaySchema(
     [
@@ -119,3 +120,33 @@ def render_show_snapshot(snapshot, context=None):
     )
 
     render_context(context)
+
+
+def render_create_snapshot(result, context=None):
+    msg = ""
+    if result:
+        wait = result.get("wait", False)
+        if wait:
+            msg = "Snapshot creation completed successfully."
+        else:
+            msg = "Snapshot creation started successfully."
+        msg += '\n'
+        msg += "Please check status of the snapshot by updating the cache with eskit pull."
+
+    render_command_execution(result, context, msg)
+
+def render_delete_snapshot(result, context=None):
+    render_command_execution(result, context, "Snapshot deleted.")
+
+def render_restore_snapshot(result, context=None):
+    msg = ""
+    if result:
+        wait = result.get("wait", False)
+        if wait:
+            msg = "Restore completed."
+        else:
+            msg = "Restore started."
+        msg += '\n'
+        msg += "Please check the status of restore index by updating the cache with eskit pull."
+
+    render_command_execution(result, context, msg)

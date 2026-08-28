@@ -23,6 +23,12 @@ JOB_SCHEMA = Schema(
         ),
         Field(
             (
+                "payload",
+                "cmd",
+            )
+        ),
+        Field(
+            (
                 "result",
                 "task_id",
             )

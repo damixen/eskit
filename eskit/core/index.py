@@ -112,6 +112,8 @@ def create(config: Config, host_name, index, mapping, dry_run, push):
         return Result.ok(
             {
                 "executed": False,
+                "mode": "dry_run",
+                "host": host_name,
                 "command": {"method": HTTP_METHOD_PUT, "url": f"/{index}"},
             }
         )
@@ -131,7 +133,13 @@ def create(config: Config, host_name, index, mapping, dry_run, push):
     finally:
         ssh.close()
 
-    return Result.ok()
+    return Result.ok(
+        {
+            "executed": True,
+            "host": host_name,
+            "command": {"method": HTTP_METHOD_PUT, "url": f"/{index}"},
+        }
+    )
 
 
 def delete(config: Config, host_name, index, dry_run, push, force):
@@ -157,6 +165,8 @@ def delete(config: Config, host_name, index, dry_run, push, force):
         return Result.ok(
             {
                 "executed": False,
+                "mode": "dry_run",
+                "host": host_name,
                 "command": {"method": "DELETE", "url": f"/{index}"},
             }
         )
@@ -175,7 +185,13 @@ def delete(config: Config, host_name, index, dry_run, push, force):
     finally:
         ssh.close()
 
-    return Result.ok()
+    return Result.ok(
+        {
+            "executed": True,
+            "host": host_name,
+            "command": {"method": "DELETE", "url": f"/{index}"},
+        }
+    )
 
 
 def status(config: Config, host_name, index):
@@ -260,6 +276,8 @@ def reindex(config: Config, host_name, src, dst, mapping, dry_run, push):
         return Result.ok(
             {
                 "executed": False,
+                "mode": "dry_run",
+                "host": host_name,
                 "command": {
                     "method": HTTP_METHOD_POST,
                     "url": "/_reindex?wait_for_completion=false",
@@ -294,7 +312,16 @@ def reindex(config: Config, host_name, src, dst, mapping, dry_run, push):
 
     return Result(
         code=result_code,
-        value=job.to_dict(),
+        value={
+            "executed": True,
+            "mode": "dry_run",
+            "host": host_name,
+            "command": {
+                "method": HTTP_METHOD_POST,
+                "url": "/_reindex?wait_for_completion=false",
+            },
+            "job": job.to_dict(),
+        },
         message=result_msg,
     )
 

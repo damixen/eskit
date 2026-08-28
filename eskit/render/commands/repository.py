@@ -1,8 +1,12 @@
+import json
 from eskit.render.display_fields import DisplaySchema, DisplayField
 from eskit.projection import project
 from eskit.resource.repository import REPOSITORY_SCHEMA
 from eskit.render.generic import render_table, render_fields, render_context
 from eskit.render.generic import render_heading
+from eskit.render.generic import render_dry_run, render_preview, render_host
+from eskit.result import ResultCode
+from eskit.render.commands.util import render_command_execution
 
 REPOSITORY_DISPLAY = DisplaySchema(
     [
@@ -62,3 +66,9 @@ def render_show_repository(repo, context=None):
     )
 
     render_context(context)
+
+def render_delete_repo(result, context):
+    render_command_execution(result, context, "Ropository deleted successfully.")
+
+def render_create_repo(result, context):
+    render_command_execution(result, context, "Ropository created successfully.")

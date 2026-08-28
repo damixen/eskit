@@ -50,6 +50,12 @@ PAYLOAD_SCHEMA = DisplaySchema(
                 "dst",
             )
         ),
+        DisplayField(
+            (
+                "payload",
+                "cmd",
+            )
+        ),
     ]
 )
 

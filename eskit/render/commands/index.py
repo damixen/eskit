@@ -1,8 +1,10 @@
+import json
 from eskit.projection import project
 from eskit.resource.index import INDEX_SCHEMA
 from eskit.render.generic import render_table, render_fields, render_context
 from eskit.render.display_fields import DisplayField, DisplaySchema
 from eskit.render.generic import render_heading
+from eskit.render.commands.util import render_command_execution
 
 INDEX_DISPLAY = DisplaySchema(
     [
@@ -290,3 +292,15 @@ def render_index_status(indices, context=None):
     render_index_status_list(indices)
 
     render_context(context)
+
+def render_reindex_mapping(mappings, context=None):
+    print(json.dumps(mappings, indent=2))
+
+def render_index_delete(result, context=None):
+    render_command_execution(result, context, "Index deleted.")
+
+def render_index_create(result, context=None):
+    render_command_execution(result, context, "Index created.")
+
+def render_reindex(result, context=None):
+    render_command_execution(result, context, "Reindex started successfully.")

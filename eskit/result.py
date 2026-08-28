@@ -52,14 +52,15 @@ class Result(Generic[T]):
     message: str = ""
     value: T | None = None
     context: Any | None = None
+    command_context: Any | None = None
 
     @property
     def success(self) -> bool:
         return self.code == ResultCode.SUCCESS
 
     @classmethod
-    def ok(cls, value: T | None = None, context: Any | None = None):
-        return cls(ResultCode.SUCCESS, value=value, context=context)
+    def ok(cls, value: T | None = None, context: Any | None = None, command_context: Any | None = None):
+        return cls(ResultCode.SUCCESS, value=value, context=context, command_context=command_context)
 
     @classmethod
     def fail(

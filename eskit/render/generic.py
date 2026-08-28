@@ -136,3 +136,14 @@ def render_context(context: dict[str, Any] | None):
     if sources and len(sources) > 0:
         print()
         print(f"(Data Sources: {", ".join(source.label for source in sources)})")
+
+def render_dry_run():
+    print("\n*Dry Run*\n")
+
+
+def render_preview():
+    print("\n*Preview*\n")
+
+
+def render_host(host):
+    print(f"\n=== ESKit HOST: {host} ===\n")
