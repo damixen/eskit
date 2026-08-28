@@ -19,6 +19,7 @@ from eskit.config.types import Config
 from eskit.error import ESKitError, ConfigNotFoundError, CurrentHostNotFoundError
 from eskit.cache.store import check_cache_version
 from eskit.command_description import describe_parser
+from eskit.utils.input import confirm_delete
 
 DEFAULT_CONFIG = ".eskit/config.json"
 CACHE_ROOT = Path(".eskit")
@@ -380,7 +381,6 @@ def cmd_delete_repo(args):
 
     name = args.name
     dry_run = args.dry_run
-    push = args.push
     force = args.force
 
     from eskit.core.repo import delete
@@ -391,7 +391,11 @@ def cmd_delete_repo(args):
         logger.error("%s", e)
         return Result.fail(ResultCode.INTERNAL_ERROR, "Failed to load context.")
 
-    result = delete(context.config, context.host, name, dry_run, push, force)
+    confirmed = False
+    if not args.force and not args.dry_run:
+        confirmed = confirm_delete("repository", name)
+
+    result = delete(context.config, context.host, name, dry_run, force, confirmed)
     result.command_context = context
 
     if result.success:
@@ -421,8 +425,7 @@ def cmd_create_repo(args):
         return Result.fail(ResultCode.INTERNAL_ERROR, "Failed to load context.")
 
     result = create(
-        context.config, context.host, name, repo_type, location, dry_run, push
-    )
+        context.config, context.host, name, repo_type, location, dry_run)
     result.command_context = context
 
     if result.success:
@@ -467,7 +470,6 @@ def cmd_create_snapshot(args):
         args.include_global_state,
         args.ignore_unavailable,
         args.dry_run,
-        args.push,
         args.wait,
     )
     result.command_context = context
@@ -503,8 +505,13 @@ def cmd_delete_snapshot(args):
         return Result.fail(ResultCode.INTERNAL_ERROR, "Failed to load context.")
 
     name = args.name
+
+    confirmed = False
+    if not args.force and not args.dry_run:
+        confirmed = confirm_delete("snapshot", name)
+    
     result = delete(
-        context.config, context.host, name, args.dry_run, args.push, args.force
+        context.config, context.host, name, args.dry_run, args.force, confirmed
     )
     result.command_context = context
 
@@ -540,7 +547,6 @@ def cmd_restore_snapshot(args):
         name,
         args.index,
         args.dry_run,
-        args.push,
         args.ilm,
         args.remove_ilm,
         args.wait,
@@ -588,8 +594,12 @@ def cmd_delete_index(args):
 
     index = args.index
 
+    confirmed = False
+    if not args.force and not args.dry_run:
+        confirmed = confirm_delete("index", args.index)
+
     result = delete(
-        context.config, context.host, args.index, args.dry_run, args.push, args.force
+        context.config, context.host, args.index, args.dry_run, args.force, confirmed
     )
     result.command_context = context
 
@@ -617,8 +627,7 @@ def cmd_create_index(args):
     index = args.index
 
     result = create(
-        context.config, context.host, args.index, args.mapping, args.dry_run, args.push
-    )
+        context.config, context.host, args.index, args.mapping, args.dry_run)
     result.command_context = context
 
     if result.success:
@@ -674,7 +683,6 @@ def cmd_reindex(args):
         dst_index,
         args.mapping,
         args.dry_run,
-        args.push,
     )
     result.command_context = context
 
@@ -1053,12 +1061,6 @@ def build_parser():
         "--dry-run",
         action="store_true",
         help="Shows only request/command w/o executing it",
-    )
-
-    mutating_parser.add_argument(
-        "--push",
-        action="store_true",
-        help="Used to confirm to execute a request/command that would modify resources on push-protected host",
     )
 
     # Destructive Operation common

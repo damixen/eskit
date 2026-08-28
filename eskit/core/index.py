@@ -3,7 +3,6 @@ import logging
 from datetime import datetime, timezone
 
 from eskit.utils.config import get_host_config, get_reindex_mapping
-from eskit.utils.input import confirm_delete
 from eskit.core.host import (
     check_host_name,
     check_push_protected,
@@ -83,13 +82,15 @@ def get(config: Config, host_name, index):
     return Result.fail(ResultCode.INTERNAL_ERROR, "Failed to get index data.")
 
 
-def create(config: Config, host_name, index, mapping, dry_run, push):
+def create(config: Config, host_name, index, mapping, dry_run):
     """
     Public API
     """
 
     check_host_name(host_name)
-    check_push_protected(config, host_name, dry_run, push)
+    result = check_push_protected(config, host_name, dry_run)
+    if not result.success:
+        return result
 
     if find_index(host_name, index):
         # logger.error(
@@ -142,20 +143,23 @@ def create(config: Config, host_name, index, mapping, dry_run, push):
     )
 
 
-def delete(config: Config, host_name, index, dry_run, push, force):
+def delete(config: Config, host_name, index, dry_run, force, confirmed):
     """
     Public API
     """
 
     check_host_name(host_name)
-    check_push_protected(config, host_name, dry_run, push)
+    result = check_push_protected(config, host_name, dry_run)
+
+    if not result.success:
+        return result
 
     if not find_index(host_name, index):
         # logger.error("Index:%s not found in cache. Please pull the latest.", index)
         return Result.fail(ResultCode.NOT_FOUND, "Index not found.")
 
     if not dry_run and not force:
-        if not confirm_delete("index", index):
+        if not confirmed:
             return Result.fail(ResultCode.CANCELED, "Canceled.")
 
     url = f"/{index}"
@@ -215,14 +219,16 @@ def status(config: Config, host_name, index):
     return Result.ok(out, context={"sources": [DataSource.ELASTICSEARCH]})
 
 
-def reindex(config: Config, host_name, src, dst, mapping, dry_run, push):
+def reindex(config: Config, host_name, src, dst, mapping, dry_run):
     """
     Public API
     """
 
     check_host_name(host_name)
-    check_push_protected(config, host_name, dry_run, push)
-
+    result = check_push_protected(config, host_name, dry_run)
+    if not result.success:
+        return result
+    
     body = {}
     m = None
     if mapping:
@@ -250,7 +256,7 @@ def reindex(config: Config, host_name, src, dst, mapping, dry_run, push):
 
     if not dst_exists:
         logger.info("Creating a new index:%s.", dst)
-        create(config, host_name, dst, mapping, dry_run, push)
+        create(config, host_name, dst, mapping, dry_run)
 
     job = ESKitJob(
         id=str(uuid.uuid4()),

@@ -28,19 +28,25 @@ def check_host_name(host):
     return
 
 
-def check_push_protected(config, host, dry_run, push):
+def check_push_protected(config, host, dry_run):
     host_config = get_host_config(config, host)
+    can_push = config.get("user", {}).get("push", False)
     if (
         "push-protected" in host_config
         and host_config["push-protected"]
         and not dry_run
-        and not push
+        and not can_push
     ):
-        # TODO: add PushProtectionError error class
-        raise SystemExit(
-            f"Host:{host} is push protected. Please use --push to make a change or --dry-run to check command."
+        return Result(
+            code=ResultCode.NOT_AUTHORIZED,
+            message=(
+                f"Host:{host} is push protected. "
+                "Please update user config with user.push = true "
+                "or use --dry-run to check command."
+            ),
         )
-    return
+
+    return Result(code=ResultCode.SUCCESS)
 
 
 def get_host(host_name, config: Config):

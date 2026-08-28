@@ -3,7 +3,6 @@ from eskit.utils.config import get_host_config
 from eskit.core.host import get_current_host_name, check_host_name, check_push_protected
 from eskit.cache.store import read_cache
 from eskit.clients.es_client import connect_es
-from eskit.utils.input import confirm_delete
 from eskit.result import Result, ResultCode, Argument
 
 logger = logging.getLogger(__name__)
@@ -17,7 +16,6 @@ def create(
     include_global_state,
     ignore_unavailable,
     dry_run,
-    push,
     wait,
 ):
     """
@@ -25,7 +23,10 @@ def create(
     """
 
     check_host_name(host_name)
-    check_push_protected(config, host_name, dry_run, push)
+
+    result = check_push_protected(config, host_name, dry_run)
+    if not result.success:
+        return result
 
     repo, delim, snap = spec.partition("/")
     if not repo or not snap:
@@ -92,7 +93,7 @@ def create(
     )
 
 
-def delete(config, host_name, spec, dry_run, push, force):
+def delete(config, host_name, spec, dry_run, force, confirmed):
     """
     Public API
     """
@@ -102,14 +103,16 @@ def delete(config, host_name, spec, dry_run, push, force):
         host_name = get_current_host_name()
 
     check_host_name(host_name)
-    check_push_protected(config, host_name, dry_run, push)
+    result = check_push_protected(config, host_name, dry_run)
+    if not result.success:
+        return result
 
     if not find_snapshot(host_name, repo, snap):
         # logger.error("Snapshot:%s not found in cache. Please pull the latest.", spec)
         return Result.fail(ResultCode.NOT_FOUND, "Resource not found.")
 
     if not dry_run and not force:
-        if not confirm_delete("snapshot", spec):
+        if not confirmed:
             # print("Cancelled.")
             return Result.fail(ResultCode.CANCELED, "Canceled.")
 
@@ -144,13 +147,15 @@ def delete(config, host_name, spec, dry_run, push, force):
     )
 
 
-def restore(config, host_name, spec, index, dry_run, push, ilm, remove_ilm, wait):
+def restore(config, host_name, spec, index, dry_run, ilm, remove_ilm, wait):
     """
     Public API
     """
 
     check_host_name(host_name)
-    check_push_protected(config, host_name, dry_run, push)
+    result = check_push_protected(config, host_name, dry_run)
+    if not result.success:
+        return result
 
     body = {}
 

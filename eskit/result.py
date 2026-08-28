@@ -44,6 +44,7 @@ class ResultCode(Enum):
     CANCELED = auto()
     INTERNAL_ERROR = auto()
     OPERATION_BLOCKED = auto()
+    NOT_AUTHORIZED = auto()
 
 
 @dataclass

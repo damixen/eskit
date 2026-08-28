@@ -1,6 +1,5 @@
 import logging
 from eskit.utils.config import get_host_config
-from eskit.utils.input import confirm_delete
 from eskit.core.host import (
     check_host_name,
     check_push_protected,
@@ -45,13 +44,15 @@ def get(host_name, name):
         )
 
 
-def create(config, host_name, name, repo_type, location, dry_run, push):
+def create(config, host_name, name, repo_type, location, dry_run):
     """
     Public API
     """
 
     check_host_name(host_name)
-    check_push_protected(config, host_name, dry_run, push)
+    result = check_push_protected(config, host_name, dry_run)
+    if not result.success:
+        return result
 
     if find_repo(host_name, name):
         # logger.error("Repository:%s found in cache. Please pull latest.", name)
@@ -87,20 +88,22 @@ def create(config, host_name, name, repo_type, location, dry_run, push):
     )
 
 
-def delete(config, host_name, name, dry_run, push, force):
+def delete(config, host_name, name, dry_run, force, confirmed):
     """
     Public API
     """
 
     check_host_name(host_name)
-    check_push_protected(config, host_name, dry_run, push)
+    result = check_push_protected(config, host_name, dry_run)
+    if not result.success:
+        return result
 
     if not find_repo(host_name, name):
         # logger.error("Repository:%s not found in cache. Please pull latest.", name)
         return Result.fail(ResultCode.NOT_FOUND, "Repository not found.")
 
     if not dry_run and not force:
-        if not confirm_delete("repo", name):
+        if not confirmed:
             return Result.fail(ResultCode.CANCELED, "Canceled.")
 
     if dry_run:

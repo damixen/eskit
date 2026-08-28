@@ -110,6 +110,10 @@ def render_result(args, result: Result):
         print("Canceled.")
         return
 
+    if result.code == ResultCode.NOT_AUTHORIZED:
+        print("Not authorized.")
+        return
+
     if result.code != ResultCode.SUCCESS:
         return
 
