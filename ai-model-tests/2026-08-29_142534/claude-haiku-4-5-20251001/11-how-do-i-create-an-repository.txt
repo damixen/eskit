@@ -1,0 +1,48 @@
+# Test
+- **Model:** claude-haiku-4-5-20251001
+- **Question:** How do I create an repository?
+- **Elapsed time:** 4.287 seconds
+
+# Response
+
+# Usage ---
+- **Input tokens:**  11076
+- **Output tokens:** 290
+- **Estimated cost with model:**claude-haiku-4-5-20251001: $0.012526
+
+To create a repository in ESKit, use the **`eskit repo create`** command.
+
+## Command Syntax
+
+```bash
+eskit repo create <name> --location <path>
+```
+
+## Required Parameters
+
+- **`name`** - The name of the repository
+- **`--location`** - The path to the folder where the repository will be created
+
+## Optional Parameters
+
+- **`--type`** - Type of repository (default: `fs` for file system)
+
+## Example
+
+```bash
+eskit repo create my-repo --location /path/to/backup
+```
+
+This creates a file system repository named `my-repo` at the specified location.
+
+## Additional Options
+
+You can also use these common arguments:
+- **`--config`** - Specify a custom config file (default: `.eskit/config.json`)
+- **`--host`** - Specify which host to operate on
+- **`--dry-run`** - Show the request without executing it
+- **`-v, --verbose`** - Enable verbose logging
+- **`-d, --debug`** - Enable debug logging
+- **`-j, --json`** - Output in JSON format
+
+The repository will be registered with your Elasticsearch cluster and can then be used to store snapshots.

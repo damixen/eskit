@@ -14,7 +14,7 @@ def normalize_type(action):
     if action.type is None:
         return "str"
 
-    if hasattr(action.type, "__name__"):
+    if hasattr(action.type, "__name__"):   
         return action.type.__name__
 
     return str(action.type)

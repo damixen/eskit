@@ -1,0 +1,58 @@
+# Test
+- **Model:** claude-haiku-4-5-20251001
+- **Question:** How do I create a snapshot?
+- **Elapsed time:** 5.200 seconds
+
+# Response
+
+# Usage ---
+- **Input tokens:**  11076
+- **Output tokens:** 371
+- **Estimated cost with model:**claude-haiku-4-5-20251001: $0.012931
+
+To create a snapshot in ESKit, use the **`eskit snap create`** command.
+
+## Basic Syntax
+
+```bash
+eskit snap create <repo>/<snapshot> [OPTIONS]
+```
+
+## Required Parameters
+- **`<repo>/<snapshot>`** - The snapshot name in the format `repository_name/snapshot_name`
+
+## Common Options
+
+| Option | Description |
+|--------|-------------|
+| `--index` | Specify which indices to include in the snapshot. Supports wildcards (`*`) and comma-separated values |
+| `--include_global_state` | Include global cluster state (default: false) |
+| `--ignore_unavailable` | Ignore unavailable indices (default: true) |
+| `--wait` | Wait for the snapshot creation to complete before returning |
+
+## Examples
+
+**Create a snapshot of all indices:**
+```bash
+eskit snap create my-repo/my-snapshot --wait
+```
+
+**Create a snapshot of specific indices:**
+```bash
+eskit snap create my-repo/my-snapshot --index logs-2024-*,users --wait
+```
+
+**Create a snapshot including global cluster state:**
+```bash
+eskit snap create my-repo/my-snapshot --include_global_state --wait
+```
+
+**Dry-run (preview the command without executing):**
+```bash
+eskit snap create my-repo/my-snapshot --dry-run
+```
+
+## Notes
+- Make sure the repository already exists before creating a snapshot
+- Use `--wait` if you want to wait for the operation to complete
+- The snapshot name must follow the `<repo>/<snapshot>` format

@@ -1,0 +1,55 @@
+# Test
+- **Model:** claude-haiku-4-5-20251001
+- **Question:** How can I see snapshot cache in eskit?
+- **Elapsed time:** 4.199 seconds
+
+# Response
+
+# Usage ---
+- **Input tokens:**  11079
+- **Output tokens:** 284
+- **Estimated cost with model:**claude-haiku-4-5-20251001: $0.012499
+
+To see snapshot cache in ESKit, you can use the **`cat snap`** command.
+
+## Command
+
+```bash
+eskit cat snap
+```
+
+This command displays cached information about snapshots that have been pulled from your Elasticsearch host.
+
+## How it works
+
+1. First, you need to pull snapshot data from your current host using:
+   ```bash
+   eskit pull
+   ```
+   or specifically for Elasticsearch data:
+   ```bash
+   eskit pull es
+   ```
+
+2. Then view the cached snapshot information with:
+   ```bash
+   eskit cat snap
+   ```
+
+## Optional flags
+
+You can customize the output using common arguments:
+- **`--json`** or **`-j`**: Output in JSON format
+- **`--view <name>`**: Use a named view defined in the config
+- **`--fields <path>`**: Retrieve specific fields (e.g., `--fields name`)
+- **`--flat`**: Flatten nested data structures
+- **`--verbose`** or **`-v`**: Enable verbose logging
+- **`--config <path>`**: Specify a custom config file
+
+## Example
+
+```bash
+eskit cat snap --json
+```
+
+This would display all cached snapshot information in JSON format.

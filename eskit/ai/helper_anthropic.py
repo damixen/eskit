@@ -88,6 +88,9 @@ def ask(question, command_description, model, tools, dump_json):
 
 def to_anthropic_tools(tools: list[ToolDefinition]):
 
+    if not tools:
+        return []
+
     return [
         {
             "name": tool.name,

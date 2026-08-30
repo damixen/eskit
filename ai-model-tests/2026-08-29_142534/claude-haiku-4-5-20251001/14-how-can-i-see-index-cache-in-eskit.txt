@@ -1,0 +1,49 @@
+# Test
+- **Model:** claude-haiku-4-5-20251001
+- **Question:** How can I see index cache in eskit?
+- **Elapsed time:** 4.461 seconds
+
+# Response
+
+# Usage ---
+- **Input tokens:**  11079
+- **Output tokens:** 293
+- **Estimated cost with model:**claude-haiku-4-5-20251001: $0.012544
+
+To see the index cache in ESKit, you need to use the **`eskit cat index`** command.
+
+Here's how:
+
+```bash
+eskit cat index
+```
+
+This command will show you the cached information about all indices. The cache must be populated first by pulling data from your Elasticsearch host.
+
+**To populate the index cache first:**
+
+```bash
+eskit pull es
+```
+
+This pulls Elasticsearch resource data (including indices) into the cache.
+
+**Optional parameters you can use with `cat index`:**
+
+- `--view <name>` - Use a specific view defined in your config
+- `--fields <fields>` - Retrieve specific fields using dictionary notation (e.g., `settings.index.provided_name`)
+- `--flat` - Flatten the output
+- `--json` - Output in JSON format
+- `--verbose` or `-v` - Enable verbose logging
+- `--debug` or `-d` - Enable debug logging
+
+**Example with JSON output:**
+
+```bash
+eskit cat index --json
+```
+
+This workflow would be:
+1. First, ensure you have the right host selected (use `eskit host get` to check)
+2. Pull the Elasticsearch data: `eskit pull es`
+3. View the index cache: `eskit cat index`

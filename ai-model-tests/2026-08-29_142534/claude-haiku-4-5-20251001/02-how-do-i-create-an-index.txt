@@ -1,0 +1,60 @@
+# Test
+- **Model:** claude-haiku-4-5-20251001
+- **Question:** How do I create an index?
+- **Elapsed time:** 4.218 seconds
+
+# Response
+
+# Usage ---
+- **Input tokens:**  11076
+- **Output tokens:** 304
+- **Estimated cost with model:**claude-haiku-4-5-20251001: $0.012596
+
+To create an index in ESKit, you use the **`eskit index create`** command.
+
+## Basic Syntax
+
+```bash
+eskit index create <index_name>
+```
+
+## Command Details
+
+- **`<index_name>`** (required): The name of the index you want to create
+
+## Optional Parameters
+
+- **`-m, --mapping`**: Specify a mapping name defined in your ESKit config to apply to the index
+
+## Example Usage
+
+**Create a simple index:**
+```bash
+eskit index create my-index
+```
+
+**Create an index with a specific mapping:**
+```bash
+eskit index create my-index --mapping my-mapping
+```
+
+or using the short form:
+```bash
+eskit index create my-index -m my-mapping
+```
+
+## Common Options
+
+You can also use these common options with the command:
+- `--config` / `-c`: Specify a custom config file
+- `--host`: Specify which host to operate on
+- `--dry-run`: Preview the command without executing it
+- `--verbose` / `-v`: Enable verbose logging
+- `--json` / `-j`: Output in JSON format
+
+**Example with dry-run:**
+```bash
+eskit index create my-index --dry-run
+```
+
+This will show you what would be executed without actually creating the index.

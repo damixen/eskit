@@ -18,7 +18,7 @@ from eskit.utils.config import load_config
 from eskit.config.types import Config
 from eskit.error import ESKitError, ConfigNotFoundError, CurrentHostNotFoundError
 from eskit.cache.store import check_cache_version
-from eskit.command_description import describe_parser
+from eskit.command.builder import describe_parser
 from eskit.utils.input import confirm_delete
 
 DEFAULT_CONFIG = ".eskit/config.json"
@@ -961,6 +961,15 @@ def cmd_ai(args):
 
     command_json = describe_parser(parser)
 
+    from eskit.command.passes import run_passes, RemoveUnnecessaryFields, DeduplicateCommonArgs
+    
+    passes = [
+        RemoveUnnecessaryFields(),
+        DeduplicateCommonArgs(),
+    ]
+
+    command_json = run_passes(command_json, passes)
+
     from eskit.ai.tool import build_tool_definitions, tools_to_json
 
     tools = build_tool_definitions(command_json)
@@ -1000,6 +1009,36 @@ def cmd_ai(args):
 
     return ExitCode.SUCCESS
 
+def cmd_describe(args):
+
+    parser = build_parser()
+
+    command_json = describe_parser(parser)
+
+    with open("command_ir_raw.json", "w", encoding="UTF-8") as f:
+            json.dump(command_json, f)
+
+    from eskit.command.passes import run_passes, RemoveUnnecessaryFields, DeduplicateCommonArgs
+
+    passes = [
+        RemoveUnnecessaryFields(),
+        DeduplicateCommonArgs(),
+    ]
+
+    command_json = run_passes(command_json, passes)
+
+    with open("command_ir.json", "w", encoding="UTF-8") as f:
+        json.dump(command_json, f)
+
+    return Result.ok("JSON files created.")
+
+
+    # from eskit.ai.tool import build_tool_definitions, tools_to_json
+
+    # tools = build_tool_definitions(command_json)
+
+    # with open("tools.json", "w", encoding="UTF-8") as f:
+    #     f.write(tools_to_json(tools))
 
 def cmd_root(args):
     if args.version:
@@ -1089,7 +1128,7 @@ def build_parser():
     )
     viewer_command_parser.add_argument("--flat", action="store_true")
 
-    sub = p.add_subparsers()
+    sub = p.add_subparsers(dest="command")
 
     # Init command
     init = sub.add_parser(
@@ -1183,7 +1222,6 @@ def build_parser():
 
     repo = sub.add_parser(
         "repo",
-        parents=[common_parser, output_parser],
         help="Repository commands.",
         description="Repository commands.",
     )
@@ -1252,7 +1290,6 @@ def build_parser():
     # Snapshot Sub Commands
     snap = sub.add_parser(
         "snap",
-        parents=[common_parser, output_parser],
         help="Snapshot commands",
         description="Snapshot commands",
     )
@@ -1573,7 +1610,6 @@ def build_parser():
     # Archive Command
     archive = sub.add_parser(
         "archive",
-        parents=[common_parser, output_parser],
         help="Archive commands.",
         description="Archive commands.",
     )
@@ -1676,7 +1712,6 @@ def build_parser():
 
     ilm = sub.add_parser(
         "ilm",
-        parents=[common_parser, output_parser],
         help="Index lifecycle management commands.",
         description="Index lifecycle management commands.",
     )
@@ -1702,10 +1737,8 @@ def build_parser():
 
     ai_parser = sub.add_parser(
         "ai",
-        parents=[
-            output_parser,
-        ],
         help="AI commands.",
+        parents=[output_parser],
         description="AI commands.",
     )
     ai_parser.add_argument("question", help="Question to ask to AI.")
@@ -1729,6 +1762,17 @@ def build_parser():
     )
     ai_parser.set_defaults(function=cmd_ai)
 
+    describe = sub.add_parser(
+            "describe",
+            parents=[common_parser, output_parser],
+            help="Build command IR",
+            description="Build command IR",
+        )
+
+    describe.add_argument("--out", help="a path to output file.")
+    describe.set_defaults(function=cmd_describe)
+
+
     return p
 
 
@@ -1744,7 +1788,7 @@ def main():
 
     result = args.function(args)
 
-    ai_mode = False
+    ai_mode = hasattr(args, "ai") or (args.command == "ai")
 
     from eskit.render.renderer import render_result
 

@@ -1,0 +1,43 @@
+# Test
+- **Model:** claude-haiku-4-5-20251001
+- **Question:** How can I see repository cache in eskit?
+- **Elapsed time:** 4.617 seconds
+
+# Response
+
+# Usage ---
+- **Input tokens:**  11079
+- **Output tokens:** 280
+- **Estimated cost with model:**claude-haiku-4-5-20251001: $0.012479
+
+To see the repository cache in ESKit, you can use the **`eskit cat repo`** command.
+
+This command displays cached information about repositories. Here's how to use it:
+
+```bash
+eskit cat repo
+```
+
+**What this does:**
+- Shows all repositories that have been cached from your current Elasticsearch host
+- Displays repository details stored locally in the cache
+
+**Optional parameters you can add:**
+- `--view <name>` - Apply a named view defined in your config for custom formatting
+- `--fields <fields>` - Retrieve specific fields using dictionary notation (e.g., `type` or `settings.location`)
+- `--flat` - Flatten the output structure
+- `--json` - Output results in JSON format
+- `--host <host>` - Specify a particular host (if not using the current one)
+- `--config <path>` - Use a custom config file path
+
+**Example with JSON output:**
+```bash
+eskit cat repo --json
+```
+
+**Note:** Before you can view cached repositories, you'll need to pull the data from your Elasticsearch host first using:
+```bash
+eskit pull es
+```
+
+This caches the repository information locally so you can view it with `cat repo`.

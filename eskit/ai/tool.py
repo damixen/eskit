@@ -30,7 +30,14 @@ def build_tool_definitions(
     """Build a flat list of tool definitions from ESKit command data."""
     tools: list[ToolDefinition] = []
 
+    common_arguments = command_data.get("common_arguments", {})
+
     for name, command in command_data.get("commands", {}).items():
+        command = _expand_common_arguments(
+            command,
+            common_arguments,
+        )
+
         _collect_tools(
             tools=tools,
             name=name,
@@ -39,6 +46,30 @@ def build_tool_definitions(
         )
 
     return tools
+
+
+def _expand_common_arguments(
+    command: dict[str, Any],
+    common_arguments: dict[str, dict[str, Any]],
+) -> dict[str, Any]:
+    """Expand common argument names into argument definitions."""
+    common_names = command.get("common_arguments", [])
+
+    if not common_names:
+        return command
+
+    arguments = list(command.get("arguments", []))
+
+    for name in common_names:
+        argument = common_arguments.get(name)
+
+        if argument is not None:
+            arguments.append(argument)
+
+    expanded = dict(command)
+    expanded["arguments"] = arguments
+
+    return expanded
 
 
 def _collect_tools(

@@ -1,0 +1,146 @@
+# Test
+- **Model:** claude-haiku-4-5-20251001
+- **Question:** Compose a multi-step backup workflow.
+- **Elapsed time:** 10.463 seconds
+
+# Response
+
+# Usage ---
+- **Input tokens:**  11078
+- **Output tokens:** 901
+- **Estimated cost with model:**claude-haiku-4-5-20251001: $0.015583
+
+# Multi-Step Backup Workflow for ESKit
+
+I'll guide you through creating a comprehensive backup workflow using ESKit. Here's a complete multi-step process:
+
+## Step 1: Initialize and Check Status
+
+```bash
+# Initialize ESKit (if not already done)
+eskit init
+
+# Check current status
+eskit status
+
+# Get the current host
+eskit host get
+```
+
+## Step 2: Prepare Repository
+
+```bash
+# Create a backup repository (if it doesn't exist)
+eskit repo create my-backup-repo --location /backup/elasticsearch
+
+# Verify the repository was created
+eskit repo show my-backup-repo
+```
+
+## Step 3: Pull Current State
+
+```bash
+# Pull all resource data from the current host into cache
+eskit pull
+
+# View available indices
+eskit cat index
+
+# View available snapshots
+eskit cat snap
+
+# View repositories
+eskit cat repo
+```
+
+## Step 4: Create Snapshots
+
+```bash
+# Option A: Backup all indices
+eskit snap create my-backup-repo/full-backup-$(date +%Y%m%d) --wait
+
+# Option B: Backup specific indices
+eskit snap create my-backup-repo/app-backup-$(date +%Y%m%d) --index "app-*,logs-*" --wait
+
+# Option C: Backup with global state (cluster settings, templates, etc.)
+eskit snap create my-backup-repo/full-backup-with-state-$(date +%Y%m%d) --include_global_state --wait
+```
+
+## Step 5: Verify Backups
+
+```bash
+# List all snapshots
+eskit cat snap
+
+# Show details of a specific snapshot
+eskit snap show my-backup-repo/full-backup-20240115
+
+# Monitor snapshot status if needed
+# (Check the task ID from snapshot creation)
+eskit task get <task_id>
+```
+
+## Step 6: Archive Critical Data
+
+```bash
+# List available archives
+eskit archive list
+
+# Show archive details
+eskit archive show my-archive
+
+# Pull archive data locally
+eskit archive pull my-archive
+
+# Or sync to mirror a source
+eskit archive sync my-archive
+```
+
+## Step 7: Verify Job Status
+
+```bash
+# List jobs
+eskit job list
+
+# Check specific job details
+eskit job show <job_search_id>
+
+# Show local archive jobs
+eskit job list --local
+```
+
+## Workflow Summary
+
+| Step | Command | Purpose |
+|------|---------|---------|
+| 1 | `eskit init` | Initialize ESKit |
+| 2 | `eskit status` | Verify current state |
+| 3 | `eskit repo create` | Create backup repository |
+| 4 | `eskit pull` | Sync latest metadata |
+| 5 | `eskit snap create` | Create snapshot backup |
+| 6 | `eskit cat snap` | Verify snapshot created |
+| 7 | `eskit archive pull` | Archive additional data |
+| 8 | `eskit job list` | Monitor backup jobs |
+
+## Important Safety Notes
+
+- **Snapshots are destructive operations**: Always confirm before executing
+- **Verify repository location**: Ensure sufficient disk space
+- **Test restoration**: Periodically verify backups can be restored
+- **Use `--wait` flag**: For production backups to ensure completion
+- **Include global state**: When backing up full cluster configuration
+
+## Advanced Options
+
+```bash
+# Dry-run to preview operations
+eskit snap create my-backup-repo/test --dry-run
+
+# Enable verbose logging
+eskit snap create my-backup-repo/backup-$(date +%Y%m%d) --wait -v
+
+# JSON output for automation
+eskit snap create my-backup-repo/backup --wait --json
+```
+
+This workflow ensures comprehensive backups with verification at each stage!

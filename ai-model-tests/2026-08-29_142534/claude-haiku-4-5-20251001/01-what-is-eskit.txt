@@ -1,0 +1,47 @@
+# Test
+- **Model:** claude-haiku-4-5-20251001
+- **Question:** What is ESKit?
+- **Elapsed time:** 5.487 seconds
+
+# Response
+
+# Usage ---
+- **Input tokens:**  11074
+- **Output tokens:** 347
+- **Estimated cost with model:**claude-haiku-4-5-20251001: $0.012809
+
+# ESKit Overview
+
+ESKit is a **lightweight Elasticsearch toolkit** designed for managing:
+
+- **Repositories** - Create, view, and delete snapshot repositories
+- **Snapshots** - Create, restore, delete, and view snapshots of your Elasticsearch data
+- **Indices** - Create, delete, view, and check the status of Elasticsearch indices
+- **Reindexing** - Move data between indices with optional mapping transformations
+- **Index Lifecycle Management (ILM)** - View and manage index lifecycle policies
+- **Archives** - Pull, sync, and push data archives to/from different hosts
+- **Tasks** - Monitor Elasticsearch tasks and their status
+- **Jobs** - List and view job details
+
+## Key Features
+
+- **Multi-host support** - Manage multiple Elasticsearch clusters and switch between them
+- **Caching system** - Cache repository, snapshot, index, and ILM data locally for quick access
+- **Incremental operations** - Archive operations support incremental sync
+- **Dry-run capability** - Preview operations before executing them
+- **Flexible output** - View data in JSON format, custom fields, or flattened views
+- **AI integration** - Built-in AI commands to help with Elasticsearch operations
+
+## Getting Started
+
+To initialize ESKit:
+```bash
+eskit init
+```
+
+Or with demo data:
+```bash
+eskit init --demo
+```
+
+Would you like to learn how to perform a specific task with ESKit, such as creating snapshots, managing repositories, or working with indices?

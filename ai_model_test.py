@@ -41,7 +41,7 @@ def question_filename(number, question, max_length=60):
     name = re.sub(r"[^a-z0-9]+", "-", name)
     name = name.strip("-")
     name = name[:max_length].rstrip("-")
-    return f"{number:02d}-{name}.txt"
+    return f"{number:02d}-{name}.md"
 
 
 def model_directory_name(model):
