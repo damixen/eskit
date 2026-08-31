@@ -21,14 +21,21 @@ When answering a question about how to perform an operation:
 - Do not invent commands or options that are not present in the command description.
 - Respect safety metadata and explain destructive operations when relevant.
 
+When you need information, clarification, confirmation, or a decision from the user
+in order to continue executing their request:
+- You MUST call the ask_user tool.
+- Do not ask such questions in your text response. The ask_user tool is the mechanism
+for interactive user input.
+- After receiving the user's answer through ask_user, continue with the original task.
+
 ESKit command description:
 
 """
 
 
-def ask(question, command_description, model, tools, dump_json):
+def ask(messages, command_description, model, tools, dump_json):
 
-    if not question:
+    if not messages:
         return LLMResponse("no question asked.")
 
     load_dotenv()
@@ -46,44 +53,36 @@ def ask(question, command_description, model, tools, dump_json):
         indent=2,
     )
 
+    # print("messages:", messages)
+
     response = client.messages.create(
         model=model,
         max_tokens=10000,
         system=prompt,
-        messages=[
-            {
-                "role": "user",
-                "content": question,
-            }
-        ],
+        messages=messages,
         tools=anthropic_tools,
     )
 
     print_usage(response, model)
 
-    #
-    # Final answer
-    #
-    if response.stop_reason != "tool_use":
-        text_block = next(block for block in response.content if block.type == "text")
-        return LLMResponse(text=text_block.text)
+    # print("response:", response)
+    # print("response.content:", response.content)
 
-    #
-    # Claude wants a tool
-    #
-    #print("response:", response)
-    #print("response.content:", response.content)
+    texts = [block.text for block in response.content if block.type == "text"]
 
-    tool = next(block for block in response.content if block.type == "tool_use")
-    text_block = next(block for block in response.content if block.type == "text")
-    text = None
-    if text_block:
-        text = text_block.text
+    text = "\n".join(texts) if texts else None
 
-    return LLMResponse(
-        tool_call=ToolCall(id=tool.id, name=tool.name, arguments=tool.input),
-        text=text,
-    )
+    tool_calls = [
+        ToolCall(
+            id=block.id,
+            name=block.name,
+            arguments=block.input,
+        )
+        for block in response.content
+        if block.type == "tool_use"
+    ]
+
+    return LLMResponse(tool_calls=tool_calls, text=text, content=response.content)
 
 
 def to_anthropic_tools(tools: list[ToolDefinition]):

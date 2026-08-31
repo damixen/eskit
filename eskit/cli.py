@@ -10,7 +10,7 @@ from eskit.core.host import get_current_host_name
 from eskit.version import __version__
 from eskit.log import configure_logging
 from eskit.exit_code import ExitCode
-from eskit.result import ResultCode, Result
+from eskit.result import ResultCode, Result, result_to_ai_response
 from eskit.resource_type import ResourceType
 from eskit.utils.paths import CACHE_ROOT, ensure_root, root_dir, DEMO_DIR
 from eskit.version import __cache_format_version__
@@ -424,8 +424,7 @@ def cmd_create_repo(args):
         logger.error("%s", e)
         return Result.fail(ResultCode.INTERNAL_ERROR, "Failed to load context.")
 
-    result = create(
-        context.config, context.host, name, repo_type, location, dry_run)
+    result = create(context.config, context.host, name, repo_type, location, dry_run)
     result.command_context = context
 
     if result.success:
@@ -509,7 +508,7 @@ def cmd_delete_snapshot(args):
     confirmed = False
     if not args.force and not args.dry_run:
         confirmed = confirm_delete("snapshot", name)
-    
+
     result = delete(
         context.config, context.host, name, args.dry_run, args.force, confirmed
     )
@@ -627,7 +626,8 @@ def cmd_create_index(args):
     index = args.index
 
     result = create(
-        context.config, context.host, args.index, args.mapping, args.dry_run)
+        context.config, context.host, args.index, args.mapping, args.dry_run
+    )
     result.command_context = context
 
     if result.success:
@@ -955,59 +955,77 @@ def cmd_show_ilm(args):
     return result
 
 
+def excute_command(tool_call, tools):
+
+    parser = build_parser()
+    command_ir = describe_parser(parser)
+
+    if tool_call:
+
+        if tool_call.name == "ask_user":
+            print(tool_call.arguments["question"])
+            input(">")
+        else:
+
+            from eskit.ai.tool import to_argparse
+
+            args = to_argparse(tool_call, command_ir["commands"], tools)
+            # print("args:", args)
+
+            parsed_args = parser.parse_args(args)
+
+            return result_to_ai_response(parsed_args.function(parsed_args))
+
+    return result_to_ai_response(
+        Result.fail(code=ResultCode.INTERNAL_ERROR, message="failed to execute tool.")
+    )
+
+
 def cmd_ai(args):
 
     parser = build_parser()
 
-    command_json = describe_parser(parser)
+    command_ir = describe_parser(parser)
 
-    from eskit.command.passes import run_passes, RemoveUnnecessaryFields, DeduplicateCommonArgs
-    
+    from eskit.command.passes import (
+        run_passes,
+        RemoveUnnecessaryFields,
+        DeduplicateCommonArgs,
+    )
+
     passes = [
         RemoveUnnecessaryFields(),
         DeduplicateCommonArgs(),
     ]
 
-    command_json = run_passes(command_json, passes)
+    optimized_command_ir = run_passes(command_ir, passes)
 
     from eskit.ai.tool import build_tool_definitions, tools_to_json
 
-    tools = build_tool_definitions(command_json)
+    tools = build_tool_definitions(optimized_command_ir)
 
     if args.output_command_json:
         with open("tools.json", "w", encoding="UTF-8") as f:
             f.write(tools_to_json(tools))
 
-    # with open("argparse.dump", "w", encoding="UTF-8") as f:
-    #     json.dump(command_json, f, indent=2)
     if args.output_command_json:
         with open(args.output_command_json, "w", encoding="UTF-8") as f:
-            json.dump(command_json, f)
-    # print("command_json:", json.dumps(command_json, indent=2))
+            json.dump(command_ir, f)
 
-    from eskit.ai.helper import ask
+    from eskit.ai.helper import run_agent
 
-    response = ask(
+    result = run_agent(
         question=args.question,
-        command_description=command_json,
+        command_description=optimized_command_ir,
         model=args.model,
         tools=tools,
+        executor=excute_command,
     )
 
-    if response.text:
-        print(response.text)
-
-    if response.tool_call:
-        from eskit.ai.tool import to_argparse
-
-        args = to_argparse(response.tool_call, command_json["commands"], tools)
-        # print("args:", args)
-
-        parsed_args = parser.parse_args(args)
-
-        parsed_args.function(parsed_args)
+    print(result)
 
     return ExitCode.SUCCESS
+
 
 def cmd_describe(args):
 
@@ -1016,9 +1034,13 @@ def cmd_describe(args):
     command_json = describe_parser(parser)
 
     with open("command_ir_raw.json", "w", encoding="UTF-8") as f:
-            json.dump(command_json, f)
+        json.dump(command_json, f)
 
-    from eskit.command.passes import run_passes, RemoveUnnecessaryFields, DeduplicateCommonArgs
+    from eskit.command.passes import (
+        run_passes,
+        RemoveUnnecessaryFields,
+        DeduplicateCommonArgs,
+    )
 
     passes = [
         RemoveUnnecessaryFields(),
@@ -1032,13 +1054,13 @@ def cmd_describe(args):
 
     return Result.ok("JSON files created.")
 
-
     # from eskit.ai.tool import build_tool_definitions, tools_to_json
 
     # tools = build_tool_definitions(command_json)
 
     # with open("tools.json", "w", encoding="UTF-8") as f:
     #     f.write(tools_to_json(tools))
+
 
 def cmd_root(args):
     if args.version:
@@ -1763,15 +1785,14 @@ def build_parser():
     ai_parser.set_defaults(function=cmd_ai)
 
     describe = sub.add_parser(
-            "describe",
-            parents=[common_parser, output_parser],
-            help="Build command IR",
-            description="Build command IR",
-        )
+        "describe",
+        parents=[common_parser, output_parser],
+        help="Build command IR",
+        description="Build command IR",
+    )
 
     describe.add_argument("--out", help="a path to output file.")
     describe.set_defaults(function=cmd_describe)
-
 
     return p
 
@@ -1791,8 +1812,10 @@ def main():
     ai_mode = hasattr(args, "ai") or (args.command == "ai")
 
     from eskit.render.renderer import render_result
+    from eskit.ai.helper import run_agent
 
     if ai_mode:
+        #print("result:", result)
         pass
     else:
         render_result(args, result)

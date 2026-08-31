@@ -1,4 +1,5 @@
 # from eskit.render.projection import normalize_projection, project
+import json
 from eskit.render.generic import (
     render_fields,
     render_heading,
@@ -82,3 +83,23 @@ def render_host_show(host: dict, context=None):
     )
 
     render_context(context)
+
+def render_host_set(result: dict, context=None):
+
+    if context:
+        if context.render.json:
+            print(json.dumps(result, indent=2))
+    else:
+        if result:
+            host = result["host"]
+            print(f"Current host set to: {host}")
+
+def render_host_get(result: dict, context=None):
+
+    if context:
+        if context.render.json:
+            print(json.dumps(result, indent=2))
+    else:
+        if result:
+            host = result["host"]
+            print(f"Current host is: {host}")

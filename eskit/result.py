@@ -1,3 +1,4 @@
+import json
 from dataclasses import dataclass
 from enum import Enum, auto
 from typing import Generic, TypeVar, Any
@@ -16,7 +17,7 @@ class DataSource(Enum):
         return {
             DataSource.CACHE: "Cache",
             DataSource.ELASTICSEARCH: "Elasticsearch API",
-            DataSource.CONFIG: "Config"
+            DataSource.CONFIG: "Config",
         }[self]
 
 
@@ -60,8 +61,18 @@ class Result(Generic[T]):
         return self.code == ResultCode.SUCCESS
 
     @classmethod
-    def ok(cls, value: T | None = None, context: Any | None = None, command_context: Any | None = None):
-        return cls(ResultCode.SUCCESS, value=value, context=context, command_context=command_context)
+    def ok(
+        cls,
+        value: T | None = None,
+        context: Any | None = None,
+        command_context: Any | None = None,
+    ):
+        return cls(
+            ResultCode.SUCCESS,
+            value=value,
+            context=context,
+            command_context=command_context,
+        )
 
     @classmethod
     def fail(
@@ -78,3 +89,14 @@ class Result(Generic[T]):
         if isinstance(self.context, Argument):
             return self.context
         return None
+
+
+def result_to_ai_response(result: Result) -> str:
+    return json.dumps(
+        {
+            "success": result.success,
+            "code": result.code.name,
+            "message": result.message,
+            "value": result.value,
+        }
+    )

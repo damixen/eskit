@@ -1,4 +1,5 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Any
 
 
 @dataclass
@@ -11,4 +12,5 @@ class ToolCall:
 @dataclass
 class LLMResponse:
     text: str | None = None
-    tool_call: ToolCall | None = None
+    tool_calls: list[ToolCall] = field(default_factory=list)
+    content: list[Any] | None = None

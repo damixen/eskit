@@ -24,6 +24,30 @@ def tools_to_json(tools: list[ToolDefinition]) -> str:
     )
 
 
+def add_ask_user_tool(tools):
+    ask_user_tool = ToolDefinition(
+        name="ask_user",
+        description=(
+            "Ask the user a question and wait for their answer. "
+            "Use this tool whenever you need information, clarification, "
+            "confirmation, or a decision from the user before continuing. "
+            "Do not ask the user a question in your response text when the "
+            "answer is needed to continue; call this tool instead."
+        ),
+        input_schema={
+            "type": "object",
+            "properties": {
+                "question": {
+                    "type": "string",
+                    "description": "The question to ask the user.",
+                }
+            },
+            "required": ["question"],
+        },
+    )
+    tools.append(ask_user_tool)
+
+
 def build_tool_definitions(
     command_data: dict[str, Any],
 ) -> list[ToolDefinition]:
@@ -44,6 +68,8 @@ def build_tool_definitions(
             command=command,
             path=[name],
         )
+
+    add_ask_user_tool(tools)
 
     return tools
 
