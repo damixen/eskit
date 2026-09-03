@@ -955,26 +955,21 @@ def cmd_show_ilm(args):
     return result
 
 
-def excute_command(tool_call, tools):
+def execute_command(tool_call, tools):
 
     parser = build_parser()
     command_ir = describe_parser(parser)
 
     if tool_call:
 
-        if tool_call.name == "ask_user":
-            print(tool_call.arguments["question"])
-            input(">")
-        else:
+        from eskit.ai.tool import to_argparse
 
-            from eskit.ai.tool import to_argparse
+        args = to_argparse(tool_call, command_ir["commands"], tools)
+        # print("args:", args)
 
-            args = to_argparse(tool_call, command_ir["commands"], tools)
-            # print("args:", args)
+        parsed_args = parser.parse_args(args)
 
-            parsed_args = parser.parse_args(args)
-
-            return result_to_ai_response(parsed_args.function(parsed_args))
+        return result_to_ai_response(parsed_args.function(parsed_args))
 
     return result_to_ai_response(
         Result.fail(code=ResultCode.INTERNAL_ERROR, message="failed to execute tool.")
@@ -1019,7 +1014,7 @@ def cmd_ai(args):
         command_description=optimized_command_ir,
         model=args.model,
         tools=tools,
-        executor=excute_command,
+        executor=execute_command,
     )
 
     print(result)
@@ -1815,7 +1810,7 @@ def main():
     from eskit.ai.helper import run_agent
 
     if ai_mode:
-        #print("result:", result)
+        # print("result:", result)
         pass
     else:
         render_result(args, result)
