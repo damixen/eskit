@@ -2,9 +2,10 @@ import json
 import os
 from dotenv import load_dotenv
 from anthropic import Anthropic
-from eskit.ai.usage import print_usage
+from eskit.ai.usage import print_usage, get_usage
 from eskit.ai.tool import ToolDefinition
 from eskit.ai.response import LLMResponse, ToolCall
+from eskit.events.generated import EventEmitter
 
 SYSTEM_PROMPT = """
 You are an AI assistant for ESKit.
@@ -33,7 +34,7 @@ ESKit command description:
 """
 
 
-def ask(messages, command_description, model, tools, dump_json):
+def ask(messages, command_description, model, tools, dump_json, events: EventEmitter):
 
     if not messages:
         return LLMResponse("no question asked.")
@@ -53,7 +54,7 @@ def ask(messages, command_description, model, tools, dump_json):
         indent=2,
     )
 
-    # print("messages:", messages)
+    events.llm_prompt(system_prompt=prompt, messages=messages, tool_def=tools)
 
     response = client.messages.create(
         model=model,
@@ -63,10 +64,7 @@ def ask(messages, command_description, model, tools, dump_json):
         tools=anthropic_tools,
     )
 
-    print_usage(response, model)
-
-    # print("response:", response)
-    # print("response.content:", response.content)
+    usage = get_usage(response, model)
 
     texts = [block.text for block in response.content if block.type == "text"]
 
@@ -82,7 +80,15 @@ def ask(messages, command_description, model, tools, dump_json):
         if block.type == "tool_use"
     ]
 
-    return LLMResponse(tool_calls=tool_calls, text=text, content=response.content)
+    stop_reason = "final_response"
+    if len(tool_calls) > 0:
+        stop_reason = "tool_call"
+
+    res = LLMResponse(tool_calls=tool_calls, text=text, content=response.content)
+
+    events.llm_response(response=res, stop_reason=stop_reason, usage=usage)
+
+    return res
 
 
 def to_anthropic_tools(tools: list[ToolDefinition]):

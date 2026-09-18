@@ -1,7 +1,21 @@
 import json
 from dataclasses import asdict
 from eskit.ai.helper_anthropic import ask as ask_claude
-from eskit.ai.helper_ollama import ask as ask_ollama
+from eskit.ai.helper_anthropic import ask as ask_claude
+from eskit.events.generated import EventEmitter
+
+
+def ask_ollama(messages, command_description, model, tools):
+    from eskit.ai.helper_ollama import ask
+
+    return ask(
+        messages,
+        command_description,
+        model,
+        tools=tools,
+        dump_json=False,
+    )
+
 
 MODEL_HANDLERS = {
     "claude-sonnet-4-6": ask_claude,
@@ -15,16 +29,25 @@ MODEL_HANDLERS = {
 }
 
 
-def ask(messages, command_description, model, tools):
+def ask(messages, command_description, model, tools, events):
     handler = MODEL_HANDLERS.get(model)
 
     if handler is None:
         raise ValueError(f"Unsupported model: {model}")
 
-    return handler(messages, command_description, model, tools=tools, dump_json=False)
+    return handler(
+        messages,
+        command_description,
+        model,
+        tools=tools,
+        dump_json=False,
+        events=events,
+    )
 
 
-def run_agent(question, command_description, tools, model, executor):
+def run_agent(
+    question, command_description, tools, model, executor, events: EventEmitter
+):
     messages = [
         {
             "role": "user",
@@ -38,13 +61,11 @@ def run_agent(question, command_description, tools, model, executor):
             command_description=command_description,
             tools=tools,
             model=model,
+            events=events,
         )
-
         if not response.tool_calls:
+            events.final_response(response.text)
             return response.text
-
-        if response.text:
-            print(response.text)
 
         # append Claude's response
         messages.append(
@@ -56,34 +77,17 @@ def run_agent(question, command_description, tools, model, executor):
 
         for tool_call in response.tool_calls:
 
-            if tool_call.name == "ask_user":
-                answer = input(tool_call.arguments["question"] + "\n> ")
+            result = executor(tool_call, tools, events)
 
-                messages.append(
-                    {
-                        "role": "user",
-                        "content": [
-                            {
-                                "type": "tool_result",
-                                "tool_use_id": tool_call.id,
-                                "content": answer,
-                            }
-                        ],
-                    }
-                )
-
-            else:
-                result = executor(tool_call, tools)
-
-                messages.append(
-                    {
-                        "role": "user",
-                        "content": [
-                            {
-                                "type": "tool_result",
-                                "tool_use_id": tool_call.id,
-                                "content": result,
-                            }
-                        ],
-                    }
-                )
+            messages.append(
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "tool_result",
+                            "tool_use_id": tool_call.id,
+                            "content": result,
+                        }
+                    ],
+                }
+            )

@@ -1,0 +1,69 @@
+{
+    "version": 1,
+    "events": {
+        "1001": {
+            "type": "ai.run_started",
+            "description": "AI interaction started",
+            "parameters": {
+                "model": "str",
+                "command_ir": "dict",
+                "optimized_ir": "dict"
+            }
+        },
+        "1002": {
+            "type": "ai.llm_prompt",
+            "description": "Prompt sent to the LLM",
+            "parameters": {
+                "system_prompt": "str",
+                "messages": "list",
+                "tool_def": "list"
+            }
+        },
+        "1003": {
+            "type": "ai.llm_response",
+            "description": "LLM returned a response",
+            "parameters": {
+                "response": "Any",
+                "stop_reason": "str",
+                "usage": "dict"
+            }
+        },
+        "1004": {
+            "type": "ai.tool_call",
+            "description": "Agent requested a tool execution",
+            "parameters": {
+                "tool": "str",
+                "arguments": "dict"
+            }
+        },
+        "1005": {
+            "type": "ai.tool_result",
+            "description": "Tool execution completed",
+            "parameters": {
+                "tool": "str",
+                "result": "Any"
+            }
+        },
+        "1006": {
+            "type": "ai.user_input",
+            "description": "User provided input to the agent",
+            "parameters": {
+                "input": "str"
+            }
+        },
+        "1007": {
+            "type": "ai.final_response",
+            "description": "AI interaction produced a final response",
+            "parameters": {
+                "response": "str"
+            }
+        },
+        "1008": {
+            "type": "ai.error",
+            "description": "AI interaction encountered an error",
+            "parameters": {
+                "error": "str"
+            }
+        }
+    }
+}

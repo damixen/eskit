@@ -20,6 +20,10 @@ from eskit.error import ESKitError, ConfigNotFoundError, CurrentHostNotFoundErro
 from eskit.cache.store import check_cache_version
 from eskit.command.builder import describe_parser
 from eskit.utils.input import confirm_delete
+from eskit.events.bus import EventBus
+from eskit.events.ai_cli_listener import AICLIListener
+from eskit.events.generated import EventEmitter
+from eskit.ai.response import ToolCall
 
 DEFAULT_CONFIG = ".eskit/config.json"
 CACHE_ROOT = Path(".eskit")
@@ -955,12 +959,19 @@ def cmd_show_ilm(args):
     return result
 
 
-def execute_command(tool_call, tools):
+def execute_command(tool_call: ToolCall, tools, events: EventEmitter):
 
     parser = build_parser()
     command_ir = describe_parser(parser)
 
     if tool_call:
+
+        events.tool_call(tool_call.name, tool_call.arguments)
+
+        if tool_call.name == "ask_user":
+            answer = input(tool_call.arguments["question"] + "\n> ")
+            events.user_input(answer)
+            return answer
 
         from eskit.ai.tool import to_argparse
 
@@ -968,8 +979,15 @@ def execute_command(tool_call, tools):
         # print("args:", args)
 
         parsed_args = parser.parse_args(args)
+        ret = parsed_args.function(parsed_args)
+        ai_ret = result_to_ai_response(ret)
 
-        return result_to_ai_response(parsed_args.function(parsed_args))
+        events.tool_result(
+            tool_call.name,
+            {"code": ret.code, "message": ret.message, "value": ret.value},
+        )
+
+        return ai_ret
 
     return result_to_ai_response(
         Result.fail(code=ResultCode.INTERNAL_ERROR, message="failed to execute tool.")
@@ -1007,6 +1025,13 @@ def cmd_ai(args):
         with open(args.output_command_json, "w", encoding="UTF-8") as f:
             json.dump(command_ir, f)
 
+    consoleListener = AICLIListener(verbose=args.verbose)
+    bus = EventBus()
+    bus.subscribe(consoleListener)
+    eventEmitter = EventEmitter(bus)
+
+    eventEmitter.run_started(args.model, command_ir, optimized_command_ir)
+
     from eskit.ai.helper import run_agent
 
     result = run_agent(
@@ -1015,6 +1040,7 @@ def cmd_ai(args):
         model=args.model,
         tools=tools,
         executor=execute_command,
+        events=eventEmitter,
     )
 
     print(result)

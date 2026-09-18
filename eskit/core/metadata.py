@@ -56,7 +56,7 @@ def pull_metadata(config, host_name, kind=None):
 
     pull_all = kind is None or len(kind) == 0
 
-    if pull_all or "es" == kind:
+    if pull_all or "es" in kind:
         transport, es = connect_es(host_config)
         repos = es.request("GET", "/_snapshot")
         normalized_repo = normalize_repositories(repos)
@@ -108,7 +108,7 @@ def pull_metadata(config, host_name, kind=None):
         transport.close()
 
     # pull archive status
-    if pull_all or "archive" == kind:
+    if pull_all or "archive" in kind:
         logger.info("pull archive metadata")
         pull_archive_metadata(host_config, host_name)
 

@@ -1,0 +1,17 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug ESKit AI",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/eskit/cli.py",
+            "args": [
+                "ai",
+                "pull latest cache and show me latest indices?"
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": true
+        }
+    ]
+}

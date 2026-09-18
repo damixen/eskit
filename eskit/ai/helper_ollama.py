@@ -22,7 +22,7 @@ ESKit command description:
 """
 
 
-def ask(question, command_description, model, tools, dump_json):
+def ask(question, command_description, model, tools, dump_json, events):
 
     if not question:
         return LLMResponse("no question asked.")

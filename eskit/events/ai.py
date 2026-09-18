@@ -1,0 +1,7 @@
+AI_RUN_STARTED = "ai.run_started"
+AI_LLM_RESPONSE = "ai.llm_response"
+AI_TOOL_CALL = "ai.tool_call"
+AI_TOOL_RESULT = "ai.tool_result"
+AI_USER_INPUT = "ai.user_input"
+AI_FINAL_RESPONSE = "ai.final_response"
+AI_ERROR = "ai.error"
