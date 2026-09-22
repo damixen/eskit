@@ -111,6 +111,124 @@ ESKit maintains a local cache for:
 ```
 This allows fast inspection without repeatedly querying Elasticsearch.
 
+### AI Assistant
+
+- Natural-language interface to ESKit commands
+- Multi-step agent workflows
+- Optional AI execution tracing
+- Support for cloud and local LLMs
+
+ESKit includes an optional AI interface that allows you to interact with ESKit using natural language.
+
+The AI assistant can use existing ESKit commands as tools to perform multi-step operations. It can inspect the current state, execute commands, wait between operations, verify results, and ask for additional information when needed.
+
+The AI interface does not bypass ESKit's existing command and safety mechanisms. Operations are still executed through ESKit, including push protection and destructive-operation confirmation.
+
+### Using Claude
+
+The AI interface supports Anthropic Claude models.
+
+Install the Anthropic Python package:
+
+```bash
+pip install anthropic
+```
+
+Set your Anthropic API key:
+
+```bash
+export ANTHROPIC_API_KEY="your-api-key"
+```
+
+On Windows PowerShell:
+
+```powershell
+$env:ANTHROPIC_API_KEY="your-api-key"
+```
+
+You can then use the AI assistant with:
+
+```bash
+eskit ai "show me the latest snapshots"
+```
+
+Specify a model with `--model`:
+
+```bash
+eskit ai "show me the latest snapshots" \
+  --model claude-haiku-4-5-20251001
+```
+
+### Multi-Step Operations
+
+The AI assistant can perform multiple ESKit operations as part of a single request.
+
+For example:
+
+```bash
+eskit ai "Check my snapshots and create any missing daily snapshots for September 2026"
+```
+
+The assistant can inspect the cached Elasticsearch metadata, determine what is missing, execute the required operations, and verify the resulting state.
+
+For operations that should be separated by a delay, you can also specify a wait:
+
+```bash
+eskit ai "Create the missing snapshots and wait about 30 seconds between each snapshot"
+```
+
+### Confirmation and Safety
+
+ESKit remains responsible for executing operations and enforcing its safety mechanisms.
+
+For example, a push-protected host can prevent a mutating operation even when the AI assistant requests it:
+
+```text
+Host: HP-DO is push protected.
+```
+
+Destructive operations such as deleting an index still require confirmation unless explicitly overridden by the appropriate ESKit option.
+
+The AI assistant therefore acts as an interface to ESKit rather than having direct access to the Elasticsearch cluster or host credentials.
+
+### AI Tracing
+
+AI execution can optionally be recorded as a JSONL trace:
+
+```bash
+eskit ai "show me the latest snapshots" --trace
+```
+
+By default, trace files are automatically created under:
+
+```text
+.eskit/traces/
+```
+
+You can specify a trace path explicitly:
+
+```bash
+eskit ai "show me the latest snapshots" \
+  --trace \
+  --trace-path ./trace.jsonl
+```
+
+A trace records the sequence of AI events, including model interactions, tool calls, tool results, user input, and the final response.
+
+Tracing can be useful for understanding and debugging multi-step agent behavior.
+
+### Supported Models
+
+Use:
+
+```bash
+eskit ai --help
+```
+
+to see the currently supported models.
+
+Anthropic Claude models require an Anthropic API key. Local models can also be used through Ollama when configured.
+
 ---
 
 ## Architecture
