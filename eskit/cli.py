@@ -3,6 +3,7 @@ import argparse
 import json
 import logging
 import shutil
+import time
 from pathlib import Path
 from venv import logger
 from dataclasses import dataclass
@@ -24,6 +25,8 @@ from eskit.events.bus import EventBus
 from eskit.events.ai_cli_listener import AICLIListener
 from eskit.events.generated import EventEmitter
 from eskit.ai.response import ToolCall
+from eskit.events.ai_tracer import AITracer
+from eskit.events.registry import EventRegistry
 
 DEFAULT_CONFIG = ".eskit/config.json"
 CACHE_ROOT = Path(".eskit")
@@ -416,7 +419,6 @@ def cmd_create_repo(args):
 
     name = args.name
     dry_run = args.dry_run
-    push = args.push
     repo_type = args.type
     location = args.location
 
@@ -973,6 +975,14 @@ def execute_command(tool_call: ToolCall, tools, events: EventEmitter):
             events.user_input(answer)
             return answer
 
+        if tool_call.name == "wait_tool":
+            duration = tool_call.arguments["duration"]
+            if duration:
+                time.sleep(duration)
+            else:
+                time.sleep(10)
+            return "waited"
+
         from eskit.ai.tool import to_argparse
 
         args = to_argparse(tool_call, command_ir["commands"], tools)
@@ -1025,11 +1035,20 @@ def cmd_ai(args):
         with open(args.output_command_json, "w", encoding="UTF-8") as f:
             json.dump(command_ir, f)
 
-    consoleListener = AICLIListener(verbose=args.verbose)
+    eventRegistry = EventRegistry()
+    consoleListener = AICLIListener(verbose=args.verbose, registry=eventRegistry)
     bus = EventBus()
     bus.subscribe(consoleListener)
-    eventEmitter = EventEmitter(bus)
 
+    if args.trace:
+        aiTracer = AITracer(
+            bus.flow_id,
+            Path(args.trace_path) if args.trace_path else None,
+            registry=eventRegistry,
+        )
+        bus.subscribe(aiTracer)
+
+    eventEmitter = EventEmitter(bus)
     eventEmitter.run_started(args.model, command_ir, optimized_command_ir)
 
     from eskit.ai.helper import run_agent
@@ -1803,6 +1822,12 @@ def build_parser():
     ai_parser.add_argument(
         "--output-command-json", help="A path to output command json."
     )
+    ai_parser.add_argument(
+        "--trace",
+        action="store_true",
+        help="Enable AI tracing to write out ai events to a file. Default path is auto generated in .eskit/traces.",
+    )
+    ai_parser.add_argument("--trace-path", help="Enable AI trace file path.")
     ai_parser.set_defaults(function=cmd_ai)
 
     describe = sub.add_parser(

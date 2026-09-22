@@ -48,6 +48,36 @@ def add_ask_user_tool(tools):
     tools.append(ask_user_tool)
 
 
+def add_wait_tool(tools):
+    add_wait_tool = ToolDefinition(
+        name="wait_tool",
+        description=(
+            "Use this tool whenever you need to wait when user instructs to do so for a certain period."
+            "You may be given a time to wait or simply be told to wait between repetitive operations."
+            "Do not ask a user for a confirmation to proceed after calling this tool."
+        ),
+        input_schema={
+            "type": "object",
+            "properties": {
+                "duration": {
+                    "type": "integer",
+                    "description": "The duration of time to wait.",
+                },
+                "previous_tool": {
+                    "type": "string",
+                    "description": "Name of the previous tool used before this wait.",
+                },
+                "next_tool": {
+                    "type": "string",
+                    "description": "Name of the next tool to be executed after this wait.",
+                },
+            },
+            "required": ["previous_tool", "next_tool"],
+        },
+    )
+    tools.append(add_wait_tool)
+
+
 def build_tool_definitions(
     command_data: dict[str, Any],
 ) -> list[ToolDefinition]:
@@ -70,6 +100,7 @@ def build_tool_definitions(
         )
 
     add_ask_user_tool(tools)
+    add_wait_tool(tools)
 
     return tools
 
