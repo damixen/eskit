@@ -1,3 +1,6 @@
+> ⚠️ **DEPRECATED - AI Branch Merged to Main**\
+> Now AI Branch has been merged to Main. Please visit main branch.
+> 
 # ESKit
 
 ESKit is a lightweight command-line toolkit for managing Elasticsearch repositories, snapshots, indices, and reindex operations across multiple environments.
