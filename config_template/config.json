@@ -1,4 +1,7 @@
 {
+    "user": {
+        "push": false
+    },
     "hosts": [
         {
             "name": "DemoHost1",
