@@ -969,33 +969,44 @@ def execute_command(tool_call: ToolCall, tools, events: EventEmitter):
     if tool_call:
 
         events.tool_call(tool_call.name, tool_call.arguments)
-
+        ret = None
+        ai_ret = None
         if tool_call.name == "ask_user":
-            answer = input(tool_call.arguments["question"] + "\n> ")
-            events.user_input(answer)
-            return answer
-
-        if tool_call.name == "wait_tool":
+            question = tool_call.arguments["question"]
+            events.user_input_requested(question)
+            answer = input(question + "\n> ")
+            events.user_input_received(answer)
+            ret = {"success": True, "code": "SUCCESS", "message": "", "value": answer}
+            ai_ret = answer
+        elif tool_call.name == "wait_tool":
             duration = tool_call.arguments["duration"]
+            events.function_call_started("wait", "core", tool_call.arguments)
             if duration:
                 time.sleep(duration)
             else:
                 time.sleep(10)
-            return "waited"
+            events.function_call_completed("wait", "core", "waited")
+            ret = {"success": True, "code": "SUCCESS", "message": "", "value": "waited"}
+            ai_ret = "waited"
+        else:
+            from eskit.ai.tool import to_argparse
 
-        from eskit.ai.tool import to_argparse
+            events.function_call_started(tool_call.name, "eskit", tool_call.arguments)
 
-        args = to_argparse(tool_call, command_ir["commands"], tools)
-        # print("args:", args)
+            args = to_argparse(tool_call, command_ir["commands"], tools)
+            # print("args:", args)
 
-        parsed_args = parser.parse_args(args)
-        ret = parsed_args.function(parsed_args)
-        ai_ret = result_to_ai_response(ret)
+            parsed_args = parser.parse_args(args)
+            eskit_ret = parsed_args.function(parsed_args)
+            events.function_call_completed(tool_call.name, "eskit", eskit_ret)
+            ret = {
+                "code": eskit_ret.code,
+                "message": eskit_ret.message,
+                "value": eskit_ret.value,
+            }
+            ai_ret = result_to_ai_response(eskit_ret)
 
-        events.tool_result(
-            tool_call.name,
-            {"code": ret.code, "message": ret.message, "value": ret.value},
-        )
+        events.tool_result(tool_call.name, ret)
 
         return ai_ret
 

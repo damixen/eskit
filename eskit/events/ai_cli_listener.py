@@ -28,8 +28,14 @@ class AICLIListener:
             self._response(event)
         elif event_type == "ai.final_response":
             self._final_response(event)
-        elif event_type == "ai.user_input":
-            self._user_input(event)
+        elif event_type == "ai.user_input_requested":
+            self._user_input_requested(event)
+        elif event_type == "ai.user_input_received":
+            self._user_input_received(event)
+        elif event_type == "ai.function_call_started":
+            self._function_call_started(event)
+        elif event_type == "ai.function_call_completed":
+            self._function_call_completed(event)
 
     def _run_started(self, event: Event) -> None:
         model = event.data.get("model", "unknown")
@@ -48,18 +54,18 @@ class AICLIListener:
             print(f"→ Using {tool}")
 
     def _tool_result(self, event: Event) -> None:
-        
+        # print("event:", event)
         tool = event.data.get("tool", "unknown")
-        print("Received response from:", tool)
-        
-        result = event.data.get("result", "n/a")
+        print("← Received response from:", tool)
 
+        result = event.data.get("result", "n/a")
+        # print("result:", result)
         print("\tResult:", result.get("code", "n/a"))
         print("\tMessage:", result.get("message", "n/a"))
-        
+
         if not self.verbose:
             return
-        
+
         duration = event.data.get("duration_ms")
 
         if duration is not None:
@@ -68,13 +74,13 @@ class AICLIListener:
             print(f"← {tool} completed")
 
     def _prompt(self, event: Event) -> None:
-        print("AI Prompt being sent")
+        print("AI prompt being sent")
 
         if not self.verbose:
             return
 
     def _response(self, event: Event) -> None:
-        print("AI Response Received")
+        print("AI response received")
 
         usage = event.data.get("usage")
 
@@ -90,17 +96,25 @@ class AICLIListener:
 
         if not self.verbose:
             return
-            
+
     def _final_response(self, event: Event) -> None:
-        print("AI Final Response Received")
+        print("AI final response received")
 
         if not self.verbose:
             return
-                
-    def _user_input(self, event: Event) -> None:
-            print("User Input Received")
-    
-            if not self.verbose:
-                return
-            
-    
+
+    def _user_input_requested(self, event: Event) -> None:
+        if not self.verbose:
+            return
+
+    def _user_input_received(self, event: Event) -> None:
+        if not self.verbose:
+            return
+
+    def _function_call_started(self, event: Event) -> None:
+        if not self.verbose:
+            return
+
+    def _function_call_completed(self, event: Event) -> None:
+        if not self.verbose:
+            return

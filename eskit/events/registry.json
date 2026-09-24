@@ -64,6 +64,38 @@
             "parameters": {
                 "error": "str"
             }
+        },
+        "1009": {
+            "type": "ai.function_call_started",
+            "description": "ESKit or core function call process started.",
+            "parameters": {
+                "function": "str",
+                "execution_type": "str",
+                "arguments": "dict"
+            }
+        },
+        "1010": {
+            "type": "ai.function_call_completed",
+            "description": "ESKit or core function call process completed.",
+            "parameters": {
+                "function": "str",
+                "execution_type": "str",
+                "result": "Any"
+            }
+        },
+        "1011": {
+            "type": "ai.user_input_requested",
+            "description": "User input was requested.",
+            "parameters": {
+                "message": "str"
+            }
+        },
+        "1012": {
+            "type": "ai.user_input_received",
+            "description": "User input was received.",
+            "parameters": {
+                "input": "str"
+            }
         }
     }
 }
