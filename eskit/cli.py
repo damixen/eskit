@@ -1018,25 +1018,14 @@ def execute_command(tool_call: ToolCall, tools, events: EventEmitter):
 def cmd_ai(args):
 
     parser = build_parser()
-
     command_ir = describe_parser(parser)
 
-    from eskit.command.passes import (
-        run_passes,
-        RemoveUnnecessaryFields,
-        DeduplicateCommonArgs,
-    )
+    from eskit.ai.context import ContextToolBuilder
 
-    passes = [
-        RemoveUnnecessaryFields(),
-        DeduplicateCommonArgs(),
-    ]
+    builder = ContextToolBuilder(command_ir)
+    optimized_command_ir, tools = builder.build()
 
-    optimized_command_ir = run_passes(command_ir, passes)
-
-    from eskit.ai.tool import build_tool_definitions, tools_to_json
-
-    tools = build_tool_definitions(optimized_command_ir)
+    from eskit.ai.tool import tools_to_json
 
     if args.output_command_json:
         with open("tools.json", "w", encoding="UTF-8") as f:
