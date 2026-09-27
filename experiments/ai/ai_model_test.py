@@ -4,7 +4,7 @@ import argparse
 import re
 import subprocess
 import time
-
+import os
 
 MODELS = [
     "claude-haiku-4-5-20251001",
@@ -56,10 +56,7 @@ def main():
         choices=MODELS,
         help="Run tests for one or more models.",
     )
-    parser.add_argument(
-        "--out-dir",
-        help="output dir"
-    )
+    parser.add_argument("--out-dir", help="output dir")
     args = parser.parse_args()
 
     models = args.model if args.model else MODELS
@@ -76,12 +73,9 @@ def main():
     subprocess.run(
         [
             "eskit",
-            "ai",
-            "--model",
-            models[0],
-            "--output-command-json",
-            str(output_dir / "command.json"),
-            "",
+            "describe",
+            "--out-dir",
+            str(output_dir),
         ],
         check=True,
     )
@@ -92,10 +86,13 @@ def main():
 
         for number, question in enumerate(QUESTIONS, start=1):
             output_file = model_dir / question_filename(number, question)
-
+            trace_file = model_dir / "trace.jsonl"
             print(f"[{model}] {number:02d}: {question}")
 
             start_time = time.perf_counter()
+
+            env = os.environ.copy()
+            env["PYTHONIOENCODING"] = "utf-8"
 
             result = subprocess.run(
                 [
@@ -104,9 +101,14 @@ def main():
                     "--model",
                     model,
                     question,
+                    "--trace",
+                    "--trace-path",
+                    trace_file,
                 ],
                 capture_output=True,
                 text=True,
+                encoding="utf-8",
+                env=env,
             )
 
             elapsed_time = time.perf_counter() - start_time

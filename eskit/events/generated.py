@@ -17,7 +17,10 @@ AI_TOOL_RESULT = 1005
 AI_USER_INPUT = 1006
 AI_FINAL_RESPONSE = 1007
 AI_ERROR = 1008
-
+AI_FUNCTION_CALL_STARTED = 1009
+AI_FUNCTION_CALL_COMPLETED = 1010
+AI_USER_INPUT_REQUESTED = 1011
+AI_USER_INPUT_RECEIVED = 1012
 
 class EventEmitter:
     def __init__(self, bus: EventBus) -> None:
@@ -40,6 +43,8 @@ class EventEmitter:
         model: str,
         command_ir: dict,
         optimized_ir: dict,
+        tools: dict,
+        client: dict,
     ) -> None:
         self._emit(
             AI_RUN_STARTED,
@@ -47,6 +52,8 @@ class EventEmitter:
                 "model": model,
                 "command_ir": command_ir,
                 "optimized_ir": optimized_ir,
+                "tools": tools,
+                "client": client,
             },
         )
 
@@ -54,7 +61,8 @@ class EventEmitter:
         self,
         system_prompt: str,
         messages: list,
-        tool_def: list,
+        tool_def: Any,
+        input_token_counts: dict,
     ) -> None:
         self._emit(
             AI_LLM_PROMPT,
@@ -62,6 +70,7 @@ class EventEmitter:
                 "system_prompt": system_prompt,
                 "messages": messages,
                 "tool_def": tool_def,
+                "input_token_counts": input_token_counts,
             },
         )
 
@@ -136,5 +145,57 @@ class EventEmitter:
             AI_ERROR,
             {
                 "error": error,
+            },
+        )
+
+    def function_call_started(
+        self,
+        function: str,
+        execution_type: str,
+        arguments: dict,
+    ) -> None:
+        self._emit(
+            AI_FUNCTION_CALL_STARTED,
+            {
+                "function": function,
+                "execution_type": execution_type,
+                "arguments": arguments,
+            },
+        )
+
+    def function_call_completed(
+        self,
+        function: str,
+        execution_type: str,
+        result: Any,
+    ) -> None:
+        self._emit(
+            AI_FUNCTION_CALL_COMPLETED,
+            {
+                "function": function,
+                "execution_type": execution_type,
+                "result": result,
+            },
+        )
+
+    def user_input_requested(
+        self,
+        message: str,
+    ) -> None:
+        self._emit(
+            AI_USER_INPUT_REQUESTED,
+            {
+                "message": message,
+            },
+        )
+
+    def user_input_received(
+        self,
+        input: str,
+    ) -> None:
+        self._emit(
+            AI_USER_INPUT_RECEIVED,
+            {
+                "input": input,
             },
         )

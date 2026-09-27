@@ -8,7 +8,7 @@ from pathlib import Path
 from venv import logger
 from dataclasses import dataclass
 from eskit.core.host import get_current_host_name
-from eskit.version import __version__
+from eskit.version import __version__, get_git_info
 from eskit.log import configure_logging
 from eskit.exit_code import ExitCode
 from eskit.result import ResultCode, Result, result_to_ai_response
@@ -969,33 +969,44 @@ def execute_command(tool_call: ToolCall, tools, events: EventEmitter):
     if tool_call:
 
         events.tool_call(tool_call.name, tool_call.arguments)
-
+        ret = None
+        ai_ret = None
         if tool_call.name == "ask_user":
-            answer = input(tool_call.arguments["question"] + "\n> ")
-            events.user_input(answer)
-            return answer
-
-        if tool_call.name == "wait_tool":
+            question = tool_call.arguments["question"]
+            events.user_input_requested(question)
+            answer = input(question + "\n> ")
+            events.user_input_received(answer)
+            ret = {"success": True, "code": "SUCCESS", "message": "", "value": answer}
+            ai_ret = answer
+        elif tool_call.name == "wait_tool":
             duration = tool_call.arguments["duration"]
+            events.function_call_started("wait", "core", tool_call.arguments)
             if duration:
                 time.sleep(duration)
             else:
                 time.sleep(10)
-            return "waited"
+            events.function_call_completed("wait", "core", "waited")
+            ret = {"success": True, "code": "SUCCESS", "message": "", "value": "waited"}
+            ai_ret = "waited"
+        else:
+            from eskit.ai.tool import to_argparse
 
-        from eskit.ai.tool import to_argparse
+            events.function_call_started(tool_call.name, "eskit", tool_call.arguments)
 
-        args = to_argparse(tool_call, command_ir["commands"], tools)
-        # print("args:", args)
+            args = to_argparse(tool_call, command_ir["commands"], tools)
+            # print("args:", args)
 
-        parsed_args = parser.parse_args(args)
-        ret = parsed_args.function(parsed_args)
-        ai_ret = result_to_ai_response(ret)
+            parsed_args = parser.parse_args(args)
+            eskit_ret = parsed_args.function(parsed_args)
+            events.function_call_completed(tool_call.name, "eskit", eskit_ret)
+            ret = {
+                "code": eskit_ret.code,
+                "message": eskit_ret.message,
+                "value": eskit_ret.value,
+            }
+            ai_ret = result_to_ai_response(eskit_ret)
 
-        events.tool_result(
-            tool_call.name,
-            {"code": ret.code, "message": ret.message, "value": ret.value},
-        )
+        events.tool_result(tool_call.name, ret)
 
         return ai_ret
 
@@ -1048,11 +1059,18 @@ def cmd_ai(args):
         )
         bus.subscribe(aiTracer)
 
+    git_info = get_git_info()
+
+    client = {"version": __version__, **git_info}
+
     eventEmitter = EventEmitter(bus)
-    eventEmitter.run_started(args.model, command_ir, optimized_command_ir)
+    eventEmitter.run_started(
+        args.model, command_ir, optimized_command_ir, tools, client
+    )
 
     from eskit.ai.helper import run_agent
 
+    count_input_token = args.trace
     result = run_agent(
         question=args.question,
         command_description=optimized_command_ir,
@@ -1060,6 +1078,7 @@ def cmd_ai(args):
         tools=tools,
         executor=execute_command,
         events=eventEmitter,
+        count_input_token=count_input_token,
     )
 
     print(result)
@@ -1072,8 +1091,16 @@ def cmd_describe(args):
     parser = build_parser()
 
     command_json = describe_parser(parser)
+    out_dir = Path("./")
+    if args.out_dir:
+        out_dir = Path(args.out_dir)
+        out_dir.mkdir(exist_ok=True)
 
-    with open("command_ir_raw.json", "w", encoding="UTF-8") as f:
+    command_ir_path = "command_ir.json"
+    if out_dir:
+        command_ir_path = out_dir / command_ir_path
+
+    with open(command_ir_path, "w", encoding="UTF-8") as f:
         json.dump(command_json, f)
 
     from eskit.command.passes import (
@@ -1089,17 +1116,27 @@ def cmd_describe(args):
 
     command_json = run_passes(command_json, passes)
 
-    with open("command_ir.json", "w", encoding="UTF-8") as f:
+    optimized_command_ir_path = "optimized_command_ir.json"
+    if out_dir:
+        optimized_command_ir_path = out_dir / optimized_command_ir_path
+
+    with open(optimized_command_ir_path, "w", encoding="UTF-8") as f:
         json.dump(command_json, f)
 
-    return Result.ok("JSON files created.")
+    from eskit.ai.tool import build_tool_definitions, tools_to_json
 
-    # from eskit.ai.tool import build_tool_definitions, tools_to_json
+    tools = build_tool_definitions(command_json)
 
-    # tools = build_tool_definitions(command_json)
+    tools_path = "tools.json"
+    if out_dir:
+        tools_path = out_dir / tools_path
 
-    # with open("tools.json", "w", encoding="UTF-8") as f:
-    #     f.write(tools_to_json(tools))
+    with open(tools_path, "w", encoding="UTF-8") as f:
+        f.write(tools_to_json(tools))
+
+    return Result.ok(
+        f"JSON files created at {command_ir_path}, {optimized_command_ir_path} and {tools_path}."
+    )
 
 
 def cmd_root(args):
@@ -1837,7 +1874,7 @@ def build_parser():
         description="Build command IR",
     )
 
-    describe.add_argument("--out", help="a path to output file.")
+    describe.add_argument("--out-dir", help="a directory path for output file.")
     describe.set_defaults(function=cmd_describe)
 
     return p

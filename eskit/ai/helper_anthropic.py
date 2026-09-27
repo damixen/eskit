@@ -34,7 +34,15 @@ ESKit command description:
 """
 
 
-def ask(messages, command_description, model, tools, dump_json, events: EventEmitter):
+def ask(
+    messages,
+    command_description,
+    model,
+    tools,
+    dump_json,
+    events: EventEmitter,
+    count_input_token,
+):
 
     if not messages:
         return LLMResponse("no question asked.")
@@ -49,12 +57,70 @@ def ask(messages, command_description, model, tools, dump_json, events: EventEmi
         with open("anthropic_tools.json", "w", encoding="UTF-8") as f:
             json.dump(anthropic_tools, f, indent=2)
 
-    prompt = SYSTEM_PROMPT + json.dumps(
-        command_description,
-        indent=2,
-    )
+    prompt = SYSTEM_PROMPT + json.dumps(command_description)
 
-    events.llm_prompt(system_prompt=prompt, messages=messages, tool_def=tools)
+    input_token_counts = {}
+    if count_input_token:
+        _messages = [
+            {
+                "role": "user",
+                "content": "hi",
+            }
+        ]
+
+        # command_ir
+        response = client.messages.count_tokens(
+            model=model,
+            system=json.dumps(
+                command_description,
+            ),
+            messages=_messages,
+        )
+        input_token_counts["command_ir"] = response.input_tokens
+        #print("command_ir:", input_token_counts["command_ir"])
+
+        # prompt
+        response = client.messages.count_tokens(
+            model=model,
+            system=prompt,
+            messages=_messages,
+        )
+        input_token_counts["prompt"] = response.input_tokens
+        #print("prompt:", input_token_counts["prompt"])
+
+        # messages
+        response = client.messages.count_tokens(
+            model=model,
+            messages=messages,
+        )
+        input_token_counts["messages"] = response.input_tokens
+        #print("messages:", response.input_tokens)
+
+        # tools
+        response = client.messages.count_tokens(
+            model=model,
+            tools=anthropic_tools,
+            messages=_messages,
+        )
+        input_token_counts["tools"] = response.input_tokens
+        #print("tools:", response.input_tokens)
+
+        # all
+        response = client.messages.count_tokens(
+            model=model,
+            system=prompt,
+            messages=messages,
+            tools=anthropic_tools,
+        )
+        input_token_counts["all"] = response.input_tokens
+        #print("all:", response.input_tokens)
+
+    events.llm_prompt(
+        system_prompt=prompt,
+        messages=messages,
+        tool_def=tools,
+        input_token_counts=input_token_counts,
+    )
 
     response = client.messages.create(
         model=model,
