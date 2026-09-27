@@ -43,6 +43,7 @@ class AICLIListener:
 
         if self.verbose:
             print(f"  Flow ID: {event.flow_id}")
+            print(f"  Client: {event.data.get("client")}")
 
     def _tool_call(self, event: Event) -> None:
         tool = event.data.get("tool", "unknown")
@@ -78,6 +79,8 @@ class AICLIListener:
 
         if not self.verbose:
             return
+        
+        print("input_token_counts:", event.data.get("input_token_counts"))
 
     def _response(self, event: Event) -> None:
         print("AI response received")

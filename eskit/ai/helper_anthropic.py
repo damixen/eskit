@@ -77,7 +77,7 @@ def ask(
             messages=_messages,
         )
         input_token_counts["command_ir"] = response.input_tokens
-        print("command_ir:", input_token_counts["command_ir"])
+        #print("command_ir:", input_token_counts["command_ir"])
 
         # prompt
         response = client.messages.count_tokens(
@@ -86,7 +86,7 @@ def ask(
             messages=_messages,
         )
         input_token_counts["prompt"] = response.input_tokens
-        print("prompt:", input_token_counts["prompt"])
+        #print("prompt:", input_token_counts["prompt"])
 
         # messages
         response = client.messages.count_tokens(
@@ -94,7 +94,7 @@ def ask(
             messages=messages,
         )
         input_token_counts["messages"] = response.input_tokens
-        print("messages:", response.input_tokens)
+        #print("messages:", response.input_tokens)
 
         # tools
         response = client.messages.count_tokens(
@@ -103,7 +103,7 @@ def ask(
             messages=_messages,
         )
         input_token_counts["tools"] = response.input_tokens
-        print("tools:", response.input_tokens)
+        #print("tools:", response.input_tokens)
 
         # all
         response = client.messages.count_tokens(
@@ -113,7 +113,7 @@ def ask(
             tools=anthropic_tools,
         )
         input_token_counts["all"] = response.input_tokens
-        print("all:", response.input_tokens)
+        #print("all:", response.input_tokens)
 
     events.llm_prompt(
         system_prompt=prompt,
