@@ -7,7 +7,9 @@
             "parameters": {
                 "model": "str",
                 "command_ir": "dict",
-                "optimized_ir": "dict"
+                "optimized_ir": "dict",
+                "tools": "dict",
+                "client": "dict"
             }
         },
         "1002": {
@@ -16,7 +18,8 @@
             "parameters": {
                 "system_prompt": "str",
                 "messages": "list",
-                "tool_def": "list"
+                "tool_def": "Any",
+                "input_token_counts": "dict"
             }
         },
         "1003": {
