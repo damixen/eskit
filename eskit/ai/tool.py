@@ -22,6 +22,7 @@ def tools_to_json(tools: list[ToolDefinition]) -> str:
         [tool.to_dict() for tool in tools],
         indent=2,
     )
+    
 
 
 def add_ask_user_tool(tools):
@@ -78,30 +79,67 @@ def add_wait_tool(tools):
     tools.append(add_wait_tool)
 
 
+def add_add_context_tool(tools, available_contexts):
+    contexts = ", ".join(sorted(available_contexts))
+
+    add_context_tool = ToolDefinition(
+        name="add_context",
+        description=(
+            "Add one or more command contexts to the current agent context. "
+            "Use this tool whenever commands required to complete the user's "
+            "request are not currently loaded but their contexts are available. "
+            "You may add multiple contexts in a single call when the request "
+            "requires commands from multiple contexts. "
+            "This is an internal agent action; do not ask the user for permission. "
+            f"Available contexts: {contexts}."
+        ),
+        input_schema={
+            "type": "object",
+            "properties": {
+                "contexts": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "enum": sorted(available_contexts),
+                    },
+                    "description": "The command contexts to add.",
+                },
+            },
+            "required": ["contexts"],
+        },
+    )
+
+    tools.append(add_context_tool)
+
+
 def build_tool_definitions(
-    command_data: dict[str, Any],
+    command_data: dict[str, Any], available_context, active_contexts
 ) -> list[ToolDefinition]:
     """Build a flat list of tool definitions from ESKit command data."""
     tools: list[ToolDefinition] = []
+    if active_contexts:
+        common_arguments = command_data.get("common_arguments", {})
 
-    common_arguments = command_data.get("common_arguments", {})
+        for name, command in command_data.get("commands", {}).items():
+            
+            if not name in active_contexts:
+                continue
+            
+            command = _expand_common_arguments(
+                command,
+                common_arguments,
+            )
 
-    for name, command in command_data.get("commands", {}).items():
-        command = _expand_common_arguments(
-            command,
-            common_arguments,
-        )
-
-        _collect_tools(
-            tools=tools,
-            name=name,
-            command=command,
-            path=[name],
-        )
+            _collect_tools(
+                tools=tools,
+                name=name,
+                command=command,
+                path=[name],
+            )
 
     add_ask_user_tool(tools)
     add_wait_tool(tools)
-
+    add_add_context_tool(tools, available_context)
     return tools
 
 

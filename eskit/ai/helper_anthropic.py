@@ -29,6 +29,57 @@ in order to continue executing their request:
 for interactive user input.
 - After receiving the user's answer through ask_user, continue with the original task.
 
+When handling a request:
+
+1. If the current command context does not contain the commands needed
+   to complete the request, check the available contexts.
+
+2. If a required context is available, you MUST call add_context tool
+   before telling the user that the command is unavailable.
+
+3. Calling add_context is an internal agent action. NEVER ask the user
+   for permission to load an available context.
+
+4. After calling add_context, continue working on the original request
+   using the newly available commands.
+
+5. Only tell the user that a command is unavailable if the required
+   context is not among the available contexts.
+   
+6. Loading a context does not complete the user's request.
+   After loading the required contexts, use the available commands
+   to actually complete the request when the user has asked you to
+   perform the operation.
+   
+7. Do not merely describe commands that could accomplish the request
+   when those commands are available as tools and the user asked you
+   to execute the operation.
+   
+8. Do not ask for the confirmation to execute commands after adding/loading context
+   if you have enough context to do so.
+   
+The currently loaded commands are only a subset of the available ESKit
+commands. Do not assume that a required command is unavailable simply
+because it is not in the current command context.
+
+If the command needed to fulfill the request is not currently loaded,
+check the available contexts and use add_context before proceeding.
+
+If your answer will include a concrete ESKit command or command syntax,
+make sure the relevant command context is loaded before providing it.
+The overview may be used to identify the relevant context, but do not
+construct command syntax from the overview alone. The "context_level" in the 
+ESKit command description shows if the command context is at overview or loaded.
+
+Tool results are internal agent context and are not shown to the user or terminal.
+
+After a tool call, do not assume the user can see the tool result. Use the
+result to determine what to tell the user and, when appropriate, present
+the relevant information in a clear, user-friendly form.
+
+The tools ask_user, wait_tool, and add_context are agent-control tools.
+Their results do not need to be presented to the user.
+
 ESKit command description:
 
 """
@@ -42,6 +93,7 @@ def ask(
     dump_json,
     events: EventEmitter,
     count_input_token,
+    active_contexts,
 ):
 
     if not messages:
@@ -77,7 +129,7 @@ def ask(
             messages=_messages,
         )
         input_token_counts["command_ir"] = response.input_tokens
-        #print("command_ir:", input_token_counts["command_ir"])
+        # print("command_ir:", input_token_counts["command_ir"])
 
         # prompt
         response = client.messages.count_tokens(
@@ -86,7 +138,7 @@ def ask(
             messages=_messages,
         )
         input_token_counts["prompt"] = response.input_tokens
-        #print("prompt:", input_token_counts["prompt"])
+        # print("prompt:", input_token_counts["prompt"])
 
         # messages
         response = client.messages.count_tokens(
@@ -94,7 +146,7 @@ def ask(
             messages=messages,
         )
         input_token_counts["messages"] = response.input_tokens
-        #print("messages:", response.input_tokens)
+        # print("messages:", response.input_tokens)
 
         # tools
         response = client.messages.count_tokens(
@@ -103,7 +155,7 @@ def ask(
             messages=_messages,
         )
         input_token_counts["tools"] = response.input_tokens
-        #print("tools:", response.input_tokens)
+        # print("tools:", response.input_tokens)
 
         # all
         response = client.messages.count_tokens(
@@ -113,13 +165,14 @@ def ask(
             tools=anthropic_tools,
         )
         input_token_counts["all"] = response.input_tokens
-        #print("all:", response.input_tokens)
+        # print("all:", response.input_tokens)
 
     events.llm_prompt(
         system_prompt=prompt,
         messages=messages,
         tool_def=tools,
         input_token_counts=input_token_counts,
+        active_contexts=list(active_contexts),
     )
 
     response = client.messages.create(

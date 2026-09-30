@@ -43,7 +43,6 @@ class EventEmitter:
         model: str,
         command_ir: dict,
         optimized_ir: dict,
-        tools: dict,
         client: dict,
     ) -> None:
         self._emit(
@@ -52,7 +51,6 @@ class EventEmitter:
                 "model": model,
                 "command_ir": command_ir,
                 "optimized_ir": optimized_ir,
-                "tools": tools,
                 "client": client,
             },
         )
@@ -63,6 +61,7 @@ class EventEmitter:
         messages: list,
         tool_def: Any,
         input_token_counts: dict,
+        active_contexts: Any,
     ) -> None:
         self._emit(
             AI_LLM_PROMPT,
@@ -71,6 +70,7 @@ class EventEmitter:
                 "messages": messages,
                 "tool_def": tool_def,
                 "input_token_counts": input_token_counts,
+                "active_contexts": active_contexts,
             },
         )
 

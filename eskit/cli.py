@@ -961,7 +961,7 @@ def cmd_show_ilm(args):
     return result
 
 
-def execute_command(tool_call: ToolCall, tools, events: EventEmitter):
+def execute_command(tool_call: ToolCall, tools, events: EventEmitter, context_builder):
 
     parser = build_parser()
     command_ir = describe_parser(parser)
@@ -988,6 +988,11 @@ def execute_command(tool_call: ToolCall, tools, events: EventEmitter):
             events.function_call_completed("wait", "core", "waited")
             ret = {"success": True, "code": "SUCCESS", "message": "", "value": "waited"}
             ai_ret = "waited"
+        elif tool_call.name == "add_context":
+            for context in tool_call.arguments["contexts"]:
+                context_builder.add_context(context)
+            ret = {"success": True, "code": "SUCCESS", "message": "", "value": "added"}
+            ai_ret = "added"
         else:
             from eskit.ai.tool import to_argparse
 
@@ -1019,13 +1024,15 @@ def cmd_ai(args):
 
     parser = build_parser()
     command_ir = describe_parser(parser)
-
+    
     from eskit.ai.context import ContextToolBuilder
 
-    builder = ContextToolBuilder(command_ir)
-    optimized_command_ir, tools = builder.build()
+    #contexts = {"common"}
+    contexts = {}
+    builder = ContextToolBuilder(command_ir, contexts)
+    optimized_command_ir, tools, active_contexts = builder.build()
 
-    from eskit.ai.tool import tools_to_json
+    from eskit.ai.tool import build_tool_definitions, tools_to_json
 
     if args.output_command_json:
         with open("tools.json", "w", encoding="UTF-8") as f:
@@ -1033,7 +1040,10 @@ def cmd_ai(args):
 
     if args.output_command_json:
         with open(args.output_command_json, "w", encoding="UTF-8") as f:
-            json.dump(command_ir, f)
+            json.dump(optimized_command_ir, f)
+            
+    if not args.question:
+        return ExitCode.SUCCESS
 
     eventRegistry = EventRegistry()
     consoleListener = AICLIListener(verbose=args.verbose, registry=eventRegistry)
@@ -1047,30 +1057,30 @@ def cmd_ai(args):
             registry=eventRegistry,
         )
         bus.subscribe(aiTracer)
+        
+    client = {
+        "version": __version__,
+        **get_git_info(),
+    }
 
     git_info = get_git_info()
 
     client = {"version": __version__, **git_info}
 
     eventEmitter = EventEmitter(bus)
-    eventEmitter.run_started(
-        args.model, command_ir, optimized_command_ir, tools, client
-    )
+    eventEmitter.run_started(args.model, command_ir, optimized_command_ir, client=client)
 
     from eskit.ai.helper import run_agent
 
     count_input_token = args.trace
     result = run_agent(
         question=args.question,
-        command_description=optimized_command_ir,
         model=args.model,
-        tools=tools,
+        context_builder=builder,
         executor=execute_command,
         events=eventEmitter,
         count_input_token=count_input_token,
     )
-
-    print(result)
 
     return ExitCode.SUCCESS
 
@@ -1078,12 +1088,18 @@ def cmd_ai(args):
 def cmd_describe(args):
 
     parser = build_parser()
-
-    command_json = describe_parser(parser)
+    
     out_dir = Path("./")
     if args.out_dir:
         out_dir = Path(args.out_dir)
-        out_dir.mkdir(exist_ok=True)
+        
+    out_dir.mkdir(exist_ok=True)
+
+    command_json = describe_parser(parser)
+    
+    command_ir_path = "command_ir_raw.json"
+    if out_dir:
+        command_ir_path = out_dir / command_ir_path
 
     command_ir_path = "command_ir.json"
     if out_dir:
@@ -1091,37 +1107,37 @@ def cmd_describe(args):
 
     with open(command_ir_path, "w", encoding="UTF-8") as f:
         json.dump(command_json, f)
+        
+    from eskit.ai.context import ContextToolBuilder
 
-    from eskit.command.passes import (
-        run_passes,
-        RemoveUnnecessaryFields,
-        DeduplicateCommonArgs,
-    )
-
-    passes = [
-        RemoveUnnecessaryFields(),
-        DeduplicateCommonArgs(),
-    ]
-
-    command_json = run_passes(command_json, passes)
+    contexts = set(args.context)
+    #contexts.add("common")
+    builder = ContextToolBuilder(command_json, contexts)
+    optimized_command_ir, tools, active_contexts = builder.build()
 
     optimized_command_ir_path = "optimized_command_ir.json"
+    
     if out_dir:
         optimized_command_ir_path = out_dir / optimized_command_ir_path
 
     with open(optimized_command_ir_path, "w", encoding="UTF-8") as f:
-        json.dump(command_json, f)
+        json.dump(optimized_command_ir, f)
 
-    from eskit.ai.tool import build_tool_definitions, tools_to_json
-
-    tools = build_tool_definitions(command_json)
-
+    from eskit.ai.tool import tools_to_json
+    
     tools_path = "tools.json"
     if out_dir:
         tools_path = out_dir / tools_path
 
     with open(tools_path, "w", encoding="UTF-8") as f:
         f.write(tools_to_json(tools))
+        
+    active_context_path = "active_context.txt"
+    if out_dir:
+        active_context_path = out_dir / active_context_path
+
+    with open(active_context_path, "w", encoding="UTF-8") as f:
+        f.write(str(active_contexts))
 
     return Result.ok(
         f"JSON files created at {command_ir_path}, {optimized_command_ir_path} and {tools_path}."
@@ -1229,11 +1245,18 @@ def build_parser():
     init.add_argument(
         "--demo", action="store_true", help="Initialize with demo data set."
     )
+    #set_metadata(init, context="common")
+    set_metadata(init, context="init")
 
     # Host commands
     host_parser = sub.add_parser(
         "host", help="Host related commands.", description="Host data related commands."
     )
+
+    #set_metadata(host_parser, context="common")
+    set_metadata(host_parser, context="host")
+
+
     host_parser_sub = host_parser.add_subparsers(required=True)
 
     host_show_parser = host_parser_sub.add_parser(
@@ -1285,7 +1308,8 @@ def build_parser():
         type=str,
     )
     pull.set_defaults(function=cmd_pull)
-    set_metadata(pull, risk="write")
+    #set_metadata(pull, risk="write", context="common")
+    set_metadata(pull, risk="write", context="pull")
 
     # Cat
     cat = sub.add_parser(
@@ -1297,10 +1321,8 @@ def build_parser():
     cat.add_argument("kind", choices=["repo", "snap", "index", "ilm"], type=str)
     cat.set_defaults(function=cmd_cat2)
 
-    set_metadata(
-        cat,
-        risk="read",
-    )
+    #set_metadata(cat, risk="read", context="common")
+    set_metadata(cat, risk="read", context="cat")
 
     # Repo sub command
     common_repo_parser = argparse.ArgumentParser(add_help=False)
@@ -1313,6 +1335,7 @@ def build_parser():
         help="Repository commands.",
         description="Repository commands.",
     )
+    set_metadata(repo, context="repository")
 
     repo_sub = repo.add_subparsers(required=True)
 
@@ -1381,6 +1404,7 @@ def build_parser():
         help="Snapshot commands",
         description="Snapshot commands",
     )
+    set_metadata(snap, context="snapshot")
     snap_sub = snap.add_subparsers(required=True)
 
     # common snap parser
@@ -1507,6 +1531,7 @@ def build_parser():
     index_parser = sub.add_parser(
         "index", help="Index commands.", description="Index commands."
     )
+    set_metadata(index_parser, context="index")
     index_sub = index_parser.add_subparsers(required=True)
 
     index_delete = index_sub.add_parser(
@@ -1599,10 +1624,7 @@ def build_parser():
     reindex.add_argument("dst", help="destination index", type=str)
     reindex.set_defaults(function=cmd_reindex)
 
-    set_metadata(
-        reindex,
-        risk="write",
-    )
+    set_metadata(reindex, risk="write", context="reindex")
 
     reindex_mapping = sub.add_parser(
         "mapping",
@@ -1622,6 +1644,7 @@ def build_parser():
         help="Elasticsearch Task Commands",
         description="Elasticsearch Task Commands.",
     )
+    set_metadata(task, context="task")
     task_sub = task.add_subparsers(required=True)
 
     task_get = task_sub.add_parser(
@@ -1637,7 +1660,7 @@ def build_parser():
     job = sub.add_parser(
         "job", help="Job related commands.", description="Job related commands."
     )
-
+    set_metadata(job, context="job")
     job_sub = job.add_subparsers(required=True)
     job_list = job_sub.add_parser(
         "list",
@@ -1677,6 +1700,7 @@ def build_parser():
         help="Show current ESKit status.",
         description="Show current ESKit status.",
     )
+    set_metadata(status, context="status")
     status.set_defaults(function=cmd_status)
 
     archive_common_parser = argparse.ArgumentParser(add_help=False)
@@ -1701,7 +1725,7 @@ def build_parser():
         help="Archive commands.",
         description="Archive commands.",
     )
-
+    set_metadata(archive, context="archive")
     archive_sub = archive.add_subparsers(required=True)
 
     archive_list_parser = archive_sub.add_parser(
@@ -1803,6 +1827,7 @@ def build_parser():
         help="Index lifecycle management commands.",
         description="Index lifecycle management commands.",
     )
+    set_metadata(ilm, context="ilm")
     ilm_sub = ilm.add_subparsers(required=True)
 
     ilm_show_parser = ilm_sub.add_parser(
@@ -1829,6 +1854,7 @@ def build_parser():
         parents=[output_parser],
         description="AI commands.",
     )
+    set_metadata(ai_parser, context="ai")
     ai_parser.add_argument("question", help="Question to ask to AI.")
     ai_parser.add_argument(
         "--model",
@@ -1864,6 +1890,28 @@ def build_parser():
     )
 
     describe.add_argument("--out-dir", help="a directory path for output file.")
+    describe.add_argument(
+        "--context",
+        action="append",
+        default=[],
+        choices=[
+            #"common",
+            "init",
+            "pull",
+            "cat",
+            "host",
+            "snapshot",
+            "index",
+            "repository",
+            "archive",
+            "reindex",
+            "ilm",
+            "archive",
+            "task",
+            "job",
+            "status",
+        ],
+    )
     describe.set_defaults(function=cmd_describe)
 
     return p

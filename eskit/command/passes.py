@@ -1,7 +1,6 @@
 from typing import Any
 from copy import deepcopy
 
-
 class CommandPass:
     def apply(self, command: dict[str, Any]) -> dict[str, Any]:
         raise NotImplementedError
@@ -87,8 +86,8 @@ class DeduplicateCommonArgs(CommandPass):
             arguments = command.get("arguments", [])
 
             remaining, extracted = self._extract_common(arguments)
-
-            command["arguments"] = remaining
+            if remaining:
+                command["arguments"] = remaining
 
             for name, definition in extracted.items():
                 common_arguments.setdefault(name, definition)
@@ -117,6 +116,66 @@ class DeduplicateCommonArgs(CommandPass):
                 remaining.append(argument)
 
         return remaining, extracted
+
+
+class SelectContexts(CommandPass):
+    def __init__(self, contexts: set[str]):
+        self.contexts = contexts
+
+    def apply(self, command):
+        result = deepcopy(command)
+
+        if not self.contexts:
+            result["commands"] = {}
+            return result
+
+        result["commands"] = {
+            name: value
+            for name, value in result.get("commands", {}).items()
+            if value.get("metadata", {}).get("context") in self.contexts
+        }
+        
+        for value in result["commands"].values():
+            metadata = value.setdefault("metadata", {})
+            metadata["context_level"] = "loaded"
+
+        return result
+
+
+class ContextOverviewPass(CommandPass):
+    def __init__(self, command_ir: dict[str, Any]):
+        self.command_ir = command_ir
+
+    def apply(self, command: dict[str, Any]) -> dict[str, Any]:
+        result = deepcopy(command)
+
+        visible_commands = result.setdefault("commands", {})
+        source_commands = self.command_ir.get("commands", {})
+
+        for name, source in source_commands.items():
+            if name in visible_commands:
+                continue
+
+            visible_commands[name] = self._overview(source)
+
+        return result
+
+    def _overview(self, command: dict[str, Any]) -> dict[str, Any]:
+        overview = {
+            "program": command.get("program"),
+            "description": command.get("description"),
+        }
+
+        metadata = command.get("metadata", {}).copy()
+        metadata["context_level"] = "overview"
+
+        overview["metadata"] = metadata
+
+        commands = command.get("commands")
+        if commands:
+            overview["commands"] = {name: {} for name in commands}
+
+        return overview
 
 
 def run_passes(

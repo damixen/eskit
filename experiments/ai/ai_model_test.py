@@ -56,16 +56,19 @@ def main():
         choices=MODELS,
         help="Run tests for one or more models.",
     )
-    parser.add_argument("--out-dir", help="output dir")
+    parser.add_argument("--out-root-dir", help="root dir containing test result output folders")
+    parser.add_argument("--out-dir-postfix", help="postfix added to output dir")
     args = parser.parse_args()
 
     models = args.model if args.model else MODELS
 
     timestamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
-    if args.out_dir:
-        output_dir = Path(args.out_dir) / timestamp
+    if args.out_root_dir:
+        output_dir = Path(args.out_root_dir) / timestamp
     else:
         output_dir = Path("test-results") / timestamp
+    if args.out_dir_postfix:
+        output_dir = output_dir / args.out_dir_postfix
     output_dir.mkdir(parents=True)
 
     # The command description is the same for all models,
@@ -83,7 +86,7 @@ def main():
     for model in models:
         model_dir = output_dir / model_directory_name(model)
         model_dir.mkdir()
-
+        trace_file = model_dir / "trace.jsonl"
         for number, question in enumerate(QUESTIONS, start=1):
             output_file = model_dir / question_filename(number, question)
             trace_file = model_dir / "trace.jsonl"
@@ -93,26 +96,28 @@ def main():
 
             env = os.environ.copy()
             env["PYTHONIOENCODING"] = "utf-8"
-
-            result = subprocess.run(
-                [
-                    "eskit",
-                    "ai",
-                    "--model",
-                    model,
-                    question,
-                    "--trace",
-                    "--trace-path",
-                    trace_file,
-                ],
-                capture_output=True,
+            
+            process  = subprocess.Popen(
+                ["eskit", "ai", "--model", model, question, "--trace", "--trace-path", trace_file],
+                stdin=None,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
                 text=True,
                 encoding="utf-8",
+                bufsize=1,
                 env=env,
             )
+            
+            output = []
+
+            for line in process.stdout:
+                print(line, end="", flush=True)
+                output.append(line)
+
+            process.wait()
 
             elapsed_time = time.perf_counter() - start_time
-
+            output_text = "".join(output)
             output_file.write_text(
                 f"# Test\n"
                 f"- **Model:** {model}\n"
@@ -120,8 +125,7 @@ def main():
                 f"- **Elapsed time:** {elapsed_time:.3f} seconds\n"
                 f"\n"
                 f"# Response\n"
-                f"{result.stdout}"
-                f"{result.stderr}",
+                f"{output_text}",
                 encoding="utf-8",
             )
 

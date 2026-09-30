@@ -29,7 +29,7 @@ MODEL_HANDLERS = {
 }
 
 
-def ask(messages, command_description, model, tools, events, count_input_token):
+def ask(messages, command_description, model, tools, events, count_input_token, active_contexts):
     handler = MODEL_HANDLERS.get(model)
 
     if handler is None:
@@ -43,13 +43,13 @@ def ask(messages, command_description, model, tools, events, count_input_token):
         dump_json=False,
         events=events,
         count_input_token=count_input_token,
+        active_contexts=active_contexts,
     )
 
 
 def run_agent(
     question,
-    command_description,
-    tools,
+    context_builder,
     model,
     executor,
     events: EventEmitter,
@@ -63,6 +63,7 @@ def run_agent(
     ]
 
     while True:
+        command_description, tools, active_contexts = context_builder.get_context()
         response = ask(
             messages=messages,
             command_description=command_description,
@@ -70,6 +71,7 @@ def run_agent(
             model=model,
             events=events,
             count_input_token=count_input_token,
+            active_contexts=active_contexts
         )
         if not response.tool_calls:
             events.final_response(response.text)
@@ -85,7 +87,7 @@ def run_agent(
 
         for tool_call in response.tool_calls:
 
-            result = executor(tool_call, tools, events)
+            result = executor(tool_call, tools, events, context_builder)
 
             messages.append(
                 {

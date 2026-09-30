@@ -21,3 +21,5 @@ def configure_logging(verbose=False, debug=False):
 
     # Set logging level for specific libraries to WARNING to reduce noise
     logging.getLogger("paramiko").setLevel(logging.WARNING)
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("httpcore").setLevel(logging.WARNING)
