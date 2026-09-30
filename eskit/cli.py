@@ -1410,6 +1410,7 @@ def build_parser():
             common_repo_parser,
             mutating_parser,
             destructive_command_parser,
+            output_parser,
         ],
         help="Delete repository.",
         description="Delete repository.",
