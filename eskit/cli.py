@@ -4,6 +4,7 @@ import json
 import logging
 import shutil
 import time
+from typing import Any
 from pathlib import Path
 from venv import logger
 from dataclasses import dataclass
@@ -41,6 +42,7 @@ class RenderOptions:
     fields: str | None
     views: list[dict] | None
     flat: bool
+    view_config: Any
 
 
 @dataclass
@@ -49,7 +51,9 @@ class CommandContext:
     host: str | None
     render: RenderOptions
     command: str
-    dry_run: bool
+    dry_run: bool | None
+    force: bool | None
+    confirmed: bool | None
 
 
 def print_dry_run():
@@ -119,16 +123,24 @@ def load_command_context(args, skip_get_current_host=False) -> CommandContext:
             "Warning: --fields and --view are only supported with --json and have been ignored."
         )
 
-    dry_run = getattr(args, "dry_run", False)
+    dry_run = getattr(args, "dry_run", None)
+    force = getattr(args, "force", None)
+    confirmed = getattr(args, "confirmed", None)
 
     context = CommandContext(
         config=config,
         host=host,
         render=RenderOptions(
-            output_format=output_format, fields=fields, views=views, flat=flat
+            output_format=output_format,
+            fields=fields,
+            views=views,
+            flat=flat,
+            view_config=config.get("views"),
         ),
         command=args.function.__name__,
         dry_run=dry_run,
+        force=force,
+        confirmed=confirmed,
     )
 
     return context
@@ -401,7 +413,7 @@ def cmd_delete_repo(args):
     confirmed = False
     if not args.force and not args.dry_run:
         confirmed = confirm_delete("repository", name)
-
+        context.confirmed = confirmed
     result = delete(context.config, context.host, name, dry_run, force, confirmed)
     result.command_context = context
 
@@ -514,6 +526,7 @@ def cmd_delete_snapshot(args):
     confirmed = False
     if not args.force and not args.dry_run:
         confirmed = confirm_delete("snapshot", name)
+        context.confirmed = confirmed
 
     result = delete(
         context.config, context.host, name, args.dry_run, args.force, confirmed
@@ -602,6 +615,7 @@ def cmd_delete_index(args):
     confirmed = False
     if not args.force and not args.dry_run:
         confirmed = confirm_delete("index", args.index)
+        context.confirmed = confirmed
 
     result = delete(
         context.config, context.host, args.index, args.dry_run, args.force, confirmed
@@ -1003,6 +1017,14 @@ def execute_command(tool_call: ToolCall, tools, events: EventEmitter, context_bu
 
             parsed_args = parser.parse_args(args)
             eskit_ret = parsed_args.function(parsed_args)
+
+            from eskit.utils.config import project_security_context
+
+            if eskit_ret.command_context and eskit_ret.command_context.config:
+                eskit_ret.command_context.config = project_security_context(
+                    eskit_ret.command_context.config, eskit_ret.command_context.host
+                )
+
             events.function_call_completed(tool_call.name, "eskit", eskit_ret)
             ret = {
                 "code": eskit_ret.code,
@@ -1024,11 +1046,12 @@ def cmd_ai(args):
 
     parser = build_parser()
     command_ir = describe_parser(parser)
-    
+
     from eskit.ai.context import ContextToolBuilder
 
-    #contexts = {"common"}
     contexts = {}
+    if args.contexts:
+        contexts = set(args.contexts)
     builder = ContextToolBuilder(command_ir, contexts)
     optimized_command_ir, tools, active_contexts = builder.build()
 
@@ -1041,7 +1064,7 @@ def cmd_ai(args):
     if args.output_command_json:
         with open(args.output_command_json, "w", encoding="UTF-8") as f:
             json.dump(optimized_command_ir, f)
-            
+
     if not args.question:
         return ExitCode.SUCCESS
 
@@ -1057,7 +1080,7 @@ def cmd_ai(args):
             registry=eventRegistry,
         )
         bus.subscribe(aiTracer)
-        
+
     client = {
         "version": __version__,
         **get_git_info(),
@@ -1068,7 +1091,9 @@ def cmd_ai(args):
     client = {"version": __version__, **git_info}
 
     eventEmitter = EventEmitter(bus)
-    eventEmitter.run_started(args.model, command_ir, optimized_command_ir, client=client)
+    eventEmitter.run_started(
+        args.model, command_ir, optimized_command_ir, client=client
+    )
 
     from eskit.ai.helper import run_agent
 
@@ -1079,7 +1104,7 @@ def cmd_ai(args):
         context_builder=builder,
         executor=execute_command,
         events=eventEmitter,
-        count_input_token=count_input_token,
+        count_input_token=args.trace,
     )
 
     return ExitCode.SUCCESS
@@ -1088,15 +1113,15 @@ def cmd_ai(args):
 def cmd_describe(args):
 
     parser = build_parser()
-    
+
     out_dir = Path("./")
     if args.out_dir:
         out_dir = Path(args.out_dir)
-        
+
     out_dir.mkdir(exist_ok=True)
 
     command_json = describe_parser(parser)
-    
+
     command_ir_path = "command_ir_raw.json"
     if out_dir:
         command_ir_path = out_dir / command_ir_path
@@ -1107,16 +1132,16 @@ def cmd_describe(args):
 
     with open(command_ir_path, "w", encoding="UTF-8") as f:
         json.dump(command_json, f)
-        
+
     from eskit.ai.context import ContextToolBuilder
 
     contexts = set(args.context)
-    #contexts.add("common")
+    # contexts.add("common")
     builder = ContextToolBuilder(command_json, contexts)
     optimized_command_ir, tools, active_contexts = builder.build()
 
     optimized_command_ir_path = "optimized_command_ir.json"
-    
+
     if out_dir:
         optimized_command_ir_path = out_dir / optimized_command_ir_path
 
@@ -1124,14 +1149,14 @@ def cmd_describe(args):
         json.dump(optimized_command_ir, f)
 
     from eskit.ai.tool import tools_to_json
-    
+
     tools_path = "tools.json"
     if out_dir:
         tools_path = out_dir / tools_path
 
     with open(tools_path, "w", encoding="UTF-8") as f:
         f.write(tools_to_json(tools))
-        
+
     active_context_path = "active_context.txt"
     if out_dir:
         active_context_path = out_dir / active_context_path
@@ -1245,7 +1270,7 @@ def build_parser():
     init.add_argument(
         "--demo", action="store_true", help="Initialize with demo data set."
     )
-    #set_metadata(init, context="common")
+    # set_metadata(init, context="common")
     set_metadata(init, context="init")
 
     # Host commands
@@ -1253,9 +1278,8 @@ def build_parser():
         "host", help="Host related commands.", description="Host data related commands."
     )
 
-    #set_metadata(host_parser, context="common")
+    # set_metadata(host_parser, context="common")
     set_metadata(host_parser, context="host")
-
 
     host_parser_sub = host_parser.add_subparsers(required=True)
 
@@ -1308,7 +1332,7 @@ def build_parser():
         type=str,
     )
     pull.set_defaults(function=cmd_pull)
-    #set_metadata(pull, risk="write", context="common")
+    # set_metadata(pull, risk="write", context="common")
     set_metadata(pull, risk="write", context="pull")
 
     # Cat
@@ -1321,7 +1345,7 @@ def build_parser():
     cat.add_argument("kind", choices=["repo", "snap", "index", "ilm"], type=str)
     cat.set_defaults(function=cmd_cat2)
 
-    #set_metadata(cat, risk="read", context="common")
+    # set_metadata(cat, risk="read", context="common")
     set_metadata(cat, risk="read", context="cat")
 
     # Repo sub command
@@ -1880,6 +1904,27 @@ def build_parser():
         help="Enable AI tracing to write out ai events to a file. Default path is auto generated in .eskit/traces.",
     )
     ai_parser.add_argument("--trace-path", help="Enable AI trace file path.")
+    ai_parser.add_argument(
+        "--contexts",
+        nargs="+",
+        choices=[
+            # "common",
+            "init",
+            "pull",
+            "cat",
+            "host",
+            "snapshot",
+            "index",
+            "repository",
+            "archive",
+            "reindex",
+            "ilm",
+            "archive",
+            "task",
+            "job",
+            "status",
+        ],
+    )
     ai_parser.set_defaults(function=cmd_ai)
 
     describe = sub.add_parser(
@@ -1895,7 +1940,7 @@ def build_parser():
         action="append",
         default=[],
         choices=[
-            #"common",
+            # "common",
             "init",
             "pull",
             "cat",

@@ -39,3 +39,28 @@ def get_host_config(config, host_name):
 def is_push_protected(config, host_name):
     host_config = get_host_config(config, host_name)
     return "push-protected" in host_config and host_config["push-protected"]
+
+
+def project_security_context(
+    config: dict,
+    host_name: str | None = None,
+) -> dict:
+    context = {
+        "user": {
+            "push": config.get("user", {}).get("push", False),
+        }
+    }
+
+    if host_name is not None:
+        host = next(
+            (host for host in config.get("hosts", []) if host.get("name") == host_name),
+            None,
+        )
+
+        if host is not None:
+            context["host"] = {
+                "name": host.get("name"),
+                "push-protected": host.get("push-protected", False),
+            }
+
+    return context

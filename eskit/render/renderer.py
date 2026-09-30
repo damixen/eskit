@@ -126,7 +126,7 @@ def render_result(args, result: Result):
     command = ""
     if context:
         fields = build_field_list(
-            view_config=context.config["views"],
+            view_config=context.render.view_config,
             views=context.render.views,
             fields=context.render.fields,
         )
