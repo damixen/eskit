@@ -43,6 +43,7 @@ class EventEmitter:
         model: str,
         command_ir: dict,
         optimized_ir: dict,
+        tools: dict,
         client: dict,
     ) -> None:
         self._emit(
@@ -51,6 +52,7 @@ class EventEmitter:
                 "model": model,
                 "command_ir": command_ir,
                 "optimized_ir": optimized_ir,
+                "tools": tools,
                 "client": client,
             },
         )

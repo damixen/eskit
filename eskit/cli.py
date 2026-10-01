@@ -1110,7 +1110,7 @@ def cmd_ai(args):
 
     eventEmitter = EventEmitter(bus)
     eventEmitter.run_started(
-        args.model, command_ir, optimized_command_ir, client=client
+        args.model, command_ir, optimized_command_ir, tools=tools, client=client
     )
 
     from eskit.ai.helper import run_agent

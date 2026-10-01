@@ -8,6 +8,7 @@
                 "model": "str",
                 "command_ir": "dict",
                 "optimized_ir": "dict",
+                "tools": "dict",
                 "client": "dict"
             }
         },
