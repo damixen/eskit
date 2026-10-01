@@ -143,12 +143,18 @@ def create(config: Config, host_name, index, mapping, dry_run):
     )
 
 
-def delete(config: Config, host_name, index, dry_run, force, confirmed):
+def delete(config: Config, host_name, index, dry_run, force):
     """
     Public API
     """
 
     check_host_name(host_name)
+
+    if not force:
+        result = check_push_protected(config, host_name, dry_run)
+        if not result.success:
+            return result
+        
     result = check_push_protected(config, host_name, dry_run)
 
     if not result.success:
@@ -157,10 +163,6 @@ def delete(config: Config, host_name, index, dry_run, force, confirmed):
     if not find_index(host_name, index):
         # logger.error("Index:%s not found in cache. Please pull the latest.", index)
         return Result.fail(ResultCode.NOT_FOUND, "Index not found.")
-
-    if not dry_run and not force:
-        if not confirmed:
-            return Result.fail(ResultCode.CANCELED, "Canceled.")
 
     url = f"/{index}"
     if dry_run:
@@ -331,6 +333,17 @@ def reindex(config: Config, host_name, src, dst, mapping, dry_run):
         message=result_msg,
     )
 
+def index_exists(host, index):
+    """
+    Public API
+    """
+
+    check_host_name(host)
+
+    if find_index(host, index):
+        return Result.ok()
+    else:
+        return Result.fail(ResultCode.NOT_FOUND, "Resource not found.")
 
 # Internal
 def find_index(host, index):

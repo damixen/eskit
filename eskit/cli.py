@@ -402,7 +402,7 @@ def cmd_delete_repo(args):
     dry_run = args.dry_run
     force = args.force
 
-    from eskit.core.repo import delete
+    from eskit.core.repo import delete, repository_exists
 
     try:
         context = load_command_context(args)
@@ -410,11 +410,18 @@ def cmd_delete_repo(args):
         logger.error("%s", e)
         return Result.fail(ResultCode.INTERNAL_ERROR, "Failed to load context.")
 
+    result = repository_exists(context.host, name)
+    if result.code != ResultCode.SUCCESS:
+        return result
+
     confirmed = False
     if not args.force and not args.dry_run:
         confirmed = confirm_delete("repository", name)
         context.confirmed = confirmed
-    result = delete(context.config, context.host, name, dry_run, force, confirmed)
+        if not confirmed:
+            return Result.fail(ResultCode.CANCELED, "Cannot confirm the action.")
+
+    result = delete(context.config, context.host, name, dry_run, force)
     result.command_context = context
 
     if result.success:
@@ -513,7 +520,7 @@ def cmd_create_snapshot(args):
 
 def cmd_delete_snapshot(args):
 
-    from eskit.core.snap import delete
+    from eskit.core.snap import delete, snapshot_exists
 
     try:
         context = load_command_context(args)
@@ -523,13 +530,19 @@ def cmd_delete_snapshot(args):
 
     name = args.name
 
+    result = snapshot_exists(context.host, name)
+    if result.code != ResultCode.SUCCESS:
+        return result
+
     confirmed = False
     if not args.force and not args.dry_run:
         confirmed = confirm_delete("snapshot", name)
         context.confirmed = confirmed
+        if not confirmed:
+            return Result.fail(ResultCode.CANCELED, "Cannot confirm the action.")
 
     result = delete(
-        context.config, context.host, name, args.dry_run, args.force, confirmed
+        context.config, context.host, name, args.dry_run, args.force
     )
     result.command_context = context
 
@@ -602,7 +615,7 @@ def cmd_restore_status(args):
 
 def cmd_delete_index(args):
 
-    from eskit.core.index import delete
+    from eskit.core.index import delete, index_exists
 
     try:
         context = load_command_context(args)
@@ -612,14 +625,19 @@ def cmd_delete_index(args):
 
     index = args.index
 
+    result = index_exists(context.host, index)
+    if not result.success:
+        return Result.fail(ResultCode.NOT_FOUND, "Resource not found.")
+
     confirmed = False
     if not args.force and not args.dry_run:
         confirmed = confirm_delete("index", args.index)
         context.confirmed = confirmed
+        if not confirmed:
+            return Result.fail(ResultCode.CANCELED, "Cannot confirm the action.")
 
     result = delete(
-        context.config, context.host, args.index, args.dry_run, args.force, confirmed
-    )
+        context.config, context.host, args.index, args.dry_run, args.force)
     result.command_context = context
 
     if result.success:

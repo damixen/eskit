@@ -108,13 +108,19 @@ def render_result(args, result: Result):
 
     if result.code == ResultCode.CANCELED:
         print("Canceled.")
+        if args.verbose and result.message:
+                print(result.message)
         return
 
     if result.code == ResultCode.NOT_AUTHORIZED:
         print("Not authorized.")
+        if args.verbose and result.message:
+            print(result.message)
         return
 
     if result.code != ResultCode.SUCCESS:
+        if args.verbose and result.message:
+                print(result.message)
         return
 
     from eskit.projection import build_field_list, normalize_projection

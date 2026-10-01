@@ -1,3 +1,4 @@
+import json
 import logging
 from eskit.utils.config import get_host_config
 from eskit.core.host import get_current_host_name, check_host_name, check_push_protected
@@ -93,28 +94,24 @@ def create(
     )
 
 
-def delete(config, host_name, spec, dry_run, force, confirmed):
+def delete(config, host_name, spec, dry_run, force):
     """
     Public API
-    """
-
-    repo, delim, snap = spec.partition("/")
+    """    
     if host_name is None:
         host_name = get_current_host_name()
 
     check_host_name(host_name)
-    result = check_push_protected(config, host_name, dry_run)
-    if not result.success:
-        return result
 
+    if not force:
+        result = check_push_protected(config, host_name, dry_run)
+        if not result.success:
+            return result
+
+    repo, delim, snap = spec.partition("/")
     if not find_snapshot(host_name, repo, snap):
         # logger.error("Snapshot:%s not found in cache. Please pull the latest.", spec)
         return Result.fail(ResultCode.NOT_FOUND, "Resource not found.")
-
-    if not dry_run and not force:
-        if not confirmed:
-            # print("Cancelled.")
-            return Result.fail(ResultCode.CANCELED, "Canceled.")
 
     if dry_run:
         # print_dry_run()
@@ -160,6 +157,9 @@ def restore(config, host_name, spec, index, dry_run, ilm, remove_ilm, wait):
     body = {}
 
     repo, delim, snap = spec.partition("/")
+    result = snapshot_exists(host_name, spec)
+    if not result.success:
+            return result
 
     if index:
         body["indices"] = index
@@ -218,17 +218,30 @@ def restore(config, host_name, spec, index, dry_run, ilm, remove_ilm, wait):
         }
     )
 
+def snapshot_exists(host_name, name):
+    """
+    Public API
+    """
+
+    repo, delim, snap = name.partition("/")
+    if not find_snapshot(host_name, repo, snap):
+        # logger.error("Snapshot:%s not found in cache. Please pull the latest.", spec)
+        return Result.fail(ResultCode.NOT_FOUND, "Resource not found.")
+    return Result.ok()
 
 # Internal
 def find_snapshot(host, repo, snapshot):
     snapshots_cache = read_cache(host, "snapshots")
+    #print(f"repo:{repo!r} snapshot:{snapshot!r}")
+    #print(f"snapshots_cache:{json.dumps(snapshots_cache)}")
     if not snapshots_cache:
         return False
     if not repo in snapshots_cache:
+        #print(f"repo:{repo} not found in snapshots_cache")
         return False
     snap_list = snapshots_cache[repo]["snapshots"]
     for s in snap_list:
         if snapshot == s["snapshot"]:
             return True
-
+    #print(f"repo:{repo} snapshot:{snapshot} not found in snapshots_cache")
     return False

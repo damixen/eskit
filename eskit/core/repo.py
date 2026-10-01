@@ -88,23 +88,21 @@ def create(config, host_name, name, repo_type, location, dry_run):
     )
 
 
-def delete(config, host_name, name, dry_run, force, confirmed):
+def delete(config, host_name, name, dry_run, force):
     """
     Public API
     """
 
     check_host_name(host_name)
-    result = check_push_protected(config, host_name, dry_run)
-    if not result.success:
-        return result
+
+    if not force:
+        result = check_push_protected(config, host_name, dry_run)
+        if not result.success:
+            return result
 
     if not find_repo(host_name, name):
         # logger.error("Repository:%s not found in cache. Please pull latest.", name)
         return Result.fail(ResultCode.NOT_FOUND, "Repository not found.")
-
-    if not dry_run and not force:
-        if not confirmed:
-            return Result.fail(ResultCode.CANCELED, "Canceled.")
 
     if dry_run:
         return Result.ok(
@@ -133,6 +131,14 @@ def delete(config, host_name, name, dry_run, force, confirmed):
         }
     )
 
+def repository_exists(host, repo):
+    """
+    Public API
+    """
+    if find_repo(host, repo):
+        return Result.ok()
+    else:
+        return Result.fail(ResultCode.NOT_FOUND, "Repository not found.")
 
 # Internal
 def find_repo(host, repo):
