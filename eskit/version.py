@@ -1,6 +1,6 @@
 import subprocess
 
-__version__ = "0.4.1"
+__version__ = "0.4.2"
 __cache_format_version__ = 20260718
 
 

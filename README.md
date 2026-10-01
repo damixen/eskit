@@ -159,6 +159,33 @@ eskit ai "show me the latest snapshots" \
   --model claude-haiku-4-5-20251001
 ```
 
+### Dynamic Command Contexts
+
+ESKit AI uses dynamic command contexts to control which ESKit capabilities are provided to the model.
+
+Instead of loading the complete ESKit command definition for every request, the assistant starts with a lightweight overview of the available capabilities. It can then load the detailed command context it needs while working on the request.
+
+For example, a request involving indices may cause the assistant to load the `index` context before determining the appropriate ESKit command and arguments. A multi-step operation can load additional contexts as they become necessary.
+
+This keeps the AI interface derived from the same ESKit command definitions used by the CLI while avoiding the need to provide every command definition to the model for every request.
+
+If you already know which contexts are relevant, they can be provided when starting the AI assistant:
+
+```bash
+eskit ai "show me the available indices" --contexts cat
+```
+
+Multiple initial contexts can also be provided:
+
+```bash
+eskit ai "pull the latest cache and show me the available indices" \
+  --contexts pull index cat
+```
+
+Initial contexts do not restrict the assistant to those capabilities. If another context is required while processing the request, the assistant can load it dynamically.
+
+This allows ESKit AI to use a small initial command context for discovery while still having access to the full ESKit command interface when needed.
+
 ### Multi-Step Operations
 
 The AI assistant can perform multiple ESKit operations as part of a single request.
