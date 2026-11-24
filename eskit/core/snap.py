@@ -210,6 +210,7 @@ def restore(config, host_name, spec, index, dry_run, ilm, remove_ilm, wait):
     return Result.ok(
         {
             "executed": True,
+            "wait": wait,
             "host": host_name,
             "command": {
                 "method": "POST",

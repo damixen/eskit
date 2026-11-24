@@ -224,6 +224,10 @@ def render_cat_index(indices, context=None):
     render_context(context)
 
 
+def project_cat_index(indices):
+    return project(indices, INDEX_DISPLAY.paths())
+
+
 def render_show_index(indices, context=None):
     render_heading("General")
     render_fields(
@@ -293,14 +297,18 @@ def render_index_status(indices, context=None):
 
     render_context(context)
 
+
 def render_reindex_mapping(mappings, context=None):
     print(json.dumps(mappings, indent=2))
+
 
 def render_index_delete(result, context=None):
     render_command_execution(result, context, "Index deleted.")
 
+
 def render_index_create(result, context=None):
     render_command_execution(result, context, "Index created.")
+
 
 def render_reindex(result, context=None):
     render_command_execution(result, context, "Reindex started successfully.")

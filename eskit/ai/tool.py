@@ -22,7 +22,6 @@ def tools_to_json(tools: list[ToolDefinition]) -> str:
         [tool.to_dict() for tool in tools],
         indent=2,
     )
-    
 
 
 def add_ask_user_tool(tools):
@@ -121,10 +120,10 @@ def build_tool_definitions(
         common_arguments = command_data.get("common_arguments", {})
 
         for name, command in command_data.get("commands", {}).items():
-            
+
             if not name in active_contexts:
                 continue
-            
+
             command = _expand_common_arguments(
                 command,
                 common_arguments,

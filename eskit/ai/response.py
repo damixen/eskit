@@ -7,6 +7,7 @@ class ToolCall:
     id: str
     name: str
     arguments: dict
+    output_mode: str | None = "raw"
 
 
 @dataclass

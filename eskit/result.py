@@ -100,3 +100,5 @@ def result_to_ai_response(result: Result) -> str:
             "value": result.value,
         }
     )
+
+

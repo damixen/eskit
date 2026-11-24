@@ -31,13 +31,22 @@ from eskit.render.commands.snapshot import (
     render_restore_snapshot,
 )
 from eskit.render.commands.job import render_show_job, render_list_jobs
-from eskit.render.commands.archive import render_show_archive, render_list_archives, render_pull, render_push, render_sync
+from eskit.render.commands.archive import (
+    render_show_archive,
+    render_list_archives,
+    render_pull,
+    render_push,
+    render_sync,
+)
 from eskit.render.commands.ilm import render_cat_ilm, render_show_ilm
 from eskit.render.commands.metadata import render_pull_metadata
 from eskit.render.commands.task import render_task_get
 from eskit.render.commands.init import render_init
 from eskit.projection import project
 from eskit.result import Result, ResultCode
+
+import io
+from contextlib import redirect_stdout
 
 RENDERER = {
     "cmd_status": render_status,
@@ -64,14 +73,14 @@ RENDERER = {
     "cmd_reindex_mapping": render_reindex_mapping,
     "cmd_create_snapshot": render_create_snapshot,
     "cmd_delete_snapshot": render_delete_snapshot,
-    "cmd_restore_snapshot" : render_restore_snapshot,
-    "cmd_delete_index" : render_index_delete,
-    "cmd_create_index" : render_index_create,
-    "cmd_get_task" : render_task_get,
-    "cmd_init" : render_init,
-    "cmd_pull_archive" : render_pull,
-    "cmd_sync_archive" : render_sync,
-    "cmd_push_archive" : render_push
+    "cmd_restore_snapshot": render_restore_snapshot,
+    "cmd_delete_index": render_index_delete,
+    "cmd_create_index": render_index_create,
+    "cmd_get_task": render_task_get,
+    "cmd_init": render_init,
+    "cmd_pull_archive": render_pull,
+    "cmd_sync_archive": render_sync,
+    "cmd_push_archive": render_push,
 }
 
 
@@ -109,7 +118,7 @@ def render_result(args, result: Result):
     if result.code == ResultCode.CANCELED:
         print("Canceled.")
         if args.verbose and result.message:
-                print(result.message)
+            print(result.message)
         return
 
     if result.code == ResultCode.NOT_AUTHORIZED:
@@ -120,7 +129,7 @@ def render_result(args, result: Result):
 
     if result.code != ResultCode.SUCCESS:
         if args.verbose and result.message:
-                print(result.message)
+            print(result.message)
         return
 
     from eskit.projection import build_field_list, normalize_projection
@@ -184,3 +193,41 @@ def render(
 
 def render_json(value):
     print(json.dumps(value, indent=2))
+
+
+def projected_result_to_string(result: Result) -> str:
+    """
+    This is not fully implemented.
+    """
+
+    from eskit.render.commands.index import project_cat_index
+
+    value = project_cat_index(result.value)
+
+    return json.dumps(
+        {
+            "success": result.success,
+            "code": result.code.name,
+            "message": result.message,
+            "value": value,
+        }
+    )
+
+
+def render_result_to_string(args, result: Result) -> str:
+
+    buffer = io.StringIO()
+
+    with redirect_stdout(buffer):
+        render_result(args, result)
+
+    value = buffer.getvalue()
+
+    return json.dumps(
+        {
+            "success": result.success,
+            "code": result.code.name,
+            "message": result.message,
+            "value": value,
+        }
+    )

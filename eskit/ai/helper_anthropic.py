@@ -94,6 +94,7 @@ def ask(
     events: EventEmitter,
     count_input_token,
     active_contexts,
+    tool_call_output_mode,
 ):
 
     if not messages:
@@ -194,6 +195,7 @@ def ask(
             id=block.id,
             name=block.name,
             arguments=block.input,
+            output_mode=tool_call_output_mode,
         )
         for block in response.content
         if block.type == "tool_use"
@@ -208,6 +210,29 @@ def ask(
     events.llm_response(response=res, stop_reason=stop_reason, usage=usage)
 
     return res
+
+
+def append_tool_messages(messages, response, tool_results):
+    messages.append(
+        {
+            "role": "assistant",
+            "content": response.content,
+        }
+    )
+
+    messages.append(
+        {
+            "role": "user",
+            "content": [
+                {
+                    "type": "tool_result",
+                    "tool_use_id": tool_call.id,
+                    "content": result,
+                }
+                for tool_call, result in tool_results
+            ],
+        }
+    )
 
 
 def to_anthropic_tools(tools: list[ToolDefinition]):

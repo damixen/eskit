@@ -541,9 +541,7 @@ def cmd_delete_snapshot(args):
         if not confirmed:
             return Result.fail(ResultCode.CANCELED, "Cannot confirm the action.")
 
-    result = delete(
-        context.config, context.host, name, args.dry_run, args.force
-    )
+    result = delete(context.config, context.host, name, args.dry_run, args.force)
     result.command_context = context
 
     if result.success:
@@ -636,8 +634,7 @@ def cmd_delete_index(args):
         if not confirmed:
             return Result.fail(ResultCode.CANCELED, "Cannot confirm the action.")
 
-    result = delete(
-        context.config, context.host, args.index, args.dry_run, args.force)
+    result = delete(context.config, context.host, args.index, args.dry_run, args.force)
     result.command_context = context
 
     if result.success:
@@ -1030,17 +1027,22 @@ def execute_command(tool_call: ToolCall, tools, events: EventEmitter, context_bu
 
             events.function_call_started(tool_call.name, "eskit", tool_call.arguments)
 
-            args = to_argparse(tool_call, command_ir["commands"], tools)
-            # print("args:", args)
+            try:
+                args = to_argparse(tool_call, command_ir["commands"], tools)
 
-            parsed_args = parser.parse_args(args)
-            eskit_ret = parsed_args.function(parsed_args)
+                parsed_args = parser.parse_args(args)
+                eskit_ret = parsed_args.function(parsed_args)
 
-            from eskit.utils.config import project_security_context
+                from eskit.utils.config import project_security_context
 
-            if eskit_ret.command_context and eskit_ret.command_context.config:
-                eskit_ret.command_context.config = project_security_context(
-                    eskit_ret.command_context.config, eskit_ret.command_context.host
+                if eskit_ret.command_context and eskit_ret.command_context.config:
+                    eskit_ret.command_context.config = project_security_context(
+                        eskit_ret.command_context.config, eskit_ret.command_context.host
+                    )
+            except ValueError as e:
+                eskit_ret = Result.fail(
+                    code=ResultCode.INVALID_ARGUMENT,
+                    message=str(e),
                 )
 
             events.function_call_completed(tool_call.name, "eskit", eskit_ret)
@@ -1049,9 +1051,19 @@ def execute_command(tool_call: ToolCall, tools, events: EventEmitter, context_bu
                 "message": eskit_ret.message,
                 "value": eskit_ret.value,
             }
-            ai_ret = result_to_ai_response(eskit_ret)
+            ouput_mode = tool_call.output_mode
+            if ouput_mode == "rendered":
+                from eskit.render.renderer import render_result_to_string
 
-        events.tool_result(tool_call.name, ret)
+                ai_ret = render_result_to_string(parsed_args, eskit_ret)
+            elif ouput_mode == "projected":
+                from eskit.render.renderer import projected_result_to_string
+
+                ai_ret = projected_result_to_string(eskit_ret)
+            else:
+                ai_ret = result_to_ai_response(eskit_ret)
+
+        events.tool_result(tool_call.name, ai_ret)
 
         return ai_ret
 
@@ -1123,6 +1135,7 @@ def cmd_ai(args):
         executor=execute_command,
         events=eventEmitter,
         count_input_token=args.trace,
+        tool_call_output_mode=args.tool_call_output_mode,
     )
 
     return ExitCode.SUCCESS
@@ -1944,6 +1957,13 @@ def build_parser():
             "status",
         ],
     )
+    ai_parser.add_argument(
+        "--tool-call-output-mode",
+        help="Sets the tool call output mode. By default it's raw json."
+        "The rendered option is the default CLI output where it's user friendly format such as lists and tables."
+        "The projected mode is not fully supported. ",
+        choices=["raw", "rendered", "projected"],
+    )
     ai_parser.set_defaults(function=cmd_ai)
 
     describe = sub.add_parser(
@@ -1996,7 +2016,6 @@ def main():
     ai_mode = hasattr(args, "ai") or (args.command == "ai")
 
     from eskit.render.renderer import render_result
-    from eskit.ai.helper import run_agent
 
     if ai_mode:
         # print("result:", result)

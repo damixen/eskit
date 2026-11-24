@@ -1,21 +1,12 @@
-import json
-from dataclasses import asdict
-from eskit.ai.helper_anthropic import ask as ask_claude
-from eskit.ai.helper_anthropic import ask as ask_claude
+from eskit.ai.helper_anthropic import (
+    ask as ask_claude,
+    append_tool_messages as add_message_claude,
+)
+from eskit.ai.helper_ollama import (
+    ask as ask_ollama,
+    append_tool_messages as add_message_ollama,
+)
 from eskit.events.generated import EventEmitter
-
-
-def ask_ollama(messages, command_description, model, tools):
-    from eskit.ai.helper_ollama import ask
-
-    return ask(
-        messages,
-        command_description,
-        model,
-        tools=tools,
-        dump_json=False,
-    )
-
 
 MODEL_HANDLERS = {
     "claude-sonnet-4-6": ask_claude,
@@ -28,8 +19,28 @@ MODEL_HANDLERS = {
     "mistral:7b": ask_ollama,
 }
 
+MESSAGE_HANDLERS = {
+    "claude-sonnet-4-6": add_message_claude,
+    "claude-sonnet-5": add_message_claude,
+    "claude-haiku-4-5-20251001": add_message_claude,
+    "qwen3:4b": add_message_ollama,
+    "qwen3:8b": add_message_ollama,
+    "qwen3:14b": add_message_ollama,
+    "gemma3:4b": add_message_ollama,
+    "mistral:7b": add_message_ollama,
+}
 
-def ask(messages, command_description, model, tools, events, count_input_token, active_contexts):
+
+def ask(
+    messages,
+    command_description,
+    model,
+    tools,
+    events,
+    count_input_token,
+    active_contexts,
+    tool_call_output_mode,
+):
     handler = MODEL_HANDLERS.get(model)
 
     if handler is None:
@@ -44,6 +55,7 @@ def ask(messages, command_description, model, tools, events, count_input_token, 
         events=events,
         count_input_token=count_input_token,
         active_contexts=active_contexts,
+        tool_call_output_mode=tool_call_output_mode,
     )
 
 
@@ -54,50 +66,38 @@ def run_agent(
     executor,
     events: EventEmitter,
     count_input_token,
+    tool_call_output_mode,
 ):
-    messages = [
-        {
-            "role": "user",
-            "content": question,
-        }
-    ]
+    messages = [{"role": "user", "content": question}]
+
+    handler = MODEL_HANDLERS[model]
 
     while True:
         command_description, tools, active_contexts = context_builder.get_context()
+
         response = ask(
             messages=messages,
             command_description=command_description,
-            tools=tools,
             model=model,
+            tools=tools,
             events=events,
             count_input_token=count_input_token,
-            active_contexts=active_contexts
+            active_contexts=active_contexts,
+            tool_call_output_mode=tool_call_output_mode,
         )
+
         if not response.tool_calls:
             events.final_response(response.text)
             return response.text
 
-        # append Claude's response
-        messages.append(
-            {
-                "role": "assistant",
-                "content": response.content,
-            }
-        )
+        tool_results = []
 
         for tool_call in response.tool_calls:
-
             result = executor(tool_call, tools, events, context_builder)
+            tool_results.append((tool_call, result))
 
-            messages.append(
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "tool_result",
-                            "tool_use_id": tool_call.id,
-                            "content": result,
-                        }
-                    ],
-                }
-            )
+        MESSAGE_HANDLERS[model](
+            messages,
+            response,
+            tool_results,
+        )

@@ -22,6 +22,24 @@ def get_usage(response, model):
     }
 
 
+def get_usage_ollama(response, model):
+
+    input_tokens = response.prompt_eval_count
+    output_tokens = response.eval_count
+
+    input_cost = 0
+
+    output_cost = 0
+
+    return {
+        "model": model,
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "input_cost": input_cost,
+        "output_cost": output_cost,
+    }
+
+
 def print_usage(usage):
 
     input_tokens = usage["input_tokens"]
