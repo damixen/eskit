@@ -89,8 +89,10 @@ def load_command_context(args, skip_get_current_host=False) -> CommandContext:
         "hosts": [],
         "views": {},
         "reindex-configs": [],
+        "ai": dict,
     }
     config_path = getattr(args, "config", None)
+
     if config_path:
         try:
             config = load_config(config_path)
@@ -1051,15 +1053,22 @@ def execute_command(tool_call: ToolCall, tools, events: EventEmitter, context_bu
                 "message": eskit_ret.message,
                 "value": eskit_ret.value,
             }
-            ouput_mode = tool_call.output_mode
-            if ouput_mode == "rendered":
+
+            output_mode = tool_call.output_mode
+
+            if not eskit_ret.success:
+                ai_ret = result_to_ai_response(eskit_ret)
+
+            elif output_mode == "rendered":
                 from eskit.render.renderer import render_result_to_string
 
                 ai_ret = render_result_to_string(parsed_args, eskit_ret)
-            elif ouput_mode == "projected":
+
+            elif output_mode == "projected":
                 from eskit.render.renderer import projected_result_to_string
 
                 ai_ret = projected_result_to_string(eskit_ret)
+
             else:
                 ai_ret = result_to_ai_response(eskit_ret)
 
@@ -1074,18 +1083,26 @@ def execute_command(tool_call: ToolCall, tools, events: EventEmitter, context_bu
 
 def cmd_ai(args):
 
+    try:
+        app_context = load_command_context(args)
+    except ESKitError as e:
+        logger.error("%s", e)
+        return Result.fail(ResultCode.INTERNAL_ERROR, "Failed to load context.")
+
+    print("app_context.config:", app_context.config)
+
     parser = build_parser()
     command_ir = describe_parser(parser)
 
     from eskit.ai.context import ContextToolBuilder
 
-    contexts = {}
+    contexts = set()
     if args.contexts:
         contexts = set(args.contexts)
     builder = ContextToolBuilder(command_ir, contexts)
     optimized_command_ir, tools, active_contexts = builder.build()
 
-    from eskit.ai.tool import build_tool_definitions, tools_to_json
+    from eskit.ai.tool import tools_to_json
 
     if args.output_command_json:
         with open("tools.json", "w", encoding="UTF-8") as f:
@@ -1120,22 +1137,48 @@ def cmd_ai(args):
 
     client = {"version": __version__, **git_info}
 
-    eventEmitter = EventEmitter(bus)
-    eventEmitter.run_started(
-        args.model, command_ir, optimized_command_ir, tools=tools, client=client
+    from eskit.ai.helper import run_agent
+    from eskit.ai.options import AgentOptions
+
+    model_config = {}
+
+    ai_config = app_context.config.get("ai")
+    if ai_config:
+        model_config = next(
+            (m for m in ai_config.get("models", []) if m["name"] == args.model),
+            {},
+        )
+
+    context_size = args.context_size or model_config["options"].get("context_size")
+    max_output_tokens = args.max_output_tokens or model_config["options"].get(
+        "max_output_tokens"
     )
 
-    from eskit.ai.helper import run_agent
+    options = AgentOptions(
+        count_input_token=args.trace,
+        tool_call_output_mode=args.tool_call_output_mode or "raw",
+        context_size=context_size,
+        max_output_token=max_output_tokens,
+        active_contexts=list(active_contexts),
+    )
 
-    count_input_token = args.trace
+    eventEmitter = EventEmitter(bus)
+    eventEmitter.run_started(
+        args.model,
+        command_ir,
+        optimized_command_ir,
+        tools=tools,
+        client=client,
+        options=options,
+    )
+
     result = run_agent(
         question=args.question,
         model=args.model,
         context_builder=builder,
         executor=execute_command,
         events=eventEmitter,
-        count_input_token=args.trace,
-        tool_call_output_mode=args.tool_call_output_mode,
+        options=options,
     )
 
     return ExitCode.SUCCESS
@@ -1907,7 +1950,7 @@ def build_parser():
     ai_parser = sub.add_parser(
         "ai",
         help="AI commands.",
-        parents=[output_parser],
+        parents=[output_parser, common_parser],
         description="AI commands.",
     )
     set_metadata(ai_parser, context="ai")
@@ -1963,6 +2006,15 @@ def build_parser():
         "The rendered option is the default CLI output where it's user friendly format such as lists and tables."
         "The projected mode is not fully supported. ",
         choices=["raw", "rendered", "projected"],
+    )
+    ai_parser.add_argument(
+        "--context-size", type=int, default=None, help="num_ctx for Ollama"
+    )
+    ai_parser.add_argument(
+        "--max-output-tokens",
+        type=int,
+        default=None,
+        help="num_predict for Ollama, max_tokens for Claude",
     )
     ai_parser.set_defaults(function=cmd_ai)
 

@@ -1,3 +1,5 @@
+import pytest
+
 from unittest.mock import Mock, patch
 
 from eskit.ai.tool import ToolCall, ToolDefinition, to_argparse
@@ -5,12 +7,17 @@ from eskit.result import ResultCode, Result  # Adjust import
 from eskit.cli import execute_command  # Adjust import
 from types import SimpleNamespace
 
+@pytest.mark.parametrize(
+    "output_mode",
+    ["raw", "rendered", "projected"],
+)
 
-def test_execute_command_invalid_argument():
+def test_execute_command_invalid_argument(output_mode):
     tool_call = ToolCall(
         id="abc",
         name="cat",
         arguments={"kind": "repo", "name": "*"},
+        output_mode=output_mode,
     )
 
     events = Mock()
@@ -54,12 +61,7 @@ def test_execute_command_invalid_argument():
         "Argument 'name' not found for command 'cat'"
     )
 
-    events.tool_result.assert_called_once()
-
-    result_payload = events.tool_result.call_args.args[1]
-
-    assert result_payload["code"] == ResultCode.INVALID_ARGUMENT
-    assert result_payload["message"] == result.message
+    events.tool_result.assert_called_once_with("cat", response)
 
     mock_response.assert_called_once_with(result)
 
@@ -130,11 +132,6 @@ def test_execute_command_success():
         "cat", "eskit", command_result
     )
 
-    events.tool_result.assert_called_once()
-
-    payload = events.tool_result.call_args.args[1]
-
-    assert payload["code"] == ResultCode.SUCCESS
-    assert payload["value"] == command_result.value
+    events.tool_result.assert_called_once_with("cat", response)
 
     mock_response.assert_called_once_with(command_result)

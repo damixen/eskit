@@ -9,7 +9,8 @@
                 "command_ir": "dict",
                 "optimized_ir": "dict",
                 "tools": "dict",
-                "client": "dict"
+                "client": "dict",
+                "options": "dict"
             }
         },
         "1002": {
@@ -20,7 +21,8 @@
                 "messages": "list",
                 "tool_def": "Any",
                 "input_token_counts": "dict",
-                "active_contexts": "Any"
+                "active_contexts": "Any",
+                "provider_options": "dict"
             }
         },
         "1003": {

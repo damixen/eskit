@@ -3,7 +3,7 @@ import json
 from eskit.ai.response import LLMResponse
 from eskit.ai.tool import ToolDefinition, ToolCall
 from eskit.ai.usage import get_usage_ollama
-from eskit.events.generated import EventEmitter
+from eskit.ai.options import AgentOptions
 
 SYSTEM_PROMPT = """
 You are ESKit AI, an assistant that helps users inspect and manage
@@ -170,9 +170,7 @@ def ask(
     tools,
     dump_json,
     events,
-    count_input_token,
-    active_contexts,
-    tool_call_output_mode,
+    options: AgentOptions,
 ):
 
     if not messages:
@@ -202,6 +200,13 @@ def ask(
 
     # print(json.dumps(messages, indent=2))
 
+    ollama_options = {
+        "num_ctx": options.get("context_size") or 32768,
+    }
+
+    if options.get("max_output_token") is not None:
+        ollama_options["num_predict"] = options["max_output_token"]
+
     input_token_counts = {}
     usage = {}
     events.llm_prompt(
@@ -209,17 +214,20 @@ def ask(
         messages=messages,
         tool_def=tools,
         input_token_counts=input_token_counts,
-        active_contexts=list(active_contexts),
+        active_contexts=list(options["active_contexts"]),
+        provider_options=ollama_options,
     )
+
+    ollma_tools = to_ollama_tools(tools)
+    if dump_json:
+        with open("ollama_tools.json", "w", encoding="UTF-8") as f:
+            json.dump(ollma_tools, f, indent=2)
 
     response = ollama.chat(
         model=model,
         messages=messages,
-        tools=to_ollama_tools(tools),
-        options={
-            # "num_ctx": 16384,
-            "num_ctx": 32768,
-        },
+        tools=ollma_tools,
+        options=ollama_options,
     )
 
     usage = get_usage_ollama(response, model)
@@ -230,7 +238,7 @@ def ask(
             id=tool.function.name,
             name=tool.function.name,
             arguments=tool.function.arguments,
-            output_mode=tool_call_output_mode,
+            output_mode=options["tool_call_output_mode"],
         )
         for tool in ollama_message.tool_calls or []
     ]

@@ -6,6 +6,7 @@ from eskit.ai.usage import print_usage, get_usage
 from eskit.ai.tool import ToolDefinition
 from eskit.ai.response import LLMResponse, ToolCall
 from eskit.events.generated import EventEmitter
+from eskit.ai.options import AgentOptions
 
 SYSTEM_PROMPT = """
 You are an AI assistant for ESKit.
@@ -92,9 +93,7 @@ def ask(
     tools,
     dump_json,
     events: EventEmitter,
-    count_input_token,
-    active_contexts,
-    tool_call_output_mode,
+    options: AgentOptions,
 ):
 
     if not messages:
@@ -113,7 +112,7 @@ def ask(
     prompt = SYSTEM_PROMPT + json.dumps(command_description)
 
     input_token_counts = {}
-    if count_input_token:
+    if options["count_input_token"]:
         _messages = [
             {
                 "role": "user",
@@ -168,17 +167,19 @@ def ask(
         input_token_counts["all"] = response.input_tokens
         # print("all:", response.input_tokens)
 
+    max_tokens = options.get("max_output_token") or 10000
     events.llm_prompt(
         system_prompt=prompt,
         messages=messages,
         tool_def=tools,
         input_token_counts=input_token_counts,
-        active_contexts=list(active_contexts),
+        active_contexts=list(options["active_contexts"]),
+        provider_options={"max_tokens": max_tokens},
     )
 
     response = client.messages.create(
         model=model,
-        max_tokens=10000,
+        max_tokens=max_tokens,
         system=prompt,
         messages=messages,
         tools=anthropic_tools,
@@ -195,7 +196,7 @@ def ask(
             id=block.id,
             name=block.name,
             arguments=block.input,
-            output_mode=tool_call_output_mode,
+            output_mode=options["tool_call_output_mode"],
         )
         for block in response.content
         if block.type == "tool_use"

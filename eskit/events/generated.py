@@ -45,6 +45,7 @@ class EventEmitter:
         optimized_ir: dict,
         tools: dict,
         client: dict,
+        options: dict,
     ) -> None:
         self._emit(
             AI_RUN_STARTED,
@@ -54,6 +55,7 @@ class EventEmitter:
                 "optimized_ir": optimized_ir,
                 "tools": tools,
                 "client": client,
+                "options": options,
             },
         )
 
@@ -64,6 +66,7 @@ class EventEmitter:
         tool_def: Any,
         input_token_counts: dict,
         active_contexts: Any,
+        provider_options: dict,
     ) -> None:
         self._emit(
             AI_LLM_PROMPT,
@@ -73,6 +76,7 @@ class EventEmitter:
                 "tool_def": tool_def,
                 "input_token_counts": input_token_counts,
                 "active_contexts": active_contexts,
+                "provider_options": provider_options,
             },
         )
 

@@ -7,6 +7,7 @@ from eskit.ai.helper_ollama import (
     append_tool_messages as add_message_ollama,
 )
 from eskit.events.generated import EventEmitter
+from eskit.ai.options import AgentOptions
 
 MODEL_HANDLERS = {
     "claude-sonnet-4-6": ask_claude,
@@ -31,16 +32,7 @@ MESSAGE_HANDLERS = {
 }
 
 
-def ask(
-    messages,
-    command_description,
-    model,
-    tools,
-    events,
-    count_input_token,
-    active_contexts,
-    tool_call_output_mode,
-):
+def ask(messages, command_description, model, tools, events, options: AgentOptions):
     handler = MODEL_HANDLERS.get(model)
 
     if handler is None:
@@ -53,9 +45,7 @@ def ask(
         tools=tools,
         dump_json=False,
         events=events,
-        count_input_token=count_input_token,
-        active_contexts=active_contexts,
-        tool_call_output_mode=tool_call_output_mode,
+        options=options,
     )
 
 
@@ -65,25 +55,20 @@ def run_agent(
     model,
     executor,
     events: EventEmitter,
-    count_input_token,
-    tool_call_output_mode,
+    options: AgentOptions,
 ):
     messages = [{"role": "user", "content": question}]
 
-    handler = MODEL_HANDLERS[model]
-
     while True:
         command_description, tools, active_contexts = context_builder.get_context()
-
+        options["active_contexts"] = list(active_contexts)
         response = ask(
             messages=messages,
             command_description=command_description,
             model=model,
             tools=tools,
             events=events,
-            count_input_token=count_input_token,
-            active_contexts=active_contexts,
-            tool_call_output_mode=tool_call_output_mode,
+            options=options,
         )
 
         if not response.tool_calls:

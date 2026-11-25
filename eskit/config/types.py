@@ -13,6 +13,16 @@ class ReindexConfig(TypedDict):
     name: str
     mappings: dict
 
+class AIModelOptionsConfig(TypedDict):
+    context_size: int | None
+    max_output_tokens: int | None
+
+class AIModelConfig(TypedDict):
+    name: str
+    options: AIModelOptionsConfig
+
+class AIConfig(TypedDict):
+    models: list[AIModelConfig]
 
 Config = TypedDict(
     "Config",
@@ -20,6 +30,7 @@ Config = TypedDict(
         "hosts": list[HostConfig],
         "views": dict,
         "reindex-configs": list[ReindexConfig],
+        "ai": AIConfig,
     },
 )
 
