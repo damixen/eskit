@@ -56,19 +56,29 @@ def get(config: Config, host_name, index):
         ilm = es.request("GET", f"/{index}/_ilm/explain")
         policy = None
         retention = None
-        if ilm:
+        if ilm is not None:
             policy = ilm["indices"][index].get("policy", None)
 
-        if policy:
-            policy_data = es.request("GET", f"/_ilm/policy/{policy}")
-            delete_data = policy_data[policy]["policy"]["phases"].get("delete", None)
-            retention = delete_data["min_age"]
-            if retention:
-                ilm["indices"][index]["retention"] = retention
-                retention_ms = parse_duration(retention)
-                ilm["indices"][index]["remaining_ms"] = (
-                    retention_ms - ilm["indices"][index]["age_in_millis"]
+        if policy is not None and ilm is not None:
+            policy_data = es.request(
+                "GET",
+                f"/_ilm/policy/{policy}",
+                ignore_status=(404,),
+            )
+            if policy_data is not None:
+                delete_data = policy_data[policy]["policy"]["phases"].get(
+                    "delete", None
                 )
+                retention = delete_data["min_age"]
+                if retention:
+                    ilm["indices"][index]["retention"] = retention
+                    retention_ms = parse_duration(retention)
+                    ilm["indices"][index]["remaining_ms"] = (
+                        retention_ms - ilm["indices"][index]["age_in_millis"]
+                    )
+                ilm["indices"][index]["policy_found"] = True
+            else:
+                ilm["indices"][index]["policy_found"] = False
             index_data["ilm"] = ilm["indices"][index]
 
         return Result.ok(index_data, context={"sources": [DataSource.ELASTICSEARCH]})
@@ -154,7 +164,7 @@ def delete(config: Config, host_name, index, dry_run, force):
         result = check_push_protected(config, host_name, dry_run)
         if not result.success:
             return result
-        
+
     result = check_push_protected(config, host_name, dry_run)
 
     if not result.success:
@@ -230,7 +240,7 @@ def reindex(config: Config, host_name, src, dst, mapping, dry_run):
     result = check_push_protected(config, host_name, dry_run)
     if not result.success:
         return result
-    
+
     body = {}
     m = None
     if mapping:
@@ -333,6 +343,7 @@ def reindex(config: Config, host_name, src, dst, mapping, dry_run):
         message=result_msg,
     )
 
+
 def index_exists(host, index):
     """
     Public API
@@ -344,6 +355,7 @@ def index_exists(host, index):
         return Result.ok()
     else:
         return Result.fail(ResultCode.NOT_FOUND, "Resource not found.")
+
 
 # Internal
 def find_index(host, index):

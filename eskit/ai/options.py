@@ -7,3 +7,4 @@ class AgentOptions(TypedDict):
     context_size: int | None
     max_output_token: int | None
     active_contexts: list[str]
+    tool_call_projections: dict[str, list[tuple[str, ...]]]

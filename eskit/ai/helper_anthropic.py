@@ -81,6 +81,22 @@ the relevant information in a clear, user-friendly form.
 The tools ask_user, wait_tool, and add_context are agent-control tools.
 Their results do not need to be presented to the user.
 
+When a tool result contains "projected": true:
+
+- ESKit has selected specific fields from the original
+  tool result before returning it to you.
+- Additional information may be available through ESKit
+  if the result is not projected.
+- Do not assume additional information is available
+  outside the ESKit system.
+- Treat the returned value as partial information.
+- Do not make assumptions about omitted fields,
+  including their existence, absence, or configuration.
+- Explicitly acknowledge that the information is
+  projected when presenting the result to the user.
+- Do not make statements that imply the returned data
+  represents all information in the source data.
+
 ESKit command description:
 
 """

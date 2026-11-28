@@ -14,6 +14,7 @@ INDEX_SCHEMA = Schema(
         Field(
             ("ilm", "policy"),
         ),
+        Field(("ilm", "policy_found"), type=FieldType.BOOLEAN),
         Field(("ilm", "age_in_millis"), type=FieldType.DURATION),
         Field(
             ("ilm", "phase"),

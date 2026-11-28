@@ -21,6 +21,7 @@ AI_FUNCTION_CALL_STARTED = 1009
 AI_FUNCTION_CALL_COMPLETED = 1010
 AI_USER_INPUT_REQUESTED = 1011
 AI_USER_INPUT_RECEIVED = 1012
+AI_TOOL_RESULT_PROJECTED = 1013
 
 class EventEmitter:
     def __init__(self, bus: EventBus) -> None:
@@ -203,5 +204,24 @@ class EventEmitter:
             AI_USER_INPUT_RECEIVED,
             {
                 "input": input,
+            },
+        )
+
+    def tool_result_projected(
+        self,
+        tool: str,
+        projection_key: str,
+        fields: list,
+        result: Any,
+        projection_stats: Any,
+    ) -> None:
+        self._emit(
+            AI_TOOL_RESULT_PROJECTED,
+            {
+                "tool": tool,
+                "projection_key": projection_key,
+                "fields": fields,
+                "result": result,
+                "projection_stats": projection_stats,
             },
         )

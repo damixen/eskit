@@ -55,6 +55,7 @@ class Result(Generic[T]):
     value: T | None = None
     context: Any | None = None
     command_context: Any | None = None
+    projected: bool | None = None
 
     @property
     def success(self) -> bool:
@@ -92,13 +93,14 @@ class Result(Generic[T]):
 
 
 def result_to_ai_response(result: Result) -> str:
-    return json.dumps(
-        {
-            "success": result.success,
-            "code": result.code.name,
-            "message": result.message,
-            "value": result.value,
-        }
-    )
+    payload = {
+        "success": result.success,
+        "code": result.code.name,
+        "message": result.message,
+        "value": result.value,
+    }
 
+    if result.projected is not None:
+        payload["projected"] = result.projected
 
+    return json.dumps(payload)

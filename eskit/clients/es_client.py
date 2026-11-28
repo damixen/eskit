@@ -30,7 +30,7 @@ class ESClient:
         self.transport = transport
         self.config = config
 
-    def request(self, method, path, body=None):
+    def request(self, method, path, body=None, *, ignore_status: tuple[int, ...] = (),):
         port = 9200
         if self.config and "port" in self.config:
             port = self.config["port"]
@@ -66,6 +66,10 @@ class ESClient:
 
         if status == 0:
             raise CurlError(f"Curl command Failed with:{cmd}")
+
+        if status in ignore_status:
+            logger.debug("Ignoring HTTP status %s for %s", status, path)
+            return None
 
         if body:
             body = json.loads(body)

@@ -107,6 +107,14 @@ LIFECYCLE_DISPLAY = DisplaySchema(
             label="Policy",
             empty_value="(none)",
         ),
+        DisplayField(
+            path=(
+                "ilm",
+                "policy_found",
+            ),
+            label="Policy Found",
+            empty_value="False",
+        ),
         DisplayField(path=(), blank_field=True),
         DisplayField(
             path=(

@@ -102,6 +102,17 @@
             "parameters": {
                 "input": "str"
             }
+        },
+        "1013": {
+            "type": "ai.tool_result_projected",
+            "description": "Tool result was projected before serialization.",
+            "parameters": {
+                "tool": "str",
+                "projection_key": "str",
+                "fields": "list",
+                "result": "Any",
+                "projection_stats": "Any"
+            }
         }
     }
 }

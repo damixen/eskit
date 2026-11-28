@@ -28,6 +28,13 @@ from eskit.events.generated import EventEmitter
 from eskit.ai.response import ToolCall
 from eskit.events.ai_tracer import AITracer
 from eskit.events.registry import EventRegistry
+from eskit.ai.options import AgentOptions
+from eskit.projection import (
+    project,
+    build_field_list,
+    normalize_projection,
+    ProjectionStats,
+)
 
 DEFAULT_CONFIG = ".eskit/config.json"
 CACHE_ROOT = Path(".eskit")
@@ -992,7 +999,54 @@ def cmd_show_ilm(args):
     return result
 
 
-def execute_command(tool_call: ToolCall, tools, events: EventEmitter, context_builder):
+def resolve_projection_key(tool_call: ToolCall) -> str:
+    if tool_call.name == "cat":
+        return f"cat-{tool_call.arguments['kind']}"
+
+    return tool_call.name.replace("_", "-")
+
+
+from dataclasses import replace
+
+
+def project_tool_result(
+    tool_call: ToolCall,
+    result: Result,
+    options: AgentOptions,
+    events: EventEmitter,
+) -> Result:
+
+    key = resolve_projection_key(tool_call)
+    fields = options["tool_call_projections"].get(key)
+
+    if fields is None:
+        return result
+
+    projection_stats = ProjectionStats()
+    projected_result = replace(
+        result,
+        value=project(result.value, fields, projection_stats=projection_stats),
+        projected=True,
+    )
+    print("projection_stats:", projection_stats)
+    events.tool_result_projected(
+        tool_call.name,
+        key,
+        fields,
+        projected_result.value,
+        projection_stats.to_dict(),
+    )
+
+    return projected_result
+
+
+def execute_command(
+    tool_call: ToolCall,
+    tools,
+    events: EventEmitter,
+    context_builder,
+    options: AgentOptions,
+):
 
     parser = build_parser()
     command_ir = describe_parser(parser)
@@ -1058,19 +1112,21 @@ def execute_command(tool_call: ToolCall, tools, events: EventEmitter, context_bu
 
             if not eskit_ret.success:
                 ai_ret = result_to_ai_response(eskit_ret)
-
-            elif output_mode == "rendered":
-                from eskit.render.renderer import render_result_to_string
-
-                ai_ret = render_result_to_string(parsed_args, eskit_ret)
-
-            elif output_mode == "projected":
-                from eskit.render.renderer import projected_result_to_string
-
-                ai_ret = projected_result_to_string(eskit_ret)
-
             else:
-                ai_ret = result_to_ai_response(eskit_ret)
+                eskit_ret = project_tool_result(tool_call, eskit_ret, options, events)
+                # print("eskit_ret:", eskit_ret)
+                if output_mode == "rendered":
+                    from eskit.render.renderer import render_result_to_string
+
+                    ai_ret = render_result_to_string(parsed_args, eskit_ret)
+
+                elif output_mode == "projected":
+                    from eskit.render.renderer import projected_result_to_string
+
+                    ai_ret = projected_result_to_string(eskit_ret)
+
+                else:
+                    ai_ret = result_to_ai_response(eskit_ret)
 
         events.tool_result(tool_call.name, ai_ret)
 
@@ -1081,6 +1137,28 @@ def execute_command(tool_call: ToolCall, tools, events: EventEmitter, context_bu
     )
 
 
+def resolve_tool_call_projections(args, views):
+    projections = {}
+
+    for entry in args.tool_call_views or []:
+        key, view_name = entry.split(":", 1)
+        if not view_name:
+            logger.warning("Empty view name. Skipping...")
+            continue
+        projections[key] = normalize_projection(
+            build_field_list(views, [view_name], None)
+        )
+
+    for entry in args.tool_call_fields or []:
+        key, fields = entry.split(":", 1)
+        if not fields:
+            logger.warning("Empty fields. Skipping...")
+            continue
+        projections[key] = normalize_projection(build_field_list(views, None, fields))
+
+    return projections
+
+
 def cmd_ai(args):
 
     try:
@@ -1089,7 +1167,7 @@ def cmd_ai(args):
         logger.error("%s", e)
         return Result.fail(ResultCode.INTERNAL_ERROR, "Failed to load context.")
 
-    print("app_context.config:", app_context.config)
+    # print("app_context.config:", app_context.config)
 
     parser = build_parser()
     command_ir = describe_parser(parser)
@@ -1149,10 +1227,14 @@ def cmd_ai(args):
             {},
         )
 
-    context_size = args.context_size or model_config["options"].get("context_size")
-    max_output_tokens = args.max_output_tokens or model_config["options"].get(
+    context_size = args.context_size or model_config.get("options", {}).get(
+        "context_size"
+    )
+    max_output_tokens = args.max_output_tokens or model_config.get("options", {}).get(
         "max_output_tokens"
     )
+
+    projections = resolve_tool_call_projections(args, app_context.config["views"])
 
     options = AgentOptions(
         count_input_token=args.trace,
@@ -1160,6 +1242,7 @@ def cmd_ai(args):
         context_size=context_size,
         max_output_token=max_output_tokens,
         active_contexts=list(active_contexts),
+        tool_call_projections=projections,
     )
 
     eventEmitter = EventEmitter(bus)
@@ -2015,6 +2098,31 @@ def build_parser():
         type=int,
         default=None,
         help="num_predict for Ollama, max_tokens for Claude",
+    )
+    ai_parser.add_argument(
+        "--tool-call-fields",
+        action="append",
+        default=None,
+        metavar="TOOL:FIELDS",
+        help=(
+            "Select fields returned to the AI for a specific tool call. "
+            "Format: <command>[-<subcommand-or-arg>]:<field1>,<field2>,... "
+            "Can be specified multiple times. "
+            "Example: --tool-call-fields 'cat-index:index,docs$count'"
+        ),
+    )
+
+    ai_parser.add_argument(
+        "--tool-call-views",
+        action="append",
+        default=None,
+        metavar="TOOL:VIEW",
+        help=(
+            "Apply a named view to the result of a specific tool call. "
+            "Format: <command>[-<subcommand-or-arg>]:<view-name>. "
+            "Can be specified multiple times. "
+            "Example: --tool-call-views cat-index:cat-index-basic"
+        ),
     )
     ai_parser.set_defaults(function=cmd_ai)
 

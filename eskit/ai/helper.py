@@ -78,7 +78,7 @@ def run_agent(
         tool_results = []
 
         for tool_call in response.tool_calls:
-            result = executor(tool_call, tools, events, context_builder)
+            result = executor(tool_call, tools, events, context_builder, options)
             tool_results.append((tool_call, result))
 
         MESSAGE_HANDLERS[model](

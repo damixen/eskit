@@ -29,6 +29,7 @@ class AICLIListener:
             "ai.user_input_received": self._user_input_received,
             "ai.function_call_started": self._function_call_started,
             "ai.function_call_completed": self._function_call_completed,
+            "ai.tool_result_projected": self._tool_result_projected,
         }
 
         handler = handlers.get(event_type)
@@ -220,3 +221,17 @@ class AICLIListener:
 
         if result is not None:
             print(f"  result: {result}")
+
+    def _tool_result_projected(self, event: Event) -> None:
+        if not self.verbose:
+            return
+
+        tool = event.data.get("tool", "unknown")
+        projection_key = event.data.get("projection_key", "unknown")
+        fields = event.data.get("fields", [])
+
+        print()
+        print("[trace] Tool result projected")
+        print(f"  tool: {tool}")
+        print(f"  projection: {projection_key}")
+        print(f"  fields: {fields}")
