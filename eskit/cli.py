@@ -43,7 +43,7 @@ CURRENT_HOST = ".current_host"
 logger = logging.getLogger("eskit")
 
 
-@dataclass
+@dataclass(slots=True)
 class RenderOptions:
     output_format: str
     fields: str | None
@@ -1054,7 +1054,6 @@ def execute_command(
     if tool_call:
 
         events.tool_call(tool_call.name, tool_call.arguments)
-        ret = None
         ai_ret = None
         if tool_call.name == "ask_user":
             question = tool_call.arguments["question"]
@@ -1101,21 +1100,20 @@ def execute_command(
                     message=str(e),
                 )
 
-            events.function_call_completed(tool_call.name, "eskit", eskit_ret)
-            ret = {
-                "code": eskit_ret.code,
-                "message": eskit_ret.message,
-                "value": eskit_ret.value,
-            }
-
             output_mode = tool_call.output_mode
+            if eskit_ret.command_context:
+                if output_mode == "rendered":
+                    eskit_ret.command_context.render.output_format = "table"
+                elif output_mode == "rendered_json":
+                    eskit_ret.command_context.render.output_format = "json"
+
+            events.function_call_completed(tool_call.name, "eskit", eskit_ret)
 
             if not eskit_ret.success:
                 ai_ret = result_to_ai_response(eskit_ret)
             else:
                 eskit_ret = project_tool_result(tool_call, eskit_ret, options, events)
-                # print("eskit_ret:", eskit_ret)
-                if output_mode == "rendered":
+                if output_mode == "rendered" or output_mode == "rendered_json":
                     from eskit.render.renderer import render_result_to_string
 
                     ai_ret = render_result_to_string(parsed_args, eskit_ret)
@@ -2088,7 +2086,7 @@ def build_parser():
         help="Sets the tool call output mode. By default it's raw json."
         "The rendered option is the default CLI output where it's user friendly format such as lists and tables."
         "The projected mode is not fully supported. ",
-        choices=["raw", "rendered", "projected"],
+        choices=["raw", "rendered", "rendered_json", "projected"],
     )
     ai_parser.add_argument(
         "--context-size", type=int, default=None, help="num_ctx for Ollama"

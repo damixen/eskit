@@ -179,7 +179,7 @@ def render(
             fields,
             flatten=flatten,
         )
-
+    
     if output_format == "json":
         render_json(value)
         return

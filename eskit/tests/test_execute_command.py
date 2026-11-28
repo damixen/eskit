@@ -9,7 +9,7 @@ from types import SimpleNamespace
 
 @pytest.mark.parametrize(
     "output_mode",
-    ["raw", "rendered", "projected"],
+    ["raw", "rendered","rendered_json", "projected"],
 )
 
 def test_execute_command_invalid_argument(output_mode):
